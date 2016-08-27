@@ -35,7 +35,7 @@ function (jQuery, SegmentedContainer, SemanticConfiguration, Button, Title, Acti
 	 * @abstract
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -45,6 +45,8 @@ function (jQuery, SegmentedContainer, SemanticConfiguration, Button, Title, Acti
 	 */
 	var SemanticPage = sap.ui.core.Control.extend("sap.m.semantic.SemanticPage", /** @lends sap.m.semantic.SemanticPage.prototype */ {
 		metadata: {
+
+			library: "sap.m",
 
 			properties: {
 
@@ -162,7 +164,8 @@ function (jQuery, SegmentedContainer, SemanticConfiguration, Button, Title, Acti
 				 * See {@link sap.m.Page#navButtonPress}
 				 */
 				navButtonPress: {}
-			}
+			},
+			designTime : true
 		}
 	});
 

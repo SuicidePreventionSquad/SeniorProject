@@ -51,8 +51,8 @@ sap.ui.define(['jquery.sap.global', './ChangeReason', './Context', './TreeBindin
 	 *
 	 * @return {object[]} the contexts array
 	 * @protected
-	 * @param {integer} iStartIndex the startIndex where to start the retrieval of contexts
-	 * @param {integer} iLength determines how many contexts to retrieve beginning from the start index.
+	 * @param {int} iStartIndex the startIndex where to start the retrieval of contexts
+	 * @param {int} iLength determines how many contexts to retrieve beginning from the start index.
 	 */
 	ClientTreeBinding.prototype.getRootContexts = function(iStartIndex, iLength) {
 		if (!iStartIndex) {
@@ -92,8 +92,8 @@ sap.ui.define(['jquery.sap.global', './ChangeReason', './Context', './TreeBindin
 	/**
 	 * Return node contexts for the tree
 	 * @param {object} oContext to use for retrieving the node contexts
-	 * @param {integer} iStartIndex the startIndex where to start the retrieval of contexts
-	 * @param {integer} iLength determines how many contexts to retrieve beginning from the start index.
+	 * @param {int} iStartIndex the startIndex where to start the retrieval of contexts
+	 * @param {int} iLength determines how many contexts to retrieve beginning from the start index.
 	 * @return {object[]} the contexts array
 	 * @protected
 	 */
@@ -247,12 +247,12 @@ sap.ui.define(['jquery.sap.global', './ChangeReason', './Context', './TreeBindin
 			this.aApplicationFilters = [];
 		}
 
-		if (!aFilters || !jQuery.isArray(aFilters) || aFilters.length == 0) {
-			this.aFilters = [];
-			this.aApplicationFilters = [];
+
+		aFilters = this.aFilters.concat(this.aApplicationFilters);
+		if (aFilters.length == 0) {
 			this.aAllFilters = null;
 		} else {
-			this.aAllFilters = this.aFilters.concat(this.aApplicationFilters);
+			this.aAllFilters = aFilters;
 			this.applyFilter();
 		}
 		this._mLengthsCache = {};
@@ -287,6 +287,10 @@ sap.ui.define(['jquery.sap.global', './ChangeReason', './Context', './TreeBindin
 		var that = this,
 			aFilteredContexts = [];
 
+		if (jQuery.isEmptyObject(this.aAllFilters)) {
+			return;
+		}
+
 		this.bIsFiltering = true;
 		var aUnfilteredContexts = this.getNodeContexts(oParentContext);
 		this.bIsFiltering = false;
@@ -295,10 +299,6 @@ sap.ui.define(['jquery.sap.global', './ChangeReason', './Context', './TreeBindin
 			jQuery.each(aUnfilteredContexts, function(i, oContext){
 				that._applyFilterRecursive(oContext);
 			});
-
-			if (jQuery.isEmptyObject(this.aAllFilters)) {
-				return;
-			}
 
 			aFilteredContexts = FilterProcessor.apply(aUnfilteredContexts, this.aAllFilters, function (oContext, sPath) {
 				return that.oModel.getProperty(sPath, oContext);

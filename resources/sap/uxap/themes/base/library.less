@@ -103,11 +103,6 @@ Common Compact/Cozy
 	text-transform: uppercase;
 }
 
-/* used to smoothen the 2rem change in padding when switching between present or absent leftwards scrolling
-.sapUxAPAnchorBar {
-	transition: padding-left 0.5s;
-} */
-
 /***********************/
 /* BEGIN Scroll Arrows */
 /***********************/
@@ -266,16 +261,30 @@ COZY
 Compact
 **********************************/
 
-.sapUiSizeCompact .sapUxAPAnchorBar {
-	height: 3rem;
+.sapUiSizeCompact .sapUxAPAnchorBar,
+.sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton {
+	height: 2rem;
 }
 
-.sapUiSizeCompact .sapUxAPAnchorBarButton {
-	padding: 0.25rem 0 0 0;
+.sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton .sapMBtnText > .sapMBtnIcon {
+	top: 0.1rem
 }
 
 .sapUiSizeCompact .sapUxAPAnchorBarButton .sapMBtnInner {
 	padding-bottom: 1px;
+	height: 2rem;
+}
+
+.sapUiSizeCompact .sapUxAPAnchorBar.sapUxAPAnchorBarScrollLeft .anchorBarArrowLeft,
+.sapUiSizeCompact .sapUxAPAnchorBar.sapUxAPAnchorBarScrollRight .anchorBarArrowRight {
+	width: 2rem;
+	height: 2rem;
+}
+
+// Scroll buttons
+.sapUiSizeCompact .sapUxAPAnchorBar.sapUxAPAnchorBarScrollLeft .anchorBarArrow .sapMBtn,
+.sapUiSizeCompact .sapUxAPAnchorBar.sapUxAPAnchorBarScrollRight .anchorBarArrow .sapMBtn {
+	top: 0.125rem;
 }
 
 .sapUiSizeCompact .sapUxAPAnchorBar.sapUxAPAnchorBarScrollLeft .anchorBarArrow .sapMBtnIcon,
@@ -286,8 +295,8 @@ Compact
 
 .sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton .sapMBtnInner .sapMBtnContent,
 .sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton .sapMBtnInner .sapMBtnIcon {
-	height: 2.55rem;
-	line-height: 2.6rem;
+	height: 1.8rem;
+	line-height: 1.8rem;
 }
 
 .sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton .sapMBtnInner.sapMBtnIconLast {
@@ -296,7 +305,7 @@ Compact
 
 .sapUiSizeCompact .sapUxAPAnchorBar .sapUxAPAnchorBarButton .sapMBtnIcon {
 	right: 0;
-	line-height: 2.5rem;
+	line-height: 1.5rem;
 	margin: 0;
 }
 
@@ -305,7 +314,7 @@ Compact
 }
 
 .sapUiSizeCompact .sapUxAPAnchorBarButton .sapMBtnContent {
-	line-height: 2.375rem;
+	line-height: 1.375rem;
 }
 
 .sapUiSizeCompact.sapUxAPAnchorBarPopover.sapMPopover .sapMBtn.sapUxAPAnchorBarButton,
@@ -318,6 +327,10 @@ Compact
 	padding-left: 0.5rem;
 }
 
+// Scroll button container
+.sapUiSizeCompact .sapUxAPAnchorBar .anchorBarArrow > .sapUiHLayoutChildWrapper {
+	height: 2rem;
+}
 /* END "AnchorBar.less" */
 
 /* START "BlockBase.less" */
@@ -330,11 +343,6 @@ Compact
 
 .sapUxAPBlockBase .sapUiFormTitle {
 	font-size: 1.125rem;
-}
-
-/* adding padding to view to compensate 0 horizontal space between grid cells */
-.sapUxAPBlockBase .sapUiView {
-	padding-left: 1rem;
 }
 
 /* END "BlockBase.less" */
@@ -448,15 +456,22 @@ Compact
 	margin-bottom: 0;
 }
 
+.sapUiSizeCompact .sapUxAPHierarchicalSelect .sapMSltIcon {
+	top: 0.125rem;
+}
+
 /* select label */
 
-.sapUiSizeCompact .sapUxAPHierarchicalSelect,
-.sapUiSizeCompact .sapUxAPHierarchicalSelect .sapMSltLabel,
-.sapUiSizeCompact .sapUxAPHierarchicalSelect .sapMSltArrow,
 .sapUxAPHierarchicalSelect,
 .sapUxAPHierarchicalSelect .sapMSltLabel,
 .sapUxAPHierarchicalSelect .sapMSltArrow {
 	line-height: 3rem;
+}
+
+.sapUiSizeCompact .sapUxAPHierarchicalSelect,
+.sapUiSizeCompact .sapUxAPHierarchicalSelect .sapMSltLabel,
+.sapUiSizeCompact .sapUxAPHierarchicalSelect .sapMSltArrow {
+	line-height: 2rem;
 }
 
 .sapUxAPHierarchicalSelect .sapMSltArrow,
@@ -481,6 +496,10 @@ Compact
 	right: 0;
 	top: 0;
 	height: 3rem;
+}
+
+.sapUiMedia-Std-Desktop .sapUiSizeCompact .sapUxAPHierarchicalSelect.sapMSltIconOnly {
+	height: 2rem;
 }
 
 /* inner list */
@@ -596,6 +615,11 @@ objectPageHeader Title
 
 	.sapUxAPObjectPageHeaderActionButtonHideText .sapMBtnInner.sapMBtnIconFirst,
 	.sapUxAPObjectPageHeaderActionButtonHideText .sapMBtnInner.sapMBtnBack {
+		padding-left: 0;
+	}
+
+	.sapUxAPObjectPageHeaderActionButtonHideText .sapMBtnInner.sapMBtnIconFirst.sapMBtnText,
+	.sapUxAPObjectPageHeaderActionButtonHideText .sapMBtnInner.sapMBtnBack.sapMBtnText {
 		padding-left: 0.75rem;
 	}
 
@@ -625,6 +649,7 @@ objectPageHeader Title
 
 	.sapUxAPObjectPageHeaderIdentifierActions {
 		position: absolute;
+		top: 0;
 		padding-top: 0.75rem;
 		right: 0.25rem;
 		display: inline-block;
@@ -656,31 +681,32 @@ objectPageHeader Title
 			font-size: 2rem;
 		}
 	}
+}
 
-	html[data-sap-ui-animation="on"] .sapUxAPObjectPageHeaderObjectImageForce .sapUxAPObjectPageHeaderObjectImage,
-	html[data-sap-ui-animation="on"] .sapUxAPObjectPageHeaderStickied & .sapUxAPObjectPageHeaderObjectImage {
-		-webkit-transition: opacity 0.5s;
-		transition: opacity 0.5s;
-		opacity: 1;
-	}
+html[data-sap-ui-animation="on"] .sapUxAPObjectPageHeaderObjectImageForce .sapUxAPObjectPageHeaderObjectImage,
+html[data-sap-ui-animation="on"] .sapUxAPObjectPageHeaderStickied & .sapUxAPObjectPageHeaderObjectImage {
+	-webkit-transition: opacity 0.5s;
+	transition: opacity 0.5s;
+	opacity: 1;
+}
 
-	html[data-sap-ui-animation="off"] .sapUxAPObjectPageHeaderObjectImageForce .sapUxAPObjectPageHeaderObjectImage,
-	html[data-sap-ui-animation="off"] .sapUxAPObjectPageHeaderStickied & .sapUxAPObjectPageHeaderObjectImage  {
-		opacity: 1;
-	}
+html[data-sap-ui-animation="off"] .sapUxAPObjectPageHeaderObjectImageForce .sapUxAPObjectPageHeaderObjectImage,
+html[data-sap-ui-animation="off"] .sapUxAPObjectPageHeaderStickied & .sapUxAPObjectPageHeaderObjectImage  {
+	opacity: 1;
+}
+
+.sapUiMedia-Std-Desktop .sapUxAPObjectPageHeaderIdentifier {
+	padding-left: 3rem;
+}
+
+.sapUiMedia-Std-Tablet .sapUxAPObjectPageHeaderIdentifier,
+.sapUiMedia-Std-Desktop .sapMSplitContainer:not(.sapMSplitContainerHideMode) .sapMSplitContainerDetail .sapUxAPObjectPageHeaderIdentifier,
+.sapUiMedia-Std-Tablet .sapMSplitContainer:not(.sapMSplitContainerHideMode) .sapMSplitContainerDetail .sapUxAPObjectPageHeaderIdentifier {
+	padding-left: 2rem;
 }
 
 .sapUiMedia-Std-Phone .sapUxAPObjectPageHeaderIdentifier {
 	padding-left: 1rem;
-}
-
-.sapUiMedia-Std-Tablet .sapUxAPObjectPageHeaderIdentifier,
-.sapUiMedia-Std-Desktop .sapUxAPObjectPageHeaderIdentifier {
-	padding-left: 2rem;
-}
-
-.sapUiMedia-Std-Desktop .sapMSplitContainerHideMode .sapUxAPObjectPageHeaderIdentifier {
-	padding-left: 3rem;
 }
 
 .sapUxAPObjectPageHeaderIdentifier .sapUxAPObjectPageHeaderIdentifierDescription {
@@ -859,6 +885,44 @@ html[dir=rtl] .sapUxAPObjectPageHeaderMarks .sapMObjStatusMarker .sapUiIcon:firs
 	visibility: visible;
 }
 
+.sapUxAPObjectPageHeaderSideContentBtn {
+	float: right;
+}
+
+.sapUxAPObjectPageHeaderIdentifier .sapUxAPObjectPageHeaderIdentifierActions > .sapUxAPObjectPageHeaderSideContentBtn > .sapMBtn {
+	padding-left: 0.5rem;
+	float: left;
+}
+
+.sapUxAPObjectPageHeaderSeparator {
+	float: left;
+	height: 2rem;
+	margin-top: 0.5rem;
+	width: 1px;
+	visibility: hidden;
+}
+
+
+.sapUxAPObjectPageHeaderSideContentBtn > .sapUxAPObjectPageHeaderSeparator:only-of-type {
+	visibility: visible;
+}
+
+.sapUiSizeCompact .sapUxAPObjectPageHeaderSeparator {
+	height: 1.5rem;
+	margin-top: 0.25rem;
+}
+
+/* Fiori 2.0 adaptation */
+.sapF2CollapsedHeader .sapUxAPObjectPageHeaderNavigation > .sapMBar {
+  height: 0;
+}
+
+.sapF2Adapted .sapUxAPObjectPageHeaderNavigation > .sapMIBar {
+  background: transparent;
+  box-shadow: none;
+}
+
+
 /* END "ObjectPageHeader.less" */
 
 /* START "ObjectPageHeaderContent.less" */
@@ -879,7 +943,7 @@ objectPageHeader Content
 	.sapUxAPObjectPageHeaderContentItem.sapUiRespGrid {
 		display: inherit;
 	}
-	
+
 	.sapUxAPObjectPageHeaderSeparatorContainer {
 		position: relative;
 		margin-right: 4rem;
@@ -1004,17 +1068,18 @@ html[data-sap-ui-browser^='ie'] .sapUxAPObjectPageHeaderContent div.sapUxAPObjec
 	vertical-align: top;
 }
 
-.sapUiMedia-Std-Phone .sapUxAPObjectPageHeaderContent {
-	padding-left: 1rem;
+.sapUiMedia-Std-Desktop .sapUxAPObjectPageHeaderContent {
+	padding-left: 3rem;
 }
 
 .sapUiMedia-Std-Tablet .sapUxAPObjectPageHeaderContent,
-.sapUiMedia-Std-Desktop .sapUxAPObjectPageHeaderContent {
+.sapUiMedia-Std-Desktop .sapMSplitContainer:not(.sapMSplitContainerHideMode) .sapMSplitContainerDetail .sapUxAPObjectPageHeaderContent,
+.sapUiMedia-Std-Tablet .sapMSplitContainer:not(.sapMSplitContainerHideMode) .sapMSplitContainerDetail .sapUxAPObjectPageHeaderContent {
 	padding-left: 2rem;
 }
 
-.sapUiMedia-Std-Desktop .sapMSplitContainerHideMode .sapUxAPObjectPageHeaderContent {
-	padding-left: 3rem;
+.sapUiMedia-Std-Phone .sapUxAPObjectPageHeaderContent {
+	padding-left: 1rem;
 }
 
 .sapUxAPObjectPageHeaderContentHidden {
@@ -1027,10 +1092,6 @@ html[data-sap-ui-browser^='ie'] .sapUxAPObjectPageHeaderContent div.sapUxAPObjec
 	.sapUxAPObjectPageHeaderSeparatorAfter {
 		background-color: transparent;
 	}
-}
-
-.sapUxAPObjectPageHeaderContentImageContainer {
-	float: left;
 }
 
 .sapUxAPObjectPageHeaderContentImageContainer .sapUiIcon,
@@ -1107,7 +1168,7 @@ html[data-sap-ui-browser^="cr4"] .sapUxAPObjectPageHeaderContentImageContainer >
 }
 
 .sapUiMedia-Std-Desktop, .sapUiMedia-Std-Tablet {
-	.sapUxAPObjectPageHeaderContent .sapUxAPObjectPageHeaderObjectImage-Circle .sapUxAPObjectPageHeaderObjectImage {
+	.sapUxAPObjectPageHeaderContent .sapUxAPObjectPageHeaderObjectImage-Circle .sapUxAPObjectPageHeaderObjectImage:not(.sapUxAPObjectPageHeaderObjectImageIcon) {
 		border-style: solid;
 	}
 }
@@ -1160,6 +1221,9 @@ html[data-sap-ui-browser="ie10"] .sapUxAPObjectPageHeaderContentCellLeft {
 	align-self: flex-end;
 }
 
+.sapUiLoSplitterH.sapUiLoSplitter .sapUxAPObjectPageHeaderContent {
+	white-space: normal;
+}
 /* END "ObjectPageHeaderContent.less" */
 
 /* START "ObjectPageLayout.less" */
@@ -1182,6 +1246,14 @@ body > .sapUxAPObjectPageLayout,
 	z-index: 2;
 }
 
+.sapUxAPObjectPageHeaderTitle.sapUxAPObjectPageHeaderTitleBusy {
+	z-index: 0;
+}
+
+.sapUxAPObjectPageSubSectionPromoted:not(:first-of-type) {
+	padding-top: 0.25rem;
+}
+
 .sapUxAPObjectPageWrapper {
 	position: absolute;
 	top: 0;
@@ -1190,8 +1262,6 @@ body > .sapUxAPObjectPageLayout,
 	right: 0;
 	min-height: 100%;
 	overflow: hidden;
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 }
 
@@ -1226,7 +1296,6 @@ body > .sapUxAPObjectPageLayout,
 }
 
 .sapUxAPObjectPageScrollV > div, .sapUxAPObjectPageScrollH > div {
-	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
 	-webkit-background-clip: padding-box;
 	background-clip: padding-box;
@@ -1267,6 +1336,21 @@ body > .sapUxAPObjectPageLayout,
 	right: auto;
 	z-index: 3000;
 }
+
+/* Only on Windows 8 with IE 11 there's some weird incompatibility between the usage of the transform property
+ in the sapMShell and the one in the objectPageWrapper.
+ Also the z-index causes the scroll bars of the table to show in the headerTitle.
+ For more information see internal incident 1670194272. */
+html[data-sap-ui-browser^="ie"][data-sap-ui-os^="win8"] .sapMShell {
+
+	.sapUxAPObjectPageWrapperTransform {
+		transform: none;
+	}
+
+	.sapUxAPObjectPageHeaderTitle {
+		z-index: 3;
+	}
+}
 /* END "ObjectPageLayout.less" */
 
 /* START "ObjectPageSection.less" */
@@ -1276,8 +1360,6 @@ body > .sapUxAPObjectPageLayout,
 }
 
 .sapUxAPObjectPageSectionHeader {
-	-moz-box-sizing: border-box;
-	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
 	height: 3rem;
 	line-height: 3rem;
@@ -1298,8 +1380,6 @@ body > .sapUxAPObjectPageLayout,
 }
 
 .sapUxAPObjectPageSectionTitle {
-	-moz-box-sizing: border-box;
-	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
 	display: inline-block;
 	height: 3rem;
@@ -1322,6 +1402,16 @@ body > .sapUxAPObjectPageLayout,
 	margin-top: 0.5rem;
 }
 
+.sapUiSizeCompact .sapUxAPObjectPageSectionTitle {
+	height: 2.5rem;
+	line-height: 2rem;
+	padding-bottom:0.5rem;
+}
+
+.sapUiSizeCompact .sapUxAPObjectPageSectionHeader {
+	height: 2.5rem;
+	line-height: 2rem;
+}
 /* END "ObjectPageSection.less" */
 
 /* START "ObjectPageSubSection.less" */
@@ -1394,7 +1484,6 @@ body > .sapUxAPObjectPageLayout,
 }
 
 .sapUxAPObjectPageSubSectionHeader.titleOnLeftLayout {
-	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 	width: 25%;
 	margin-right: 0;
@@ -1439,6 +1528,15 @@ body > .sapUxAPObjectPageLayout,
 	margin-left: 0;
 }
 
+/* remove the padding of form content, since form itself is already in a grid-cell that provides the required extra spacing */
+.sapUxAPBlockContainer .sapUiFormResGrid > div {
+	padding-left: 0;
+	padding-top: 0;
+}
 
+.sapUiSizeCompact .sapUxAPObjectPageSubSectionHeaderTitle {
+	height: 2rem;
+	line-height: 2rem;
+}
 /* END "ObjectPageSubSection.less" */
 

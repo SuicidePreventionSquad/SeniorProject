@@ -24,7 +24,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -366,6 +366,29 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 
 			return false;
 		});
+
+
+		// Fixes displaying correct page after carousel become visible in an IconTabBar
+		// BCP: 1680019792
+		var sClassName = 'sap.m.IconTabBar';
+		var oParent = this.getParent();
+		while (oParent) {
+			if (oParent.getMetadata().getName() == sClassName) {
+				var that = this;
+
+				/*eslint-disable no-loop-func */
+				oParent.attachExpand(function (oEvt) {
+					var bExpand = oEvt.getParameter('expand');
+					if (bExpand && iIndex > 0) {
+						that._oMobifyCarousel.move(iIndex + 1);
+						that._changePage(iIndex + 1);
+					}
+				});
+				break;
+			}
+
+			oParent = oParent.getParent();
+		}
 	};
 
 	/**
@@ -502,12 +525,12 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		//visible later on and then it should be at the right place
 		if (sap.m.PlacementType.Top === sPlacement) {
 			this.$().prepend($PageIndicator);
-			$PageIndicator.removeClass('sapMCrslBottomOffset');
-			this.$().find(Carousel._ITEM_SELECTOR).removeClass('sapMCrslBottomOffset');
+			$PageIndicator.removeClass('sapMCrslBottomOffset').addClass('sapMCrslTopOffset');
+			this.$().find(Carousel._ITEM_SELECTOR).removeClass('sapMCrslBottomOffset').addClass('sapMCrslTopOffset');
 		} else {
 			this.$().append($PageIndicator);
-			$PageIndicator.addClass('sapMCrslBottomOffset');
-			this.$().find(Carousel._ITEM_SELECTOR).addClass('sapMCrslBottomOffset');
+			$PageIndicator.addClass('sapMCrslBottomOffset').removeClass('sapMCrslTopOffset');
+			this.$().find(Carousel._ITEM_SELECTOR).addClass('sapMCrslBottomOffset').removeClass('sapMCrslTopOffset');
 		}
 		return this;
 	};

@@ -24,12 +24,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/commons/MenuButton', 'sap/ui/core/Co
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
 	 * @experimental Since version 1.2.
 	 * The whole Feed/Feeder API is still under discussion, significant changes are likely. Especially text presentation (e.g. @-references and formatted text) is not final. Also the Feed model topic is still open.
+	 * @deprecated Since version 1.38. Instead, use the <code>sap.m.FeedListItem</code> control.
 	 * @alias sap.ui.ux3.FeedChunk
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */

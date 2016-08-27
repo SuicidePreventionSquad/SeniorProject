@@ -3,7 +3,7 @@
  * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
-sap.ui.define([], function() {
+sap.ui.define(['jquery.sap.global'], function(jQuery) {
 	"use strict";
 
 	/**
@@ -77,18 +77,14 @@ sap.ui.define([], function() {
 				oConfig.callback(this, oArguments, oConfig, oTargetControl, oView);
 			}
 
-			setTimeout(function(){
-				this.fireEvent("matched", oEventData);
-				oRouter.fireRouteMatched(oEventData);
-			}.bind(this), 0);
+			this.fireEvent("matched", oEventData);
+			oRouter.fireRouteMatched(oEventData);
 
 			// skip this event in the recursion
 			if (bInital) {
-				setTimeout(function(){
-					jQuery.sap.log.info("The route named '" + oConfig.name + "' did match with its pattern", this);
-					this.fireEvent("patternMatched", oEventData);
-					oRouter.fireRoutePatternMatched(oEventData);
-				}.bind(this), 0);
+				jQuery.sap.log.info("The route named '" + oConfig.name + "' did match with its pattern", this);
+				this.fireEvent("patternMatched", oEventData);
+				oRouter.fireRoutePatternMatched(oEventData);
 			}
 
 			return oPlaceInfo;

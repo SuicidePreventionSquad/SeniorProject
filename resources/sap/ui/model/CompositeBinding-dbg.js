@@ -110,6 +110,9 @@ sap.ui.define(['jquery.sap.global', './BindingMode', './ChangeReason', './Proper
 	 */
 	CompositeBinding.prototype.setValue = function(aValues) {
 		var oValue;
+		if (this.bSuspended) {
+			return;
+		}
 		jQuery.each(this.aBindings, function(i, oBinding) {
 			oValue = aValues[i];
 			if (oValue !== undefined) {
@@ -133,6 +136,18 @@ sap.ui.define(['jquery.sap.global', './BindingMode', './ChangeReason', './Proper
 
 		jQuery.each(this.aBindings, function(i, oBinding) {
 			oValue = oBinding.getValue();
+			aValues.push(oValue);
+		});
+
+		return aValues;
+	};
+
+	CompositeBinding.prototype.getOriginalValue = function() {
+		var aValues = [],
+		oValue;
+
+		jQuery.each(this.aBindings, function(i, oBinding) {
+			oValue = oBinding.getDataState().getOriginalValue();
 			aValues.push(oValue);
 		});
 
@@ -294,6 +309,9 @@ sap.ui.define(['jquery.sap.global', './BindingMode', './ChangeReason', './Proper
 	CompositeBinding.prototype.attachChange = function(fnFunction, oListener) {
 		var that = this;
 		this.fChangeHandler = function(oEvent) {
+			if (that.bSuspended) {
+				return;
+			}
 			var oBinding = oEvent.getSource();
 			if (oBinding.getBindingMode() == BindingMode.OneTime) {
 				oBinding.detachChange(that.fChangeHandler);
@@ -446,7 +464,9 @@ sap.ui.define(['jquery.sap.global', './BindingMode', './ChangeReason', './Proper
 			});
 		}
 		this.bPreventUpdate = false;
-		this.checkUpdate(true);
+		if (!this.bSuspended) {
+			this.checkUpdate(true);
+		}
 		return this;
 	};
 
@@ -465,85 +485,66 @@ sap.ui.define(['jquery.sap.global', './BindingMode', './ChangeReason', './Proper
 	};
 
 	/**
+	 * Suspends the binding update. No change events will be fired.
+	 *
+	 * A refresh call with bForceUpdate set to true will also update the binding and fire a change in suspended mode.
+	 * Special operations on bindings, which require updates to work properly (as paging or filtering in list bindings)
+	 * will also update and cause a change event although the binding is suspended.
+	 * @public
+	 */
+	CompositeBinding.prototype.suspend = function() {
+		this.bSuspended = true;
+		jQuery.each(this.aBindings, function(i, oBinding) {
+			oBinding.suspend();
+		});
+	};
+
+	/**
+	 * Suspends the binding update. No change events will be fired.
+	 *
+	 * A refresh call with bForceUpdate set to true will also update the binding and fire a change in suspended mode.
+	 * Special operations on bindings, which require updates to work properly (as paging or filtering in list bindings)
+	 * will also update and cause a change event although the binding is suspended.
+	 * @public
+	 */
+	CompositeBinding.prototype.resume = function() {
+		jQuery.each(this.aBindings, function(i, oBinding) {
+			oBinding.resume();
+		});
+		this.bSuspended = false;
+		this.checkUpdate(true);
+	};
+
+	/**
 	 * Check whether this Binding would provide new values and in case it changed,
 	 * inform interested parties about this.
 	 *
 	 * @param {boolean} bForceupdate
 	 *
 	 */
-	CompositeBinding.prototype.checkUpdate = function(bForceupdate){
-		if (this.bPreventUpdate) {
+	CompositeBinding.prototype.checkUpdate = function(bForceUpdate){
+		var bChanged = false;
+		if (this.bPreventUpdate || (this.bSuspended && !bForceUpdate)) {
 			return;
 		}
+		var oDataState = this.getDataState();
+		var aOriginalValues = this.getOriginalValue();
+		if (bForceUpdate || !jQuery.sap.equal(aOriginalValues, this.aOriginalValues)) {
+			this.aOriginalValues = aOriginalValues;
+			oDataState.setOriginalValue(aOriginalValues);
+			bChanged = true;
+		}
 		var aValues = this.getValue();
-		if (!jQuery.sap.equal(aValues, this.aValues) || bForceupdate) {// optimize for not firing the events when unneeded
+		if (!jQuery.sap.equal(aValues, this.aValues) || bForceUpdate) {// optimize for not firing the events when unneeded
 			this.aValues = aValues;
-			this.getDataState().setValue(aValues);
+			oDataState.setValue(aValues);
 			this._fireChange({reason: ChangeReason.Change});
+			bChanged = true;
+		}
+		if (bChanged) {
+			this.checkDataState();
 		}
 	};
-
-	CompositeBinding.prototype._updateDataState = function() {
-		var oDataState = PropertyBinding.prototype._updateDataState.apply(this, arguments);
-
-		var mChanges = oDataState.getChanges();
-
-		for (var sKey in mChanges) {
-			switch (sKey) {
-
-				case "originalValue":
-					oDataState.setOriginalValue(mChanges[sKey]);
-					break;
-
-				case "value":
-				case "invalidValue":
-				case "controlMessages":
-				case "modelMessages":
-				case "messages":
-				case "dirty":
-					// Ignore!!
-					break;
-
-				default:
-					oDataState.setProperty(sKey, mChanges[sKey]);
-					break;
-			}
-		}
-
-		if (!oDataState.getInvalidValue()) {
-			var aInvalidValues = oDataState.getInternalProperty("invalidValue");
-			if (aInvalidValues && containsValues(aInvalidValues)) {
-				oDataState.setInvalidValue(aInvalidValues);
-			} else {
-				oDataState.setInvalidValue(null);
-			}
-		}
-
-		return oDataState;
-	};
-
-
-	/**
-	 * Returns false if the given value is null, invalid or an array consisting entirely of null values
-	 *
-	 * @param {any} vValue - A value or an array of values
-	 * @returns {boolean} Whether there were any non-falsy values in the given argument
-	 * @private
-	 */
-	function containsValues(vValue) {
-		if (Array.isArray(vValue)) {
-			for (var i = 0; i < vValue.length; i++) {
-				if (vValue[i] !== null && vValue[i] !== undefined) {
-					return true;
-				}
-			}
-			return false;
-		} else {
-			return !!vValue;
-		}
-
-	}
-
 
 	return CompositeBinding;
 

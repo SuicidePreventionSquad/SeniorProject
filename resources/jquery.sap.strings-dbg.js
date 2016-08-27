@@ -196,7 +196,7 @@ sap.ui.define(['jquery.sap.global'],
 	};
 
 
-	var rEscapeRegExp = /[-[\]{}()*+?.,\\^$|#\s]/g;
+	var rEscapeRegExp = /[[\]{}()*+?.\\^$|]/g;
 
 	/**
 	 * This function escapes the reserved letters in Regular Expression

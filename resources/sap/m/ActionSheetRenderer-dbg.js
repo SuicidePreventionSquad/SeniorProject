@@ -24,9 +24,13 @@ sap.ui.define(['jquery.sap.global'],
 	 */
 	ActionSheetRenderer.render = function(oRm, oControl){
 		var aActionButtons = oControl._getAllButtons(),
-			i, bMixedButtons, oButton;
+			aInvisibleTexts = oControl.getAggregation("_invisibleAriaTexts"),
+			oResourceBundle = sap.ui.getCore().getLibraryResourceBundle('sap.m'),
+			iButtonsCount = aActionButtons.length,
+			iVisibleButtonCount = aActionButtons.filter(function (oButton) { return oButton.getVisible(); }).length,
+			i, bMixedButtons, oButton, iVisibleButtonTempCount = 1;
 
-		for (i = 0 ; i < aActionButtons.length ; i++) {
+		for (i = 0 ; i < iButtonsCount ; i++) {
 			oButton = aActionButtons[i];
 			oButton.removeStyleClass("sapMActionSheetButtonNoIcon");
 			if (oButton.getIcon() && oButton.getVisible()) {
@@ -52,8 +56,16 @@ sap.ui.define(['jquery.sap.global'],
 
 		oRm.write(">");
 
-		for (i = 0 ; i < aActionButtons.length ; i++) {
+		for (i = 0 ; i < iButtonsCount ; i++) {
+			oButton = aActionButtons[i];
 			oRm.renderControl(aActionButtons[i].addStyleClass("sapMActionSheetButton"));
+			if (oButton.getVisible() && sap.ui.getCore().getConfiguration().getAccessibility()) {
+				aInvisibleTexts[i].setText(oResourceBundle.getText('ACTIONSHEET_BUTTON_INDEX', [iVisibleButtonTempCount, iVisibleButtonCount]));
+				iVisibleButtonTempCount++;
+				oRm.renderControl(aInvisibleTexts[i]);
+			} else {
+				aInvisibleTexts[i].setText("");
+			}
 		}
 
 		if (sap.ui.Device.system.phone && oControl.getShowCancelButton()) {

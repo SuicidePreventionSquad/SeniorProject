@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 	 * @extends sap.m.Input
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -40,55 +40,61 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 			 * The default value is false.
 			 * @since 1.28
 			 */
-			enableMultiLineMode : {type : "boolean", group : "Behavior", defaultValue : false}
+			enableMultiLineMode : {type : "boolean", group : "Behavior", defaultValue : false},
+
+			/**
+			 * The max number of tokens that is allowed in MultiInput.
+			 * @since 1.36
+			 */
+			maxTokens: {type : "int", group : "Behavior"}
 		},
 		aggregations : {
 
 			/**
-			 * the currently displayed tokens
+			 * The currently displayed tokens
 			 */
 			tokens : {type : "sap.m.Token", multiple : true, singularName : "token"},
 
 			/**
-			 * the tokenizer which displays the tokens
+			 * The tokenizer which displays the tokens
 			 */
 			tokenizer : {type : "sap.m.Tokenizer", multiple : false, visibility : "hidden"}
 		},
 		events : {
 
 			/**
-			 * fired when the tokens aggregation changed (add / remove token)
+			 * Fired when the tokens aggregation changed (add / remove token)
 			 */
 			tokenChange : {
 				parameters : {
 
 					/**
-					 * type of tokenChange event.
+					 * Type of tokenChange event.
 					 * There are four TokenChange types: "added", "removed", "removedAll", "tokensChanged".
 					 * Use Tokenizer.TokenChangeType.Added for "added",	Tokenizer.TokenChangeType.Removed for "removed", Tokenizer.TokenChangeType.RemovedAll for "removedAll" and Tokenizer.TokenChangeType.TokensChanged for "tokensChanged".
 					 */
 					type: { type : "string"},
 
 					/**
-					 * the added token or removed token.
+					 * The added token or removed token.
 					 * This parameter is used when tokenChange type is "added" or "removed".
 					 */
 					token: { type: "sap.m.Token"},
 
 					/**
-					 * the array of removed tokens.
+					 * The array of removed tokens.
 					 * This parameter is used when tokenChange type is "removedAll".
 					 */
 					tokens: { type: "sap.m.Token[]"},
 
 					/**
-					 * the array of tokens that are added.
+					 * The array of tokens that are added.
 					 * This parameter is used when tokenChange type is "tokenChanged".
 					 */
 					addedTokens :  { type: "sap.m.Token[]"},
 
 					/**
-					 * the array of tokens that are removed.
+					 * The array of tokens that are removed.
 					 * This parameter is used when tokenChange type is "tokenChanged".
 					 */
 					removedTokens :  { type: "sap.m.Token[]"}
@@ -495,9 +501,11 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 
 		// necessary to display expanded MultiInput which is inside SimpleForm
 		var $Parent;
-		if (this.$().parent('[class*="sapUiRespGridSpan"]')) {
+		if (this.$().closest('.sapUiVlt').length !== 0) {
+			$Parent = this.$().closest('.sapUiVlt');
+		} else if (this.$().parent('[class*="sapUiRespGridSpan"]').length !== 0) {
 			$Parent = this.$().parent('[class*="sapUiRespGridSpan"]');
-		} else if (this.$().parents(".sapUiRFLContainer")) {
+		} else if (this.$().parents(".sapUiRFLContainer").length !== 0) {
 			$Parent = this.$().parents(".sapUiRFLContainer");
 		}
 
@@ -508,7 +516,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 	};
 
 	/**
-	 * close multi-line MultiInput in multi-line mode
+	 * Close multi-line MultiInput in multi-line mode
 	 *
 	 * @since 1.28
 	 * @public
@@ -692,9 +700,8 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 
 		Input.prototype.onAfterRendering.apply(this, arguments);
 
-		if (!(this._bUseDialog && this._isMultiLineMode)) {
-			this._setContainerSizes();
-		}
+		this._setContainerSizes();
+
 	};
 
 	/**
@@ -862,7 +869,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 				if (this.fireEvent("_validateOnPaste", {texts: aSeparatedText}, true)) {
 					var i = 0;
 					for ( i = 0; i < aSeparatedText.length; i++) {
-						this.setValue(aSeparatedText[i]);
+						this.updateDomValue(aSeparatedText[i]);
 						this._validateCurrentText();
 					}
 				}
@@ -939,7 +946,10 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 	 *          oEvent
 	 */
 	MultiInput.prototype.onsapenter = function(oEvent) {
-		this._validateCurrentText();
+
+		if (!this._oSuggestionPopup || !this._oSuggestionPopup.isOpen()) {
+			this._validateCurrentText();
+		}
 
 		if (Input.prototype.onsapenter) {
 			Input.prototype.onsapenter.apply(this, arguments);
@@ -1105,7 +1115,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 
 
 	/**
-	 * when tap on text field, deselect all tokens
+	 * When tap on text field, deselect all tokens
 	 * @public
 	 * @param {jQuery.Event} oEvent
 	 */
@@ -1120,7 +1130,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 
 
 	/**
-	 * focus is on MultiInput
+	 * Focus is on MultiInput
 	 * @public
 	 * @param {jQuery.Event} oEvent
 	 */
@@ -1138,7 +1148,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 
 
 	/**
-	 * when press ESC, deselect all tokens and all texts
+	 * When press ESC, deselect all tokens and all texts
 	 * @public
 	 * @param {jQuery.Event} oEvent
 	 */
@@ -1225,7 +1235,7 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 	 * Functions returns the current input field's cursor position
 	 *
 	 * @private
-	 * @return {integer} the cursor position
+	 * @return {int} the cursor position
 	 */
 	MultiInput.prototype.getCursorPosition = function() {
 		return this._$input.cursorPos();
@@ -1402,6 +1412,11 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 		return this._tokenizer.destroyTokens();
 	};
 
+	MultiInput.prototype.updateTokens = function() {
+		this.destroyTokens();
+		return this.updateAggregation("tokens");
+	};
+
 	/**
 	 * Function overwrites clone function to add tokens to MultiInput
 	 *
@@ -1453,13 +1468,29 @@ sap.ui.define(['jquery.sap.global', './Input', './Token', './library', 'sap/ui/c
 	MultiInput.WaitForAsyncValidation = "sap.m.Tokenizer.WaitForAsyncValidation";
 
 	/**
-	 * get the reference element which the message popup should dock to
+	 * Get the reference element which the message popup should dock to
 	 *
 	 * @return {DOMRef} Dom Element which the message popup should dock to
 	 * @protected
 	 * @function
 	 */
 	MultiInput.prototype.getDomRefForValueStateMessage = MultiInput.prototype.getPopupAnchorDomRef;
+
+
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	MultiInput.prototype.getAccessibilityInfo = function() {
+		var sText = this.getTokens().map(function(oToken) {
+			return oToken.getText();
+		}).join(" ");
+
+		var oInfo = Input.prototype.getAccessibilityInfo.apply(this, arguments);
+		oInfo.type = sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("ACC_CTR_TYPE_MULTIINPUT");
+		oInfo.description = ((oInfo.description || "") + " " + sText).trim();
+		return oInfo;
+	};
 
 
 	return MultiInput;

@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 	 * @extends sap.m.InputBase
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -47,6 +47,8 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 
 			/**
 			 * Maximum number of characters. Value '0' means the feature is switched off.
+			 * This parameter is not compatible with the input type <code>sap.m.InputType.Number</code>.
+			 * If the input type is set to <code>Number</code>, the <code>maxLength</code> value is ignored.
 			 */
 			maxLength : {type : "int", group : "Behavior", defaultValue : 0},
 
@@ -55,7 +57,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 			 * The data is displayed and the user input is parsed according to this format.
 			 * NOTE: The value property is always of the form RFC 3339 (YYYY-MM-dd).
 			 * @deprecated Since version 1.9.1.
-			 * sap.m.DateTimeInput should be used for date/time inputs and formating.
+			 * <code>sap.m.DatePicker</code>, <code>sap.m.TimePicher</code> or <code>sap.m.DateTimePicker</code> should be used for date/time inputs and formating.
 			 */
 			dateFormat : {type : "string", group : "Misc", defaultValue : 'YYYY-MM-dd', deprecated: true},
 
@@ -560,19 +562,36 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 		return this;
 	};
 
-	Input.prototype._scrollToItem = function(iIndex, sDir) {
+	Input.prototype._scrollToItem = function(iIndex) {
 		var oPopup = this._oSuggestionPopup,
-			oList = this._oList;
+			oList = this._oList,
+			oScrollDelegate,
+			oPopupRect,
+			oItemRect,
+			iTop,
+			iBottom;
 
 		if (!(oPopup instanceof Popover) || !oList) {
 			return;
 		}
-
+		oScrollDelegate = oPopup.getScrollDelegate();
+		if (!oScrollDelegate) {
+			return;
+		}
 		var oListItem = oList.getItems()[iIndex],
-			oListItemDom = oListItem && oListItem.$()[0];
+			oListItemDom = oListItem && oListItem.getDomRef();
+		if (!oListItemDom) {
+			return;
+		}
+		oPopupRect = oPopup.getDomRef("cont").getBoundingClientRect();
+		oItemRect = oListItemDom.getBoundingClientRect();
 
-		if (oListItemDom) {
-			oListItemDom.scrollIntoView(sDir === "up");
+		iTop = oPopupRect.top - oItemRect.top;
+		iBottom = oItemRect.bottom - oPopupRect.bottom;
+		if (iTop > 0) {
+			oScrollDelegate.scrollTo(oScrollDelegate._scrollX, Math.max(oScrollDelegate._scrollY - iTop, 0));
+		} else if (iBottom > 0) {
+			oScrollDelegate.scrollTo(oScrollDelegate._scrollX, oScrollDelegate._scrollY + iBottom);
 		}
 	};
 
@@ -683,7 +702,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 		}
 
 		if (sap.ui.Device.system.desktop) {
-			this._scrollToItem(iSelectedIndex, sDir);
+			this._scrollToItem(iSelectedIndex);
 		}
 
 		// make sure the value doesn't exceed the maxLength
@@ -744,14 +763,24 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 	};
 
 	Input.prototype.onsapescape = function(oEvent) {
+		var lastValue;
+
 		if (this._oSuggestionPopup && this._oSuggestionPopup.isOpen()) {
 			// mark the event as already handled
 			oEvent.originalEvent._sapui_handledByControl = true;
 			this._iPopupListSelectedIndex = -1;
 			this._closeSuggestionPopup();
 
-			// if popup is open, simply returns from here to prevent from setting the input to the last known value.
-			return;
+			// restore the initial value that was there before suggestion dialog
+			if (this._sBeforeSuggest !== undefined) {
+				if (this._sBeforeSuggest !== this.getValue()) {
+					lastValue = this._lastValue;
+					this.setValue(this._sBeforeSuggest);
+					this._lastValue = lastValue; // override InputBase.onsapescape()
+				}
+				this._sBeforeSuggest = undefined;
+			}
+			return; // override InputBase.onsapescape()
 		}
 
 		if (InputBase.prototype.onsapescape) {
@@ -972,9 +1001,9 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 
 			var value = this._$input.val();
 
-			// add maxlength support for all types
+			// add maxlength support for all types except for the type Number
 			// TODO: type number add min and max properties
-			if (this.getMaxLength() > 0 && value.length > this.getMaxLength()) {
+			if (this.getMaxLength() > 0 && this.getType() !== sap.m.InputType.Number && value.length > this.getMaxLength()) {
 				value = value.substring(0, this.getMaxLength());
 				this._$input.val(value);
 			}
@@ -997,7 +1026,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 		};
 
 		Input.prototype.getValue = function(){
-			return this.getDomRef("inner") ? this._$input.val() : this.getProperty("value");
+			return this.getDomRef("inner") && this._$input ? this._$input.val() : this.getProperty("value");
 		};
 
 		Input.prototype._refreshItemsDelayed = function() {
@@ -1161,6 +1190,8 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 					} else {
 						oInput._oList.destroyItems();
 					}
+				}).attachBeforeOpen(function() {
+					oInput._sBeforeSuggest = oInput.getValue();
 				}))
 			:
 				(new Dialog(oInput.getId() + "-popup", {
@@ -1192,7 +1223,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 						oInput._$input.val(oInput
 								._getInputValue(oInput._oPopupInput
 										.getValue()));
-						oInput._changeProxy();
+						oInput.onChange();
 
 						if (oInput instanceof sap.m.MultiInput ) {
 							oInput._validateCurrentText();
@@ -1288,7 +1319,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 						} else {
 							// call _getInputValue to apply the maxLength to the typed value
 							oInput._$input.val(oInput._getInputValue(sNewValue));
-							oInput._changeProxy();
+							oInput.onChange();
 						}
 						oInput._iPopupListSelectedIndex = -1;
 						if (!(oInput._bUseDialog && oInput instanceof sap.m.MultiInput && oInput._isMultiLineMode)) {
@@ -1603,7 +1634,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 					} else {
 						// call _getInputValue to apply the maxLength to the typed value
 						that._$input.val(that._getInputValue(sNewValue));
-						that._changeProxy();
+						that.onChange();
 					}
 					that._iPopupListSelectedIndex = -1;
 
@@ -1772,6 +1803,16 @@ sap.ui.define(['jquery.sap.global', './Bar', './Dialog', './InputBase', './List'
 		this._iSetCount++;
 		InputBase.prototype.setValue.call(this, sValue);
 		return this;
+	};
+
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	Input.prototype.getAccessibilityInfo = function() {
+		var oInfo = InputBase.prototype.getAccessibilityInfo.apply(this, arguments);
+		oInfo.description = ((oInfo.description || "") + " " + this.getDescription()).trim();
+		return oInfo;
 	};
 
 	/**

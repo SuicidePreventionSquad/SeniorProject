@@ -20,7 +20,7 @@ sap.ui.define(['jquery.sap.global', './Popover', './TabStripSelectList', './libr
 		 * @extends sap.m.Select
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 * @since 1.34
 		 *
 		 * @constructor
@@ -53,12 +53,6 @@ sap.ui.define(['jquery.sap.global', './Popover', './TabStripSelectList', './libr
 		 */
 		TabStripSelect.SPACE_BETWEEN_SELECT_BUTTON_AND_POPOVER = -5;
 
-		/**
-		 * Initialization hook.
-		 *
-		 * @override
-		 * @private
-		 */
 		TabStripSelect.prototype.init = function() {
 			// set the picker type
 			this.setPickerType(sap.ui.Device.system.phone ? "Dialog" : "Popover");
@@ -222,13 +216,6 @@ sap.ui.define(['jquery.sap.global', './Popover', './TabStripSelectList', './libr
 			}
 		};
 
-
-		/**
-		 * Cleans up before destruction.
-		 *
-		 * @override
-		 * @private
-		 */
 		TabStripSelect.prototype.exit = function() {
 			Select.prototype.exit.call(this);
 			this._oList.destroy();
@@ -337,6 +324,35 @@ sap.ui.define(['jquery.sap.global', './Popover', './TabStripSelectList', './libr
 			} else {
 				$ModifiedDom.addClass(TabStripItem.CSS_CLASS_STATE_INVISIBLE);
 			}
+		};
+
+
+		/**
+		 * Handles the <code>selectionChange</code> event on the list.
+		 *
+		 * @param {sap.ui.base.Event} oEvent
+		 * @private
+		 */
+		TabStripSelect.prototype.onSelectionChange = function(oEvent) {
+			var oItem = oEvent.getParameter("selectedItem");
+			if (this.fireChange({selectedItem: oItem})) {
+				this.close();
+				this.setSelection(oItem);
+				this.setValue(this._getSelectedItemText());
+			} else {
+				oEvent.preventDefault();
+			}
+		};
+
+		/**
+		 * Fire a 'change' event that can be prevented although by default it is not preventable
+		 * @param {object} mParameters
+		 * @returns {sap.ui.core.support.Support|sap.ui.base.EventProvider|boolean|sap.ui.core.Element|*}
+		 */
+		TabStripSelect.prototype.fireChange = function(mParameters) {
+			this._oSelectionOnFocus = mParameters.selectedItem;
+			var bAllowPreventDefault = true;
+			return this.fireEvent("change", mParameters, bAllowPreventDefault);
 		};
 
 		return TabStripSelect;

@@ -20,7 +20,7 @@ sap.ui.define(['sap/m/semantic/SemanticControl', 'sap/m/Button', 'sap/m/Overflow
 	 * @abstract
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -31,7 +31,7 @@ sap.ui.define(['sap/m/semantic/SemanticControl', 'sap/m/Button', 'sap/m/Overflow
 
 	var SemanticButton = SemanticControl.extend("sap.m.semantic.SemanticButton", /** @lends sap.m.semantic.SemanticButton.prototype */ {
 		metadata : {
-
+			library : "sap.m",
 			properties : {
 
 				/**
@@ -79,11 +79,10 @@ sap.ui.define(['sap/m/semantic/SemanticControl', 'sap/m/Button', 'sap/m/Overflow
 	};
 
 	SemanticButton.prototype._createInstance = function(oClass) {
-
 		return new oClass({
-				id: this.getId() + "-button",
-				press: jQuery.proxy(this.firePress, this)
-			});
+			id: this.getId() + "-button",
+			press: jQuery.proxy(this.firePress, this)
+		});
 	};
 
 	return SemanticButton;

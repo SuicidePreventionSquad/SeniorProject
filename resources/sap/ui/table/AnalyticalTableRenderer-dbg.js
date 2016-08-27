@@ -4,8 +4,8 @@
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './TableRenderer'],
-	function(jQuery, Renderer, TableRenderer) {
+sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool', 'sap/ui/core/Renderer', './TableRenderer'],
+	function(jQuery, IconPool, Renderer, TableRenderer) {
 	"use strict";
 
 
@@ -15,26 +15,20 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './TableRenderer'],
 	 */
 	var AnalyticalTableRenderer = Renderer.extend(TableRenderer);
 
-	AnalyticalTableRenderer.getAriaAttributesForCell = function(oTable, bFixedTable, oRow, oColumn, iColIndex, oCell) {
-		// since the analytical table is a read-only control there is no need for the toggleedit description.
-		// invoke the TableRenderer function to retrieve aria attributes for cells and then remove the
-		// toggleedit description from aria-describedby
-		var mAriaAttributes = TableRenderer.getAriaAttributesForCell.apply(this, arguments);
-		if (mAriaAttributes["aria-describedby"]) {
-			var aDescribedByParts = mAriaAttributes["aria-describedby"].value.split(" ");
-			var iIndex = aDescribedByParts.indexOf(oTable.getId() + "-toggleedit");
-			delete mAriaAttributes["aria-describedby"];
+	AnalyticalTableRenderer.writeRowSelectorContent = function(rm, oTable, oRow, iRowIndex) {
+		TableRenderer.writeRowSelectorContent(rm, oTable, oRow, iRowIndex);
 
-			if (iIndex >= 0) {
-				aDescribedByParts.splice(iIndex);
-			}
+		rm.write("<div");
+		rm.writeAttribute("id", oRow.getId() + "-groupHeader");
+		rm.writeAttribute("class", "sapUiTableGroupIcon");
+		rm.write("></div>");
 
-			if (aDescribedByParts.length > 0) {
-				mAriaAttributes["aria-describedby"].value = aDescribedByParts.join(" ");
-			}
+		if ('ontouchstart' in document) {
+			var oIconInfo = IconPool.getIconInfo("sap-icon://drop-down-list");
+			rm.write("<div class='sapUiTableGroupMenuButton'>");
+			rm.writeEscaped(oIconInfo.content);
+			rm.write("</div>");
 		}
-
-		return mAriaAttributes;
 	};
 
 	return AnalyticalTableRenderer;

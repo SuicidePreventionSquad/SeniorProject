@@ -10,7 +10,7 @@
       <module name="sap/ui/core/delegate/ItemNavigation.js"/>
     </requires>
   </module>
-  <module name="sap/tnt/NavigationListItem.js" size="16802" compressedSize="9290">
+  <module name="sap/tnt/NavigationListItem.js" size="17118" compressedSize="9383">
     <description>Provides control sap.tnt.NavigationListItem.</description>
     <requires>
       <module name="jquery.sap.global.js"/>
@@ -22,14 +22,14 @@
       <module name="sap/ui/core/IconPool.js"/>
     </requires>
   </module>
-  <module name="sap/tnt/NavigationListRenderer.js" size="1654" compressedSize="725">
+  <module name="sap/tnt/NavigationListRenderer.js" size="1666" compressedSize="728">
     <description>Provides the default renderer for control sap.tnt.NavigationList</description>
     <requires>
       <module name="jquery.sap.global.js"/>
       <module name="sap/ui/core/Renderer.js"/>
     </requires>
   </module>
-  <module name="sap/tnt/SideNavigation.js" size="10325" compressedSize="4059">
+  <module name="sap/tnt/SideNavigation.js" size="12495" compressedSize="5089">
     <description>Provides control sap.t.SideNavigation.</description>
     <requires>
       <module name="jquery.sap.global.js"/>
@@ -37,10 +37,10 @@
       <module name="sap/ui/core/Control.js"/>
       <module name="sap/ui/core/ResizeHandler.js"/>
       <module name="sap/ui/core/Icon.js"/>
-      <module name="sap/tnt/NavigationList.js"/>
+      <module name="sap/ui/core/delegate/ScrollEnablement.js"/>
     </requires>
   </module>
-  <module name="sap/tnt/SideNavigationRenderer.js" size="4060" compressedSize="1902">
+  <module name="sap/tnt/SideNavigationRenderer.js" size="4129" compressedSize="1953">
     <description>! UI development toolkit for HTML5 (OpenUI5) (c) Copyright 2009-2016 SAP SE or an SAP affiliate company. Licensed under the Apache License, Version 2.0 - see LICENSE.txt.</description>
     <requires>
       <module name="jquery.sap.global.js"/>
@@ -73,7 +73,7 @@
       <module name="sap/ui/core/Control.js"/>
     </requires>
   </module>
-  <module name="sap/tnt/ToolPage.js" size="5038" compressedSize="2371">
+  <module name="sap/tnt/ToolPage.js" size="5021" compressedSize="2374">
     <description>Provides control sap.t.ToolPage.</description>
     <requires>
       <module name="sap/tnt/library.js"/>

@@ -17,8 +17,9 @@
 
         <script>
             // use counter to keep track of the question number
-            var questionCounter = 1;
-            
+            var questionCounter = 0;
+            var responseCounter = 0;
+
             // root folder of application
             sap.ui.localResources("sps");
 
@@ -28,12 +29,13 @@
             var mainPage = sap.ui.view({id:"main", viewName:"sps.view.mainPage", type:sap.ui.core.mvc.ViewType.XML});
             var treePage = sap.ui.view({id:"tree", viewName:"sps.view.treePage", type:sap.ui.core.mvc.ViewType.XML});
             var infoPage = sap.ui.view({id:"info", viewName:"sps.view.infoPage", type:sap.ui.core.mvc.ViewType.XML});
+            //var responsePage = sap.ui.view({id:"response", viewName:"sps.view.responsePage", type:sap.ui.core.mvc.ViewType.XML});
 
             //add pages to app
             app.addPage(mainPage);
             app.addPage(treePage);
             app.addPage(infoPage);
-
+            //app.addPage(responsePage);
             //add app to page
             app.placeAt("content");
         </script>

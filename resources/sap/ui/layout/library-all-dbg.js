@@ -26,7 +26,7 @@ sap.ui.define("sap/ui/layout/BlockLayout",['sap/ui/core/Control'],
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -151,7 +151,7 @@ sap.ui.define("sap/ui/layout/BlockLayoutCell",['sap/ui/core/Control'],
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -441,7 +441,7 @@ sap.ui.define("sap/ui/layout/BlockLayoutRow",['jquery.sap.global', 'sap/ui/core/
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -735,7 +735,7 @@ sap.ui.define("sap/ui/layout/DynamicSideContent",['jquery.sap.global', 'sap/ui/c
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -776,7 +776,13 @@ sap.ui.define("sap/ui/layout/DynamicSideContent",['jquery.sap.global', 'sap/ui/c
 				/**
 				 * If set to TRUE, then not the media Query (device screen size) but the size of the container, surrounding the control, defines the current range.
 				 */
-				containerQuery : {type : "boolean", group : "Behavior", defaultValue : false}
+				containerQuery : {type : "boolean", group : "Behavior", defaultValue : false},
+
+				/**
+				 * Determines whether the side content is on the left or on the right side of the main content.
+				 * @since 1.36
+				 */
+				sideContentPosition : {type : "sap.ui.layout.SideContentPosition", group : "Appearance", defaultValue : sap.ui.layout.SideContentPosition.End}
 			},
 			defaultAggregation : "mainContent",
 			events : {
@@ -1110,7 +1116,7 @@ sap.ui.define("sap/ui/layout/DynamicSideContent",['jquery.sap.global', 'sap/ui/c
 		/**
 		 * Gets the current breakpoint, related to the width, which is passed to the method.
 		 * @private
-		 * @param {integer} iWidth The parent container width
+		 * @param {int} iWidth The parent container width
 		 * @returns {String} Breakpoint corresponding to the width passed
 		 */
 		DynamicSideContent.prototype._getBreakPointFromWidth = function (iWidth) {
@@ -1130,7 +1136,7 @@ sap.ui.define("sap/ui/layout/DynamicSideContent",['jquery.sap.global', 'sap/ui/c
 		/**
 		 * Sets the current breakpoint, related to the width, which is passed to the method.
 		 * @private
-		 * @param {integer} iWidth is the parent container width
+		 * @param {int} iWidth is the parent container width
 		 */
 		DynamicSideContent.prototype._setBreakpointFromWidth = function (iWidth) {
 			this._currentBreakpoint = this._getBreakPointFromWidth(iWidth);
@@ -1319,8 +1325,8 @@ sap.ui.define("sap/ui/layout/DynamicSideContent",['jquery.sap.global', 'sap/ui/c
 
 		/**
 		 * Sets the main and side content span size.
-		 * @param {integer} iScSpan Side content span size
-		 * @param {integer} iMcSpan Main content span size
+		 * @param {int} iScSpan Side content span size
+		 * @param {int} iMcSpan Main content span size
 		 * @private
 		 */
 		DynamicSideContent.prototype._setSpanSize = function (iScSpan, iMcSpan) {
@@ -1372,9 +1378,28 @@ sap.ui.define("sap/ui/layout/DynamicSideContentRenderer",[],
 		DynamicSideContentRenderer.renderSubControls = function (oRm, oSideControl) {
 			var iSideContentId = oSideControl.getId(),
 				bShouldSetHeight = oSideControl._shouldSetHeight(),
-				// on firefox the 'aside' side content is not shown when below the main content; use div instead
-				sSideContentTag = sap.ui.Device.browser.firefox ? "div" : "aside";
+				bPageRTL = sap.ui.getCore().getConfiguration().getRTL(),
+				position = oSideControl.getSideContentPosition();
 
+			if ((position === sap.ui.layout.SideContentPosition.Begin && !bPageRTL) || (bPageRTL && position === sap.ui.layout.SideContentPosition.End)) {
+				this._renderSideContent(oRm, oSideControl, iSideContentId, bShouldSetHeight);
+				this._renderMainContent(oRm, oSideControl, iSideContentId, bShouldSetHeight);
+			} else {
+				this._renderMainContent(oRm, oSideControl, iSideContentId, bShouldSetHeight);
+				this._renderSideContent(oRm, oSideControl, iSideContentId, bShouldSetHeight);
+			}
+		};
+
+		DynamicSideContentRenderer.renderControls = function (oRM, aContent) {
+			var iLength = aContent.length,
+				i = 0;
+
+			for (; i < iLength; i++) {
+				oRM.renderControl(aContent[i]);
+			}
+		};
+
+		DynamicSideContentRenderer._renderMainContent = function(oRm, oSideControl, iSideContentId, bShouldSetHeight) {
 			oRm.write("<div id='" + iSideContentId + "-MCGridCell'");
 
 			if (oSideControl._iMcSpan) {
@@ -1389,6 +1414,11 @@ sap.ui.define("sap/ui/layout/DynamicSideContentRenderer",[],
 
 			this.renderControls(oRm, oSideControl.getMainContent());
 			oRm.write("</div>");
+		};
+
+		DynamicSideContentRenderer._renderSideContent = function(oRm, oSideControl, iSideContentId, bShouldSetHeight) {
+			// on firefox the 'aside' side content is not shown when below the main content; use div instead
+			var sSideContentTag = sap.ui.Device.browser.firefox ? "div" : "aside";
 
 			oRm.write("<" + sSideContentTag + " id='" + iSideContentId + "-SCGridCell'");
 
@@ -1411,15 +1441,6 @@ sap.ui.define("sap/ui/layout/DynamicSideContentRenderer",[],
 
 			this.renderControls(oRm, oSideControl.getSideContent());
 			oRm.write("</" + sSideContentTag + ">");
-		};
-
-		DynamicSideContentRenderer.renderControls = function (oRM, aContent) {
-			var iLength = aContent.length,
-				i = 0;
-
-			for (; i < iLength; i++) {
-				oRM.renderControl(aContent[i]);
-			}
 		};
 
 		return DynamicSideContentRenderer;
@@ -1566,7 +1587,7 @@ sap.ui.define("sap/ui/layout/GridRenderer",['jquery.sap.global'],
 	/**
 	 * @author SAP SE
 	 * @version
-	 * 1.34.8
+	 * 1.38.7
 	 * @namespace
 	 */
 	var GridRenderer = {};
@@ -1973,6 +1994,30 @@ sap.ui.define("sap/ui/layout/GridRenderer",['jquery.sap.global'],
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/GridRenderer.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.HorizontalLayout.designtime') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides the Design Time Metadata for the sap.ui.layout.HorizontalLayout control
+jQuery.sap.declare('sap.ui.layout.HorizontalLayout.designtime'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+sap.ui.define("sap/ui/layout/HorizontalLayout.designtime",[],
+	function() {
+	"use strict";
+
+	return {
+		aggregations: {
+			content: {
+				domRef: ":sap-domref"
+			}
+		}
+	};
+
+}, /* bExport= */ false);
+
+}; // end of sap/ui/layout/HorizontalLayout.designtime.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.HorizontalLayoutRenderer') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -2095,6 +2140,167 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayoutRenderer",['jquery.sap.global']
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/ResponsiveFlowLayoutRenderer.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.ResponsiveSplitterRenderer') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+jQuery.sap.declare('sap.ui.layout.ResponsiveSplitterRenderer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('sap.ui.core.IconPool'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/ResponsiveSplitterRenderer",['sap/ui/core/IconPool'],
+	function (IconPool) {
+	"use strict";
+
+	/**
+	 * ResponsiveSplitter renderer.
+	 * @namespace
+	 */
+	var ResponsiveSplitterRenderer = {};
+	IconPool.insertFontFaceStyle();
+
+	ResponsiveSplitterRenderer.render = function (oRm, oControl) {
+		oRm.write("<div ");
+		oRm.addClass("sapUiResponsiveSplitter");
+		oRm.writeControlData(oControl);
+		oRm.addStyle("width", oControl.getWidth());
+		oRm.addStyle("height", oControl.getHeight());
+		oRm.writeStyles();
+		oRm.writeClasses();
+		oRm.write(">");
+
+		var aPages = oControl.getAggregation("_pages");
+
+		if (aPages) {
+			oControl.getAggregation("_pages").forEach(oRm.renderControl);
+			this.renderPaginator(oRm, oControl);
+		}
+
+		oRm.write("</div>");
+	};
+
+	ResponsiveSplitterRenderer.renderPaginator = function (oRm, oControl) {
+		oRm.write("<div ");
+		oRm.addClass("sapUiResponsiveSplitterPaginator");
+		oRm.writeClasses();
+		oRm.write(">");
+		var bpCount = oControl._getMaxPageCount();
+
+		oRm.write("<div ");
+		oRm.addClass("sapUiResponsiveSplitterPaginatorNavButton");
+		oRm.addClass("sapUiResponsiveSplitterHiddenPaginatorButton");
+		oRm.addClass("sapUiResponsiveSplitterPaginatorButtonBack");
+		oRm.writeClasses();
+		oRm.write("></div>");
+
+		oRm.write("<div ");
+		oRm.addClass("sapUiResponsiveSplitterPaginatorButtons");
+		oRm.writeClasses();
+		oRm.write(">");
+
+		for (var i = 0; i < bpCount; i++) {
+			oRm.write("<div tabindex='0' ");
+			oRm.write("page-index='" + i + "'");
+			if (i === 0) {
+				oRm.addClass("sapUiResponsiveSplitterPaginatorSelectedButton");
+			}
+			oRm.addClass("sapUiResponsiveSplitterHiddenElement");
+			oRm.addClass("sapUiResponsiveSplitterPaginatorButton");
+			oRm.writeClasses();
+			oRm.write("></div>");
+		}
+
+		oRm.write("</div>");
+
+		oRm.write("<div ");
+		oRm.addClass("sapUiResponsiveSplitterPaginatorNavButton");
+		oRm.addClass("sapUiResponsiveSplitterHiddenPaginatorButton");
+		oRm.addClass("sapUiResponsiveSplitterPaginatorButtonForward");
+		oRm.writeClasses();
+		oRm.write("></div>");
+
+		oRm.write("</div>");
+	};
+
+	return ResponsiveSplitterRenderer;
+
+}, /* bExport= */ true);
+
+}; // end of sap/ui/layout/ResponsiveSplitterRenderer.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.ResponsiveSplitterUtilities') ) {
+/*!
+* UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+*/
+jQuery.sap.declare('sap.ui.layout.ResponsiveSplitterUtilities'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Control'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/ResponsiveSplitterUtilities",["jquery.sap.global", "sap/ui/core/Control"], function (jQuery, Control) {
+	"use strict";
+
+	var RSUtil = {};
+
+	/**
+	 * Recursively visits all splitPanes inside the given PaneContainer
+	 */
+	RSUtil.visitPanes = function (oPaneContainer, fnCallback) {
+		var aPanes, oPane;
+		if (!oPaneContainer) {
+			return;
+		}
+
+		aPanes = oPaneContainer.getPanes();
+		for (var i = 0; i < aPanes.length; i++) {
+			oPane = aPanes[i];
+			if (oPane instanceof sap.ui.layout.SplitPane) {
+				fnCallback(oPane);
+			} else {
+				RSUtil.visitPanes(oPane, fnCallback);
+			}
+		}
+	};
+
+	/**
+	 * Helper structure used to represent an interval inside the ResponsiveSplitter.
+	 * The intervals are defined by the requiredParentWidth properties of the splitPanes
+	 * @param iFrom - Staring point for the interval
+	 * @param iTo - End point of the interval
+	 * @param oPaneContainer - The content of the RSLayout
+	 */
+	RSUtil.splitterInterval = function (iFrom, iTo, oPaneContainer) {
+		this.iFrom = iFrom;
+		this.iTo = iTo;
+		this.iPagesCount = 0;
+		var oMainPage = [],
+			aPages = [oMainPage];
+
+		RSUtil.visitPanes(oPaneContainer, function (pane) {
+			var width = pane.getRequiredParentWidth();
+			var paneDescriptor = {
+				demandPane: pane.getDemandPane()
+			};
+			if (width <= iFrom) {
+				oMainPage.push(paneDescriptor);
+			} else {
+				aPages.push(paneDescriptor);
+			}
+		});
+
+		if (oMainPage.length == 0) {
+			aPages.splice(0, 1);
+		}
+
+		this.iPagesCount = aPages.length;
+		this.aPages = aPages;
+	};
+
+	return RSUtil;
+
+}, /* bExport= */ true);
+
+}; // end of sap/ui/layout/ResponsiveSplitterUtilities.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.SplitterRenderer') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -2157,7 +2363,7 @@ sap.ui.define("sap/ui/layout/SplitterRenderer",['jquery.sap.global'],
 		var sSizeType   = bHorizontal ? "width" : "height";
 		var sGripIcon = "sap-icon://" + (bHorizontal ? "horizontal" : "vertical") + "-grip";
 
-		var aContents = oControl.getContentAreas();
+		var aContents = oControl._getContentAreas();
 		var iLen = aContents.length;
 		var aCalculatedSizes = oControl.getCalculatedSizes();
 		for (var i = 0; i < iLen; ++i) {
@@ -2190,14 +2396,19 @@ sap.ui.define("sap/ui/layout/SplitterRenderer",['jquery.sap.global'],
 						"aria-orientation=\"" + (bHorizontal ? "vertical" : "horizontal") + "\" " +
 						"tabindex=\"0\">"
 				);
-				// Icon ID must start with sId + "-splitbar-" + i so that the target is recognized for resizing
-				oRm.writeIcon(sGripIcon, "sapUiLoSplitterBarIcon", {
-					"id" : sId + "-splitbar-" + i + "-icon",
-					// prevent any tooltip / ARIA attributes on the icon as they
-					// are already set on the outer div
-					"title" : null,
-					"aria-label" : null
-				});
+
+				if (oControl._bUseIconForSeparator) {
+					// Icon ID must start with sId + "-splitbar-" + i so that the target is recognized for resizing
+					oRm.writeIcon(sGripIcon, "sapUiLoSplitterBarIcon", {
+						"id" : sId + "-splitbar-" + i + "-icon",
+						// prevent any tooltip / ARIA attributes on the icon as they
+						// are already set on the outer div
+						"title" : null,
+						"aria-label" : null
+					});
+				} else {
+					oRm.write("<span class='sapUiLoSplitterBarIcon'></span>");
+				}
 				oRm.write("</div>");
 			}
 		}
@@ -2206,19 +2417,23 @@ sap.ui.define("sap/ui/layout/SplitterRenderer",['jquery.sap.global'],
 			"<div id=\"" + sId + "-overlay\" class=\"sapUiLoSplitterOverlay\" style=\"display: none;\">" +
 			"<div id=\"" + sId + "-overlayBar\" class=\"sapUiLoSplitterOverlayBar\">"
 		);
-		// Icon ID must start with sId + "-splitbar" so that the target is recognized for resizing
-		oRm.writeIcon(sGripIcon, "sapUiLoSplitterBarIcon", {
-			"id" : sId + "-splitbar-Overlay-icon",
-			// prevent any tooltip / ARIA attributes on the icon as they
-			// are already set on the outer div
-			"title" : null,
-			"aria-label" : null
-		});
+
+		if (oControl._bUseIconForSeparator) {
+			// Icon ID must start with sId + "-splitbar" so that the target is recognized for resizing
+			oRm.writeIcon(sGripIcon, "sapUiLoSplitterBarIcon", {
+				"id" : sId + "-splitbar-Overlay-icon",
+				// prevent any tooltip / ARIA attributes on the icon as they
+				// are already set on the outer div
+				"title" : null,
+				"aria-label" : null
+			});
+		} else {
+			oRm.write("<span class=\"sapUiLoSplitterBarIcon\"></span>");
+		}
 		oRm.write(
 			"</div>" +
 			"</div>"
 		);
-
 	};
 
 
@@ -2412,15 +2627,25 @@ sap.ui.define("sap/ui/layout/form/FormLayoutRenderer",['jquery.sap.global'],
 	 */
 	FormLayoutRenderer.renderForm = function(rm, oLayout, oForm){
 
+		var oToolbar = oForm.getToolbar();
+
 		rm.write("<div");
 		rm.writeControlData(oLayout);
 		rm.addClass(this.getMainClass());
+		if (oToolbar) {
+			rm.addClass("sapUiFormToolbar");
+		}
+		this.addBackgroundClass(rm, oLayout);
 		rm.writeClasses();
 		rm.write(">");
 
 		// Form header
-		var sSize = sap.ui.core.theming.Parameters.get('sap.ui.layout.FormLayout:sapUiFormTitleSize');
-		this.renderTitle(rm, oForm.getTitle(), undefined, false, sSize, oForm.getId());
+		if (oToolbar) {
+			rm.renderControl(oToolbar);
+		} else {
+			var sSize = sap.ui.core.theming.Parameters.get('sap.ui.layout.FormLayout:sapUiFormTitleSize');
+			this.renderTitle(rm, oForm.getTitle(), undefined, false, sSize, oForm.getId());
+		}
 
 		this.renderContainers(rm, oLayout, oForm);
 
@@ -2429,6 +2654,15 @@ sap.ui.define("sap/ui/layout/form/FormLayoutRenderer",['jquery.sap.global'],
 
 	FormLayoutRenderer.getMainClass = function(){
 		return "sapUiFormLayout";
+	};
+
+	FormLayoutRenderer.addBackgroundClass = function(rm, oLayout){
+
+		var sBackgroundDesign = oLayout.getBackgroundDesign();
+		if (sBackgroundDesign != sap.ui.layout.BackgroundDesign.Transparent) {
+			rm.addClass("sapUiFormBackgr" + sBackgroundDesign);
+		}
+
 	};
 
 	FormLayoutRenderer.renderContainers = function(rm, oLayout, oForm){
@@ -2446,10 +2680,18 @@ sap.ui.define("sap/ui/layout/form/FormLayoutRenderer",['jquery.sap.global'],
 	FormLayoutRenderer.renderContainer = function(rm, oLayout, oContainer){
 
 		var bExpandable = oContainer.getExpandable();
+		var oToolbar = oContainer.getToolbar();
+		var oTitle = oContainer.getTitle();
 
 		rm.write("<section");
 		rm.writeElementData(oContainer);
 		rm.addClass("sapUiFormContainer");
+
+		if (oToolbar) {
+			rm.addClass("sapUiFormContainerToolbar");
+		} else if (oTitle) {
+			rm.addClass("sapUiFormContainerTitle");
+		}
 
 		if (oContainer.getTooltip_AsString()) {
 			rm.writeAttributeEscaped('title', oContainer.getTooltip_AsString());
@@ -2459,7 +2701,12 @@ sap.ui.define("sap/ui/layout/form/FormLayoutRenderer",['jquery.sap.global'],
 		this.writeAccessibilityStateContainer(rm, oContainer);
 
 		rm.write(">");
-		this.renderTitle(rm, oContainer.getTitle(), oContainer._oExpandButton, bExpandable, sap.ui.core.TitleLevel.H4, oContainer.getId());
+
+		if (oToolbar) {
+			rm.renderControl(oToolbar);
+		} else {
+			this.renderTitle(rm, oTitle, oContainer._oExpandButton, bExpandable, sap.ui.core.TitleLevel.H4, oContainer.getId());
+		}
 
 		if (bExpandable) {
 			rm.write("<div id='" + oContainer.getId() + "-content'");
@@ -2584,7 +2831,13 @@ sap.ui.define("sap/ui/layout/form/FormLayoutRenderer",['jquery.sap.global'],
 
 		var mAriaProps = {role: "form"};
 		var oTitle = oContainer.getTitle();
-		if (oTitle) {
+		var oToolbar = oContainer.getToolbar();
+		if (oToolbar) {
+			if (!oContainer.getAriaLabelledBy() || oContainer.getAriaLabelledBy().length == 0) {
+				// no aria-label -> use complete Toolbar as fallback
+				mAriaProps["labelledby"] = oToolbar.getId();
+			}
+		} else if (oTitle) {
 			var sId = "";
 			if (typeof oTitle == "string") {
 				sId = oContainer.getId() + "--title";
@@ -2662,7 +2915,13 @@ sap.ui.define("sap/ui/layout/form/FormRenderer",['jquery.sap.global'],
 
 		var mAriaProps = {role: "form"};
 		var oTitle = oForm.getTitle();
-		if (oTitle) {
+		var oToolbar = oForm.getToolbar();
+		if (oToolbar) {
+			if (!oForm.getAriaLabelledBy() || oForm.getAriaLabelledBy().length == 0) {
+				// no aria-label -> use complete Toolbar as fallback
+				mAriaProps["labelledby"] = oToolbar.getId();
+			}
+		} else if (oTitle) {
 			var sId = "";
 			if (typeof oTitle == "string") {
 				sId = oForm.getId() + "--title";
@@ -2731,6 +2990,8 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 
 		var oContainer;
 		var oContainerData;
+		var oToolbar = oForm.getToolbar();
+		var oTitle = oForm.getTitle();
 
 		if (bSingleColumn) {
 			iColumns = iColumns / 2;
@@ -2754,6 +3015,10 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 		rm.addStyle("table-layout", "fixed");
 		rm.addStyle("width", "100%");
 		rm.addClass("sapUiGrid");
+		this.addBackgroundClass(rm, oLayout);
+		if (oToolbar) {
+			rm.addClass("sapUiFormToolbar");
+		}
 
 		rm.writeStyles();
 		rm.writeClasses();
@@ -2769,14 +3034,19 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 		rm.write("</colgroup><tbody>");
 
 		// form header as table header
-		if (oForm.getTitle()) {
+		if (oToolbar || oTitle) {
 			var iTitleCells = iColumns;
 			if (bSeparatorColumn) {
 				iTitleCells++;
 			}
 			rm.write("<tr class=\"sapUiGridTitle\"><th colspan=" + iTitleCells + ">");
-			var sSize = sap.ui.core.theming.Parameters.get('sap.ui.layout.FormLayout:sapUiFormTitleSize');
-			this.renderTitle(rm, oForm.getTitle(), undefined, false, sSize, oForm.getId());
+
+			if (oToolbar) {
+				rm.renderControl(oToolbar);
+			} else {
+				var sSize = sap.ui.core.theming.Parameters.get('sap.ui.layout.FormLayout:sapUiFormTitleSize');
+				this.renderTitle(rm, oTitle, undefined, false, sSize, oForm.getId());
+			}
 			rm.write("</th></tr>");
 		}
 
@@ -2810,7 +3080,7 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 			i++;
 		}
 
-		if (!!sap.ui.Device.browser.internet_explorer && sap.ui.Device.browser.version >= 9) {
+		if (!!sap.ui.Device.browser.internet_explorer && sap.ui.Device.browser.version == 9) {
 			// As IE9 is buggy with colspan and layout fixed if not all columns are defined least once
 			rm.write("<tr style=\"visibility:hidden;\">");
 			for ( i = 0; i < iColumns; i++) {
@@ -2837,17 +3107,31 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 		var sTooltip = oContainer.getTooltip_AsString();
 
 		// container header
-		if (oContainer.getTitle()) {
+		var oToolbar = oContainer.getToolbar();
+		var oTitle = oContainer.getTitle();
+		if (oToolbar || oTitle) {
 			var iTitleCells = iColumns;
 			if (bSeparatorColumn) {
 				iTitleCells++;
 			}
-			rm.write("<tr class=\"sapUiGridConteinerFirstRow\"><td colspan=" + iTitleCells + " class=\"sapUiGridHeader\"");
+			rm.write("<tr class=\"sapUiGridConteinerFirstRow\"><td colspan=" + iTitleCells);
+			rm.addClass("sapUiGridHeader");
 			if (sTooltip) {
 				rm.writeAttributeEscaped('title', sTooltip);
 			}
+			if (oToolbar) {
+				rm.addClass("sapUiFormContainerToolbar");
+			} else if (oTitle) {
+				rm.addClass("sapUiFormContainerTitle");
+			}
+			rm.writeClasses();
+
 			rm.write(">");
-			this.renderTitle(rm, oContainer.getTitle(), oContainer._oExpandButton, bExpandable, false, oContainer.getId());
+			if (oToolbar) {
+				rm.renderControl(oToolbar);
+			} else {
+				this.renderTitle(rm, oContainer.getTitle(), oContainer._oExpandButton, bExpandable, false, oContainer.getId());
+			}
 			rm.write("</td></tr>");
 		}
 
@@ -2868,7 +3152,7 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 
 					if (!bFirstVisibleFound) {
 						bFirstVisibleFound = true;
-						if (!oContainer.getTitle()) {
+						if (!oToolbar && !oTitle) {
 							rm.addClass("sapUiGridConteinerFirstRow");
 						}
 					}
@@ -2914,6 +3198,8 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 
 		var oTitle1 = oContainer1.getTitle();
 		var oTitle2;
+		var oToolbar1 = oContainer1.getToolbar();
+		var oToolbar2;
 
 		var aElements1 = [];
 		if (!bExpandable1 || oContainer1.getExpanded()) {
@@ -2928,28 +3214,47 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 			bExpandable2 = oContainer2.getExpandable();
 			sTooltip2 = oContainer2.getTooltip_AsString();
 			oTitle2 = oContainer2.getTitle();
+			oToolbar2 = oContainer2.getToolbar();
 			if (!bExpandable2 || oContainer2.getExpanded()) {
 				aElements2 = oContainer2.getFormElements();
 			}
 			iLength2 = aElements2.length;
 		}
 
-		if (oTitle1 || oTitle2) {
+		if (oTitle1 || oTitle2 || oToolbar1 || oToolbar2) {
 			// render title row (if one container has a title, the other has none leave the cells empty)
-			rm.write("<tr class=\"sapUiGridConteinerFirstRow\"><td colspan=" + iContainerColumns + " class=\"sapUiGridHeader\"");
+			rm.write("<tr class=\"sapUiGridConteinerFirstRow\"><td colspan=" + iContainerColumns);
+			rm.addClass("sapUiGridHeader");
 			if (sTooltip1) {
 				rm.writeAttributeEscaped('title', sTooltip1);
 			}
+			if (oToolbar1) {
+				rm.addClass("sapUiFormContainerToolbar");
+			} else if (oTitle1) {
+				rm.addClass("sapUiFormContainerTitle");
+			}
+			rm.writeClasses();
 			rm.write(">");
-			if (oTitle1) {
+			if (oToolbar1) {
+				rm.renderControl(oToolbar1);
+			} else if (oTitle1) {
 				this.renderTitle(rm, oTitle1, oContainer1._oExpandButton, bExpandable1, false, oContainer1.getId());
 			}
-			rm.write("</td><td></td><td colspan=" + iContainerColumns + " class=\"sapUiGridHeader\"");
+			rm.write("</td><td></td><td colspan=" + iContainerColumns);
+			rm.addClass("sapUiGridHeader");
 			if (sTooltip2) {
 				rm.writeAttributeEscaped('title', sTooltip2);
 			}
+			if (oToolbar2) {
+				rm.addClass("sapUiFormContainerToolbar");
+			} else if (oTitle2) {
+				rm.addClass("sapUiFormContainerTitle");
+			}
+			rm.writeClasses();
 			rm.write(">");
-			if (oTitle2) {
+			if (oToolbar2) {
+				rm.renderControl(oToolbar2);
+			} else if (oTitle2) {
 				this.renderTitle(rm, oTitle2, oContainer2._oExpandButton, bExpandable2, false, oContainer2.getId());
 			}
 			rm.write("</td></tr>");
@@ -2976,7 +3281,7 @@ sap.ui.define("sap/ui/layout/form/GridLayoutRenderer",['jquery.sap.global', 'sap
 
 					if (!bFirstVisibleFound) {
 						bFirstVisibleFound = true;
-						if (!oTitle1 && !oTitle2) {
+						if (!oToolbar1 && !oTitle1 && !oToolbar2 && !oTitle2) {
 							rm.addClass("sapUiGridConteinerFirstRow");
 						}
 					}
@@ -3369,6 +3674,33 @@ sap.ui.define("sap/ui/layout/form/ResponsiveLayoutRenderer",['jquery.sap.global'
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/form/ResponsiveLayoutRenderer.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.form.SimpleForm.designtime') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides the Design Time Metadata for the sap.ui.layout.form.SimpleForm control
+jQuery.sap.declare('sap.ui.layout.form.SimpleForm.designtime'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+sap.ui.define("sap/ui/layout/form/SimpleForm.designtime",[],
+	function() {
+	"use strict";
+
+	return {
+		aggregations: {
+			content : {
+				ignore : true
+			},
+			form: {
+				ignore : false
+			}
+		}
+	};
+
+}, /* bExport= */ false);
+
+}; // end of sap/ui/layout/form/SimpleForm.designtime.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.form.SimpleFormRenderer') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -3449,16 +3781,17 @@ sap.ui.define("sap/ui/layout/library",['jquery.sap.global', 'sap/ui/base/DataTyp
 	 * @namespace
 	 * @name sap.ui.layout
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @public
 	 */
 
 	// delegate further initialization of this library to the Core
 	sap.ui.getCore().initLibrary({
 		name : "sap.ui.layout",
-		version: "1.34.8",
+		version: "1.38.7",
 		dependencies : ["sap.ui.core"],
 		types: [
+			"sap.ui.layout.BackgroundDesign",
 			"sap.ui.layout.GridIndent",
 			"sap.ui.layout.GridPosition",
 			"sap.ui.layout.GridSpan",
@@ -3473,6 +3806,8 @@ sap.ui.define("sap/ui/layout/library",['jquery.sap.global', 'sap/ui/base/DataTyp
 			"sap.ui.layout.Grid",
 			"sap.ui.layout.HorizontalLayout",
 			"sap.ui.layout.ResponsiveFlowLayout",
+			"sap.ui.layout.ResponsiveSplitter",
+			"sap.ui.layout.ResponsiveSplitterPage",
 			"sap.ui.layout.Splitter",
 			"sap.ui.layout.VerticalLayout",
 			"sap.ui.layout.BlockLayoutCell",
@@ -3492,10 +3827,41 @@ sap.ui.define("sap/ui/layout/library",['jquery.sap.global', 'sap/ui/base/DataTyp
 			"sap.ui.layout.form.FormContainer",
 			"sap.ui.layout.form.FormElement",
 			"sap.ui.layout.form.GridContainerData",
+			"sap.ui.layout.PaneContainer",
+			"sap.ui.layout.SplitPane",
 			"sap.ui.layout.form.GridElementData"
 		]
 	});
 
+	/**
+	 * Available Background Design.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.36.0
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.ui.layout.BackgroundDesign = {
+
+		/**
+		 * A solid background color dependent on the theme.
+		 * @public
+		 */
+		Solid : "Solid",
+
+		/**
+		 * Transparent background.
+		 * @public
+		 */
+		Transparent : "Transparent",
+
+		/**
+		 * A translucent background depending on the opacity value of the theme.
+		 * @public
+		 */
+		Translucent : "Translucent"
+
+	};
 
 	/**
 	 * @classdesc A string type that represents Grid's indent values for large, medium and small screens. Allowed values are separated by space Letters L, M or S followed by number of columns from 1 to 11 that the container has to take, for example: "L2 M4 S6", "M11", "s10" or "l4 m4". Note that the parameters have to be provided in the order large  medium  small.
@@ -3701,13 +4067,35 @@ sap.ui.define("sap/ui/layout/library",['jquery.sap.global', 'sap/ui/base/DataTyp
 		OnMinimumWidth: "OnMinimumWidth"
 	};
 
+	/**
+	 * The position of the side content - End (default) and Begin.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.ui.layout.SideContentPosition = {
+		/**
+		 * The side content is on the right side of the main container in left-to-right mode and on the left side in right-to-left mode.
+		 * @public
+		 */
+		End : "End",
+
+		/**
+		 * The side content is on the left side of the main container in left-to-right mode and on the right side in right-to-left mode.
+		 * @public
+		 */
+		Begin : "Begin"
+	};
+
 	// factory for Form to create labels an buttons to be overwritten by commons and mobile library
 	if (!sap.ui.layout.form.FormHelper) {
 		sap.ui.layout.form.FormHelper = {
 			createLabel: function(sText){ throw new Error("no Label control available!"); }, /* must return a Label control */
-			createButton: function(sId, fPressFunction, oThis){ throw new Error("no Button control available!"); }, /* must return a button control */
+			createButton: function(sId, fPressFunction){ throw new Error("no Button control available!"); }, /* must return a button control */
 			setButtonContent: function(oButton, sText, sTooltip, sIcon, sIconHovered){ throw new Error("no Button control available!"); },
 			addFormClass: function(){ return null; },
+			setToolbar: function(oToolbar){ return oToolbar; }, /* allow to overwrite toolbar settings */
 			bArrowKeySupport: true, /* enables the keyboard support for arrow keys */
 			bFinal: false /* if true, the helper must not be overwritten by an other library */
 		};
@@ -3752,7 +4140,7 @@ sap.ui.define("sap/ui/layout/FixFlex",["jquery.sap.global", "sap/ui/core/Control
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -3829,10 +4217,18 @@ sap.ui.define("sap/ui/layout/FixFlex",["jquery.sap.global", "sap/ui/core/Control
 			$FlexChild.removeAttr("style");
 
 			if (this.getVertical()) {
+				if (this.getFixContentSize() !== 'auto') {
+					$FixChild.height(this.getFixContentSize());
+				}
 				$FlexChild.height(Math.floor($Control.height() - $FixChild.height()));
 			} else {
-				$FlexChild.width(Math.floor($Control.width() - $FixChild.width()));
-				$FixChild.width(Math.floor($FixChild.width()));
+				if (this.getFixContentSize() !== 'auto') {
+					$FixChild.width(this.getFixContentSize());
+					$FlexChild.width(Math.floor($Control.width() - $FixChild.width()));
+				} else {
+					$FlexChild.width(Math.floor($Control.width() - $FixChild.width()));
+					$FixChild.width(Math.floor($FixChild.width()));
+				}
 			}
 		};
 
@@ -3987,7 +4383,7 @@ sap.ui.define("sap/ui/layout/Grid",['jquery.sap.global', 'sap/ui/core/Control', 
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -4246,6 +4642,24 @@ sap.ui.define("sap/ui/layout/Grid",['jquery.sap.global', 'sap/ui/core/Control', 
 
 		};
 
+		/**
+		 * @see {sap.ui.core.Control#getAccessibilityInfo}
+		 * @protected
+		 */
+		Grid.prototype.getAccessibilityInfo = function() {
+			var aContent = this.getContent();
+			var aChildren = [];
+			for (var i = 0; i < aContent.length; i++) {
+				if (aContent[i].getAccessibilityInfo) {
+					var oInfo = aContent[i].getAccessibilityInfo();
+					if (oInfo) {
+						aChildren.push(oInfo);
+					}
+				}
+			}
+			return {children: aChildren};
+		};
+
 	}());
 
 
@@ -4282,7 +4696,7 @@ sap.ui.define("sap/ui/layout/GridData",['jquery.sap.global', 'sap/ui/core/Layout
 	 * @extends sap.ui.core.LayoutData
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -4737,7 +5151,7 @@ sap.ui.define("sap/ui/layout/HorizontalLayout",['jquery.sap.global', 'sap/ui/cor
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -4762,10 +5176,27 @@ sap.ui.define("sap/ui/layout/HorizontalLayout",['jquery.sap.global', 'sap/ui/cor
 			 * The controls inside this layout
 			 */
 			content : {type : "sap.ui.core.Control", multiple : true, singularName : "content"}
-		}
+		},
+		designtime : true
 	}});
 
-
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	HorizontalLayout.prototype.getAccessibilityInfo = function() {
+		var aContent = this.getContent();
+		var aChildren = [];
+		for (var i = 0; i < aContent.length; i++) {
+			if (aContent[i].getAccessibilityInfo) {
+				var oInfo = aContent[i].getAccessibilityInfo();
+				if (oInfo) {
+					aChildren.push(oInfo);
+				}
+			}
+		}
+		return {children: aChildren};
+	};
 
 	return HorizontalLayout;
 
@@ -4800,7 +5231,7 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayoutData",['jquery.sap.global', 'sa
 	 * @extends sap.ui.core.LayoutData
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -4883,6 +5314,156 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayoutData",['jquery.sap.global', 'sa
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/ResponsiveFlowLayoutData.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.ResponsiveSplitterPage') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides control sap.ui.layout.ResponsiveSplitterPage
+jQuery.sap.declare('sap.ui.layout.ResponsiveSplitterPage'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Control'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/ResponsiveSplitterPage",["jquery.sap.global", "./library", "sap/ui/core/Control"],
+	function (jQuery, library, Control) {
+	"use strict";
+
+	/**
+	 * Constructor for a new ResponsiveSplitterPage.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
+	 *
+	 * @class
+	 * Helper control used in the ResponsiveSplitter
+	 * This serves as placeholder for the content of the Panes inside the ResponsiveSplitter
+	 * @extends sap.ui.core.Control
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @private
+	 * @since 1.38
+	 * @alias sap.ui.layout.ResponsiveSplitterPage
+	 */
+	var ResponsiveSplitterPage = Control.extend("sap.ui.layout.ResponsiveSplitterPage", /** @lends sap.ui.layout.ResponsiveSplitterPage.prototype */{
+		metadata: {
+			library: "sap.ui.layout",
+			associations: {
+				/**
+				 * The content of the SplitterPage
+				 */
+				content: {type : "sap.ui.core.Control", multiple : false, singularName : "content"}
+			}
+		},
+		getContent: function () {
+			return sap.ui.getCore().byId(this.getAssociation("content"));
+		},
+		renderer : function(oRm, oControl) {
+			oRm.write("<div");
+			oRm.addClass("sapUiResponsiveSplitterPage");
+			oRm.writeControlData(oControl);
+			oRm.writeClasses();
+			oRm.write(">");
+
+			var content = oControl.getContent();
+			if (content) {
+				oRm.renderControl(content);
+			}
+
+			oRm.write("</div>");
+		}
+	});
+
+	return ResponsiveSplitterPage;
+
+}, /* bExport= */ false);
+}; // end of sap/ui/layout/ResponsiveSplitterPage.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.SplitPane') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides control sap.ui.layout.SplitPane.
+jQuery.sap.declare('sap.ui.layout.SplitPane'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Element'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/SplitPane",['jquery.sap.global', './library', 'sap/ui/core/Element'],
+	function(jQuery, library, Element) {
+	"use strict";
+
+	/**
+	 * Constructor for a new SplitPane.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
+	 *
+	 * @class
+	 * SplitPane is a container of a single control.
+	 * Could be used as an aggregation of a PaneContainer.
+	 * @extends sap.ui.core.Element
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @public
+	 * @since 1.38
+	 * @alias sap.ui.layout.SplitPane
+	 */
+	var SplitPane = Element.extend("sap.ui.layout.SplitPane", { metadata : {
+
+		library : "sap.ui.layout",
+		properties : {
+
+			/**
+			 * Determines whether the pane will be moved to the pagination
+			*/
+			demandPane: { type : "boolean", group : "Behavior", defaultValue : true },
+
+			/**
+			 * Determines the minimum width of the ResponsiveSplitter(in pixels). When it is reached the pane will be hidden from the screen.
+			*/
+			requiredParentWidth: { type : "int", defaultValue : '800'}
+		},
+		defaultAggregation : "content",
+		aggregations : {
+			/**
+			 * Content of the SplitPane
+			*/
+			content: { type : "sap.ui.core.Control", multiple : false, singularName : "content" }
+		}
+	}});
+
+	SplitPane.prototype.setLayoutData = function(oLayoutdata) {
+		var oContent = this.getContent();
+		if (oContent) {
+			return oContent.setLayoutData(oLayoutdata);
+		} else {
+			return this;
+		}
+	};
+
+	SplitPane.prototype.onLayoutDataChange = function() {
+		var oParent = this.getParent();
+		if (oParent) {
+			oParent._oSplitter._delayedResize();
+		}
+	};
+
+	SplitPane.prototype._isInInterval = function (iFrom) {
+		return this.getRequiredParentWidth() <= iFrom;
+	};
+
+	return SplitPane;
+
+}, /* bExport= */ true);
+
+}; // end of sap/ui/layout/SplitPane.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.Splitter') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -4918,7 +5499,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -5019,18 +5600,21 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 
 		// Create bound listener functions for keyboard event handling
 		this._keyListeners = {
-			increase     : this._onKeyboardResize.bind(this, "inc"),
-			decrease     : this._onKeyboardResize.bind(this, "dec"),
-			increaseMore : this._onKeyboardResize.bind(this, "incMore"),
-			decreaseMore : this._onKeyboardResize.bind(this, "decMore"),
-			max          : this._onKeyboardResize.bind(this, "max"),
-			min          : this._onKeyboardResize.bind(this, "min")
+			increase     : this._onKeyboardResize.bind(this, "inc", 20),
+			decrease     : this._onKeyboardResize.bind(this, "dec", 20),
+			increaseMore : this._onKeyboardResize.bind(this, "incMore", 20),
+			decreaseMore : this._onKeyboardResize.bind(this, "decMore", 20),
+			max          : this._onKeyboardResize.bind(this, "max", 20),
+			min          : this._onKeyboardResize.bind(this, "min", 20)
 		};
 		this._enableKeyboardListeners();
 
 		// Flag tracking the preserved state of this control. In case the control is preserved, no resizing attempts should be made.
 		this._isPreserved = false;
 		sap.ui.getCore().getEventBus().subscribe("sap.ui","__preserveContent", this._preserveHandler, this);
+
+		// Use Icon for separators
+		this._bUseIconForSeparator = true;
 	};
 
 	Splitter.prototype.exit = function() {
@@ -5082,7 +5666,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 * in every control instance by default.
 	 * For performance reasons this behavior can be disabled by calling disableAutoResize()
 	 *
-	 * @param {bool} [bTemporarily=false] Only enables autoResize if it was previously disabled temporarily (used for live resize)
+	 * @param {boolean} [bTemporarily=false] Only enables autoResize if it was previously disabled temporarily (used for live resize)
 	 * @protected
 	 * @deprecated This method is declared as protected in order to assess the need for this feature. It is declared as deprecated because the API might change in case the need for this is high enough to make it part of the official Splitter interface
 	 */
@@ -5108,7 +5692,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 * in every control instance by default.
 	 * For performance reasons this behavior can be disabled by calling disableAutoResize()
 	 *
-	 * @param {bool} [bTemporarily=false] Only disable autoResize temporarily (used for live resize), so that the previous status can be restored afterwards
+	 * @param {boolean} [bTemporarily=false] Only disable autoResize temporarily (used for live resize), so that the previous status can be restored afterwards
 	 * @protected
 	 * @deprecated This method is declared as protected in order to assess the need for this feature. It is declared as deprecated because the API might change in case the need for this is high enough to make it part of the official Splitter interface
 	 */
@@ -5257,7 +5841,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 * Starts a resize (for touch and click)
 	 *
 	 * @param {jQuery.Event} [oJEv] The jQuery event
-	 * @param {bool} [bTouch] Whether the first parameter is a touch event
+	 * @param {boolean} [bTouch] Whether the first parameter is a touch event
 	 * @private
 	 */
 	Splitter.prototype._onBarMoveStart = function(oJEv, bTouch) {
@@ -5272,7 +5856,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 		var mCalcSizes = this.getCalculatedSizes();
 		var iBarSize = this._bHorizontal ?  $Bar.innerWidth() : $Bar.innerHeight();
 
-		var aContentAreas = this.getContentAreas();
+		var aContentAreas = this._getContentAreas();
 		var oLd1   = aContentAreas[iBar].getLayoutData();
 		var oLd2   = aContentAreas[iBar + 1].getLayoutData();
 
@@ -5334,7 +5918,11 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 		var iPos = oEvent[this._moveCord];
 
 		var iDelta = (iPos - this._move.start);
-		iDelta = this._bRtl ? -iDelta : iDelta;
+		//We should only switch direction of change in case it is left or right.
+		//Otherwise the vertical splitter is moved opposite to the mouse movement
+		if (this.getOrientation() == sap.ui.core.Orientation.Horizontal && this._bRtl) {
+			iDelta = -iDelta;
+		}
 
 		var c1NewSize = this._move.c1Size + iDelta;
 		var c2NewSize = this._move.c2Size - iDelta;
@@ -5353,9 +5941,16 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 
 			if (this._liveResize) {
 				var fMove = (this._move["start"] - oEvent[this._moveCord]);
+
+				//We should only switch direction of change in case it is left or right.
+				//Otherwise the vertical splitter is moved opposite to the mouse movement
+				if (this.getOrientation() == sap.ui.core.Orientation.Horizontal && this._bRtl) {
+					fMove = -fMove;
+				}
+
 				this._resizeContents(
 					/* left content number:    */ this._move["barNum"],
-					/* number of pixels:       */ this._bRtl ? fMove : -fMove,
+					/* number of pixels:       */ -fMove,
 					/* also change layoutData: */ false
 				);
 			}
@@ -5383,16 +5978,24 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 		var iPos = oEvent[this._moveCord];
 
 		var fMove = this._move["start"] - iPos;
+
+		//We should only switch direction of change in case it is left or right.
+		//Otherwise the vertical splitter is moved opposite to the mouse movement
+		if (this.getOrientation() == sap.ui.core.Orientation.Horizontal && this._bRtl) {
+			fMove = -fMove;
+		}
+
 		this._resizeContents(
 			/* left content number:    */ this._move["barNum"],
-			/* number of pixels:       */ this._bRtl ? fMove : -fMove,
+			/* number of pixels:       */ -fMove,
 			/* also change layoutData: */ true
 		);
 
 		// Remove resizing overlay
 		this._move["bar"].css("visibility", "");
 		this._$SplitterOverlay.css("display", ""); // Remove?
-		this._$SplitterOverlay.detach();
+
+		// this._$SplitterOverlay.detach(); TODO move to better position
 
 		// Uses bound handler methods - see init()
 		document.removeEventListener("mouseup",   this._boundBarMoveEnd);
@@ -5411,7 +6014,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 *
 	 * @param {Number} [iLeftContent] Number of the first (left) content that is resized
 	 * @param {Number} [iPixels] Number of pixels to increase the first and decrease the second content
-	 * @param {bool} [bFinal] Whether this is the final position (sets the size in the layoutData of the
+	 * @param {boolean} [bFinal] Whether this is the final position (sets the size in the layoutData of the
 	 * content areas)
 	 */
 	Splitter.prototype._resizeContents = function(iLeftContent, iPixels, bFinal) {
@@ -5420,7 +6023,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 			return;
 		}
 
-		var aContentAreas = this.getContentAreas();
+		var aContentAreas = this._getContentAreas();
 		var oLd1   = aContentAreas[iLeftContent].getLayoutData();
 		var oLd2   = aContentAreas[iLeftContent + 1].getLayoutData();
 
@@ -5473,7 +6076,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 
 	Splitter.prototype._preserveHandler = function(sChannelId, sEventId, oData) {
 		var oDom = this.getDomRef();
-		if (oDom && oData.domNode.contains(oDom)) {
+		if (oDom && jQuery.contains(oData.domNode, oDom)) {
 			// Our HTML has been preserved...
 			this._isPreserved = true;
 		}
@@ -5539,7 +6142,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 		}
 
 		var i = 0, $Bar;
-		var aContentAreas = this.getContentAreas();
+		var aContentAreas = this._getContentAreas();
 
 		// Resize Splitter bars so that they do not influence the content sizes the wrong way
 		this._resizeBars(aContentAreas);
@@ -5578,7 +6181,6 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 				$Bar = this.$("splitbar-" + (i - 1));
 				$Bar.toggleClass("sapUiLoSplitterNoResize", !bResizable);
 				$Bar.attr("tabindex", bResizable && this._keyboardEnabled ? "0" : "-1");
-				$Bar.attr("title", bResizable ? this._getText("SPLITTER_MOVE") : "");
 			}
 			bLastContentResizable = bContentResizable;
 		}
@@ -5653,7 +6255,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 
 		// Read all content sizes from the layout data
 		var aSizes = [];
-		var aContentAreas = this.getContentAreas();
+		var aContentAreas = this._getContentAreas();
 		for (i = 0; i < aContentAreas.length; ++i) {
 			oLayoutData = aContentAreas[i].getLayoutData();
 			sSize = oLayoutData ? oLayoutData.getSize() : "auto";
@@ -5798,13 +6400,13 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 * @param {string} [sType] The type of resize step ("inc", "dec", "max", "min")
 	 * @param {jQuery.Event} [oEvent] The original keyboard event
 	 */
-	Splitter.prototype._onKeyboardResize = function(sType, oEvent) {
+	Splitter.prototype._onKeyboardResize = function(sType, iStepSize, oEvent) {
 		var sBarId = this.getId() + "-splitbar-";
 		if (!oEvent || !oEvent.target || !oEvent.target.id || oEvent.target.id.indexOf(sBarId) !== 0) {
 			return;
 		}
 
-		var iStepSize = 20;
+		var iStepSize = iStepSize;
 		var iBigStep  = 999999;
 
 		var iBar = parseInt(oEvent.target.id.substr(sBarId.length), 10);
@@ -5896,7 +6498,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	 *
 	 * @param {Number[]} [aSizes1] The array of numbers to compare against
 	 * @param {Number[]} [aSizes2] The array of numbers that is compared to the first one
-	 * @returns {bool} True if the size-arrays differ, false otherwise
+	 * @returns {boolean} True if the size-arrays differ, false otherwise
 	 * @private
 	 */
 	function _sizeArraysDiffer(aSizes1, aSizes2) {
@@ -5926,7 +6528,7 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 	/**
 	 * Prevents the selection of text while the mouse is moving when pressed
 	 *
-	 * @param {bool} [bTouch] If set to true, touch events instead of mouse events are captured
+	 * @param {boolean} [bTouch] If set to true, touch events instead of mouse events are captured
 	 */
 	function _preventTextSelection(bTouch) {
 		var fnPreventSelection = function(oEvent) {
@@ -6062,6 +6664,10 @@ sap.ui.define("sap/ui/layout/Splitter",['jquery.sap.global', 'sap/ui/core/Contro
 		return this.insertAggregation("contentAreas", oContent, iIndex);
 	};
 
+	Splitter.prototype._getContentAreas = function() {
+		return this.getContentAreas();
+	};
+
 	    ///////////////////////////////////// Association "xxx" ////////////////////////////////////
 
 	return Splitter;
@@ -6099,7 +6705,7 @@ sap.ui.define("sap/ui/layout/SplitterLayoutData",['jquery.sap.global', 'sap/ui/c
 	 * (The CSS value "auto" is used internally to recalculate the size of the content
 	 * dynamically and is not directly set as style property.)
 	 * @extends sap.ui.core.LayoutData
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -6165,7 +6771,7 @@ sap.ui.define("sap/ui/layout/VerticalLayout",['jquery.sap.global', 'sap/ui/core/
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -6215,6 +6821,24 @@ sap.ui.define("sap/ui/layout/VerticalLayout",['jquery.sap.global', 'sap/ui/core/
 		return this;
 	};
 
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	VerticalLayout.prototype.getAccessibilityInfo = function() {
+		var aContent = this.getContent();
+		var aChildren = [];
+		for (var i = 0; i < aContent.length; i++) {
+			if (aContent[i].getAccessibilityInfo) {
+				var oInfo = aContent[i].getAccessibilityInfo();
+				if (oInfo) {
+					aChildren.push(oInfo);
+				}
+			}
+		}
+		return {children: aChildren};
+	};
+
 	EnabledPropagator.call(VerticalLayout.prototype);
 
 	return VerticalLayout;
@@ -6253,10 +6877,13 @@ sap.ui.define("sap/ui/layout/form/Form",['jquery.sap.global', 'sap/ui/core/Contr
 	 * For the content of a <code>Form</code>, <code>VariantLayoutData</code> are supported to allow simple switching of the <code>FormLayout</code>.
 	 * <code>LayoutData</code> on the content can be used to overwrite the default layout of the code>Form</code>.
 	 *
+	 * <b>Note:</b> Do not put any layout controls into the <code>FormElements</code>. This could destroy the visual layout,
+	 * keyboard support and screen-reader support.
+	 *
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -6294,8 +6921,20 @@ sap.ui.define("sap/ui/layout/form/Form",['jquery.sap.global', 'sap/ui/core/Contr
 			/**
 			 * Title of the <code>Form</code>. Can either be a <code>Title</code> object, or a string.
 			 * If a <code>Title</code> object it used, the style of the title can be set.
+			 *
+			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
 			 */
 			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false},
+
+			/**
+			 * Toolbar of the <code>Form</code>.
+			 *
+			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
+			 * If a title is needed inside the <code>Toolbar</code> it must be added at content to the <code>Toolbar</code>.
+			 * In this case add the <code>Title</code> to the <code>ariaLabelledBy</code> association.
+			 * @since 1.36.0
+			 */
+			toolbar : {type : "sap.ui.core.Toolbar", multiple : false},
 
 			/**
 			 * Layout of the <code>Form</code>. The assigned <code>Layout</code> renders the <code>Form</code>.
@@ -6314,129 +6953,128 @@ sap.ui.define("sap/ui/layout/form/Form",['jquery.sap.global', 'sap/ui/core/Contr
 		designTime : true
 	}});
 
-	/**
-	 * This file defines behavior for the control,
+	Form.prototype.toggleContainerExpanded = function(oContainer){
+
+		var oLayout = this.getLayout();
+		if (oLayout) {
+			oLayout.toggleContainerExpanded(oContainer);
+		}
+
+	};
+
+	/*
+	 * If onAfterRendering of a field is processed the layout might need to change it.
 	 */
+	Form.prototype.contentOnAfterRendering = function(oFormElement, oControl){
 
-	(function() {
+		// call function of the layout
+		var oLayout = this.getLayout();
+		if (oLayout && oLayout.contentOnAfterRendering) {
+			oLayout.contentOnAfterRendering( oFormElement, oControl);
+		}
 
-	//	sap.ui.commons.Form.prototype.init = function(){
-	//	// do something for initialization...
-	//	};
+	};
 
-		Form.prototype.toggleContainerExpanded = function(oContainer){
+	/*
+	 * If LayoutData changed on control this may need changes on the layout. So bubble to the Layout
+	 */
+	Form.prototype.onLayoutDataChange = function(oEvent){
 
-			var oLayout = this.getLayout();
-			if (oLayout) {
-				oLayout.toggleContainerExpanded(oContainer);
+		// call function of the layout
+		var oLayout = this.getLayout();
+		if (oLayout && oLayout.onLayoutDataChange) {
+			oLayout.onLayoutDataChange(oEvent);
+		}
+
+	};
+
+	Form.prototype.onBeforeFastNavigationFocus = function(oEvent){
+		var oLayout = this.getLayout();
+		if (oLayout && oLayout.onBeforeFastNavigationFocus) {
+			oLayout.onBeforeFastNavigationFocus(oEvent);
+		}
+	};
+
+	Form.prototype.setEditable = function(bEditable) {
+
+		var bOldEditable = this.getEditable();
+		this.setProperty("editable", bEditable, true);
+
+		if (bEditable != bOldEditable && this.getDomRef()) {
+			if (bEditable) {
+				this.$().addClass("sapUiFormEdit").addClass("sapUiFormEdit-CTX");
+				this.$().removeAttr("aria-readonly");
+			} else {
+				this.$().removeClass("sapUiFormEdit").removeClass("sapUiFormEdit-CTX");
+				this.$().attr("aria-readonly", "true");
 			}
+		}
 
-		};
+		return this;
 
-		/*
-		 * If onAfterRendering of a field is processed the layout might need to change it.
-		 */
-		Form.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+	};
 
-			// call function of the layout
-			var oLayout = this.getLayout();
-			if (oLayout && oLayout.contentOnAfterRendering) {
-				oLayout.contentOnAfterRendering( oFormElement, oControl);
-			}
+	Form.prototype.setToolbar = function(oToolbar) {
 
-		};
+		// for sap.m.Toolbar Auto-design must be set to transparent
+		oToolbar = sap.ui.layout.form.FormHelper.setToolbar.call(this, oToolbar);
 
-		/*
-		 * If LayoutData changed on control this may need changes on the layout. So bubble to the Layout
-		 */
-		Form.prototype.onLayoutDataChange = function(oEvent){
+		this.setAggregation("toolbar", oToolbar);
 
-			// call function of the layout
-			var oLayout = this.getLayout();
-			if (oLayout && oLayout.onLayoutDataChange) {
-				oLayout.onLayoutDataChange(oEvent);
-			}
+		return this;
 
-		};
+	};
 
-		Form.prototype.onBeforeFastNavigationFocus = function(oEvent){
-			var oLayout = this.getLayout();
-			if (oLayout && oLayout.onBeforeFastNavigationFocus) {
-				oLayout.onBeforeFastNavigationFocus(oEvent);
-			}
-		};
+	/*
+	 * Overwrite of INVALIDATE
+	 * do not invalidate Form during rendering. Because there the Layout may update the content
+	 * otherwise the Form will render twice
+	*/
+	Form.prototype.invalidate = function(oOrigin) {
 
-		Form.prototype.setEditable = function(bEditable) {
+		if (!this._bNoInvalidate) {
+			Control.prototype.invalidate.apply(this, arguments);
+		}
 
-			var bOldEditable = this.getEditable();
-			this.setProperty("editable", bEditable, true);
+	};
 
-			if (bEditable != bOldEditable && this.getDomRef()) {
-				if (bEditable) {
-					this.$().addClass("sapUiFormEdit").addClass("sapUiFormEdit-CTX");
-					this.$().removeAttr("aria-readonly");
-				} else {
-					this.$().removeClass("sapUiFormEdit").removeClass("sapUiFormEdit-CTX");
-					this.$().attr("aria-readonly", "true");
-				}
-			}
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the <code>FormContainer</code> has a DOM representation this function returns it,
+	 * independent from the ID of this DOM element
+	 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	Form.prototype.getContainerRenderedDomRef = function(oContainer) {
 
-			return this;
+		var oLayout = this.getLayout();
+		if (oLayout && oLayout.getContainerRenderedDomRef) {
+			return oLayout.getContainerRenderedDomRef(oContainer);
+		}else {
+			return null;
+		}
 
-		};
+	};
 
-		/*
-		 * Overwrite of INVALIDATE
-		 * do not invalidate Form during rendering. Because there the Layout may update the content
-		 * otherwise the Form will render twice
-		*/
-		Form.prototype.invalidate = function(oOrigin) {
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the <code>FormElement</code> has a DOM representation this function returns it,
+	 * independent from the ID of this DOM element
+	 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	Form.prototype.getElementRenderedDomRef = function(oElement) {
 
-			if (!this._bNoInvalidate) {
-				Control.prototype.invalidate.apply(this, arguments);
-			}
+		var oLayout = this.getLayout();
+		if (oLayout && oLayout.getElementRenderedDomRef) {
+			return oLayout.getElementRenderedDomRef(oElement);
+		}else {
+			return null;
+		}
 
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the <code>FormContainer</code> has a DOM representation this function returns it,
-		 * independent from the ID of this DOM element
-		 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		Form.prototype.getContainerRenderedDomRef = function(oContainer) {
-
-			var oLayout = this.getLayout();
-			if (oLayout && oLayout.getContainerRenderedDomRef) {
-				return oLayout.getContainerRenderedDomRef(oContainer);
-			}else {
-				return null;
-			}
-
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the <code>FormElement</code> has a DOM representation this function returns it,
-		 * independent from the ID of this DOM element
-		 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		Form.prototype.getElementRenderedDomRef = function(oElement) {
-
-			var oLayout = this.getLayout();
-			if (oLayout && oLayout.getElementRenderedDomRef) {
-				return oLayout.getElementRenderedDomRef(oElement);
-			}else {
-				return null;
-			}
-
-		};
-
-	}());
+	};
 
 	return Form;
 
@@ -6474,7 +7112,7 @@ sap.ui.define("sap/ui/layout/form/FormContainer",['jquery.sap.global', 'sap/ui/c
 	 * @extends sap.ui.core.Element
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -6515,194 +7153,219 @@ sap.ui.define("sap/ui/layout/form/FormContainer",['jquery.sap.global', 'sap/ui/c
 			/**
 			 * Title of the <code>FormContainer</code>. Can either be a <code>Title</code> object, or a string.
 			 * If a <code>Title</code> object is used, the style of the title can be set.
+			 *
+			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
 			 */
-			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false}
+			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false},
+
+			/**
+			 * Toolbar of the <code>FormContainer</code>.
+			 *
+			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
+			 * If a title is needed inside the <code>Toolbar</code> it must be added at content to the <code>Toolbar</code>.
+			 * In this case add the <code>Title</code> to the <code>ariaLabelledBy</code> association.
+			 * @since 1.36.0
+			 */
+			toolbar : {type : "sap.ui.core.Toolbar", multiple : false}
+		},
+		associations: {
+
+			/**
+			 * Association to controls / IDs that label this control (see WAI-ARIA attribute aria-labelledby).
+			 *
+			 * <b>Note:</b> This attribute is only rendered if the <code>FormContainer</code> has it's own
+			 * DOM representation in the used <code>FormLayout</code>.
+			 * @since 1.36.0
+			 */
+			ariaLabelledBy: { type: "sap.ui.core.Control", multiple: true, singularName: "ariaLabelledBy" }
 		},
 		designTime : true
 	}});
 
-	/**
-	 * This file defines behavior for the control,
-	 */
+	FormContainer.prototype.init = function(){
 
+		this._rb = sap.ui.getCore().getLibraryResourceBundle("sap.ui.layout");
 
-	//sap.ui.core.EnabledPropagator.call(sap.ui.layout.form.FormContainer.prototype);
+	};
 
-	(function() {
+	FormContainer.prototype.exit = function(){
 
-		FormContainer.prototype.init = function(){
+		if (this._oExpandButton) {
+			this._oExpandButton.destroy();
+			delete this._oExpandButton;
+		}
+		this._rb = undefined;
 
-			this._rb = sap.ui.getCore().getLibraryResourceBundle("sap.ui.layout");
+	};
 
-		};
+	FormContainer.prototype.setExpandable = function(bExpandable){
 
-		FormContainer.prototype.exit = function(){
+		this.setProperty("expandable", bExpandable);
 
-			if (this._oExpandButton) {
-				this._oExpandButton.destroy();
-				delete this._oExpandButton;
-			}
-			this._rb = undefined;
-
-		};
-
-		FormContainer.prototype.setExpandable = function(bExpandable){
-
-			this.setProperty("expandable", bExpandable);
-
-			if (bExpandable) {
-				var that = this;
-				if (!this._oExpandButton) {
-					this._oExpandButton = sap.ui.layout.form.FormHelper.createButton(this.getId() + "--Exp", _handleExpButtonPress, that);
-					this._oExpandButton.setParent(this);
-				}
-				_setExpanderIcon(that);
-			}
-
-			return this;
-
-		};
-
-		FormContainer.prototype.setExpanded = function(bExpanded){
-
-			this.setProperty("expanded", bExpanded, true); // no automatic rerendering
-
+		if (bExpandable) {
 			var that = this;
+			if (!this._oExpandButton) {
+				this._oExpandButton = sap.ui.layout.form.FormHelper.createButton.call(this, this.getId() + "--Exp", _handleExpButtonPress);
+				this._oExpandButton.setParent(this);
+			}
 			_setExpanderIcon(that);
+		}
 
-			var oForm = this.getParent();
-			if (oForm && oForm.toggleContainerExpanded) {
-				oForm.toggleContainerExpanded(that);
-			}
+		return this;
 
-			return this;
+	};
 
-		};
+	FormContainer.prototype.setExpanded = function(bExpanded){
 
-		/*
-		 * If onAfterRendering of a field is processed the Form (layout) might need to change it.
-		 */
-		FormContainer.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+		this.setProperty("expanded", bExpanded, true); // no automatic rerendering
 
-			// call function of parent (if assigned)
-			var oParent = this.getParent();
-			if (oParent && oParent.contentOnAfterRendering) {
-				oParent.contentOnAfterRendering( oFormElement, oControl);
-			}
+		var that = this;
+		_setExpanderIcon(that);
 
-		};
+		var oForm = this.getParent();
+		if (oForm && oForm.toggleContainerExpanded) {
+			oForm.toggleContainerExpanded(that);
+		}
 
-		/*
-		 * If LayoutData changed on control this may need changes on the layout. So bubble to the form
-		 */
-		FormContainer.prototype.onLayoutDataChange = function(oEvent){
+		return this;
 
-			// call function of parent (if assigned)
-			var oParent = this.getParent();
-			if (oParent && oParent.onLayoutDataChange) {
-				oParent.onLayoutDataChange(oEvent);
-			}
+	};
 
-		};
+	FormContainer.prototype.setToolbar = function(oToolbar) {
 
-		/*
-		 * Checks if properties are fine
-		 * Expander only visible if title is set -> otherwise give warning
-		 * @return 0 = no problem, 1 = warning, 2 = error
-		 * @private
-		 */
-		FormContainer.prototype._checkProperties = function(){
+		// for sap.m.Toolbar Auto-design must be set to transparent
+		oToolbar = sap.ui.layout.form.FormHelper.setToolbar.call(this, oToolbar);
 
-			var iReturn = 0;
+		this.setAggregation("toolbar", oToolbar);
 
-			if (this.getExpandable() && !this.getTitle()) {
-				jQuery.sap.log.warning("Expander only displayed if title is set", this.getId(), "FormContainer");
-				iReturn = 1;
-			}
+		return this;
 
-			return iReturn;
+	};
 
-		};
+	/*
+	 * If onAfterRendering of a field is processed the Form (layout) might need to change it.
+	 */
+	FormContainer.prototype.contentOnAfterRendering = function(oFormElement, oControl){
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the FormContainer has a DOM representation this function returns it,
-		 * independent from the ID of this DOM element
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		FormContainer.prototype.getRenderedDomRef = function(){
+		// call function of parent (if assigned)
+		var oParent = this.getParent();
+		if (oParent && oParent.contentOnAfterRendering) {
+			oParent.contentOnAfterRendering( oFormElement, oControl);
+		}
 
-			var that = this;
-			var oForm = this.getParent();
+	};
 
-			if (oForm && oForm.getContainerRenderedDomRef) {
-				return oForm.getContainerRenderedDomRef(that);
-			}else {
-				return null;
-			}
+	/*
+	 * If LayoutData changed on control this may need changes on the layout. So bubble to the form
+	 */
+	FormContainer.prototype.onLayoutDataChange = function(oEvent){
 
-		};
+		// call function of parent (if assigned)
+		var oParent = this.getParent();
+		if (oParent && oParent.onLayoutDataChange) {
+			oParent.onLayoutDataChange(oEvent);
+		}
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the FormElement has a DOM representation this function returns it,
-		 * independent from the ID of this DOM element
-		 * @param {sap.ui.layout.form.FormElement} oElement FormElement
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		FormContainer.prototype.getElementRenderedDomRef = function(oElement){
+	};
 
-			var oForm = this.getParent();
+	/*
+	 * Checks if properties are fine
+	 * Expander only visible if title is set -> otherwise give warning
+	 * @return 0 = no problem, 1 = warning, 2 = error
+	 * @private
+	 */
+	FormContainer.prototype._checkProperties = function(){
 
-			if (oForm && oForm.getElementRenderedDomRef) {
-				return oForm.getElementRenderedDomRef(oElement);
-			}else {
-				return null;
-			}
+		var iReturn = 0;
 
-		};
+		if (this.getExpandable() && (!this.getTitle() || this.getToolbar())) {
+			jQuery.sap.log.warning("Expander only displayed if title is set", this.getId(), "FormContainer");
+			iReturn = 1;
+		}
 
-		function _setExpanderIcon(oContainer){
+		return iReturn;
 
-			if (!oContainer._oExpandButton) {
-				return;
-			}
+	};
 
-			var sIcon, sIconHovered, sText, sTooltip;
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the FormContainer has a DOM representation this function returns it,
+	 * independent from the ID of this DOM element
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	FormContainer.prototype.getRenderedDomRef = function(){
 
-			if (oContainer.getExpanded()) {
-				sIcon = Parameters.get('sapUiFormContainerColImageURL');
-				sIconHovered = Parameters.get('sapUiFormContainerColImageDownURL');
-				sText = "-";
-				sTooltip = oContainer._rb.getText("FORM_COLLAPSE");
-			} else {
-				sIcon = Parameters.get('sapUiFormContainerExpImageURL');
-				sIconHovered = Parameters.get('sapUiFormContainerExpImageDownURL');
-				sText = "+";
-				sTooltip = oContainer._rb.getText("FORM_EXPAND");
-			}
+		var that = this;
+		var oForm = this.getParent();
 
-			var sModulePath = "sap.ui.layout.themes." + sap.ui.getCore().getConfiguration().getTheme();
-			if (sIcon) {
+		if (oForm && oForm.getContainerRenderedDomRef) {
+			return oForm.getContainerRenderedDomRef(that);
+		}else {
+			return null;
+		}
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the FormElement has a DOM representation this function returns it,
+	 * independent from the ID of this DOM element
+	 * @param {sap.ui.layout.form.FormElement} oElement FormElement
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	FormContainer.prototype.getElementRenderedDomRef = function(oElement){
+
+		var oForm = this.getParent();
+
+		if (oForm && oForm.getElementRenderedDomRef) {
+			return oForm.getElementRenderedDomRef(oElement);
+		}else {
+			return null;
+		}
+
+	};
+
+	function _setExpanderIcon(oContainer){
+
+		if (!oContainer._oExpandButton) {
+			return;
+		}
+
+		var sIcon, sIconHovered, sText, sTooltip;
+
+		if (oContainer.getExpanded()) {
+			sIcon = Parameters.get('sapUiFormContainerColImageURL');
+			sIconHovered = Parameters.get('sapUiFormContainerColImageDownURL');
+			sText = "-";
+			sTooltip = oContainer._rb.getText("FORM_COLLAPSE");
+		} else {
+			sIcon = Parameters.get('sapUiFormContainerExpImageURL');
+			sIconHovered = Parameters.get('sapUiFormContainerExpImageDownURL');
+			sText = "+";
+			sTooltip = oContainer._rb.getText("FORM_EXPAND");
+		}
+
+		var sModulePath = "sap.ui.layout.themes." + sap.ui.getCore().getConfiguration().getTheme();
+		if (sIcon) {
+			if (!sap.ui.core.IconPool.isIconURI(sIcon)) {
 				sIcon = jQuery.sap.getModulePath(sModulePath, sIcon);
-				sText = "";
 			}
-			if (sIconHovered) {
-				sIconHovered = jQuery.sap.getModulePath(sModulePath, sIconHovered);
-			}
-			sap.ui.layout.form.FormHelper.setButtonContent(oContainer._oExpandButton, sText, sTooltip, sIcon, sIconHovered);
-
+			sText = "";
 		}
-
-		function _handleExpButtonPress(oEvent){
-
-			this.setExpanded(!this.getExpanded());
-
+		if (sIconHovered && !sap.ui.core.IconPool.isIconURI(sIconHovered)) {
+			sIconHovered = jQuery.sap.getModulePath(sModulePath, sIconHovered);
 		}
+		sap.ui.layout.form.FormHelper.setButtonContent(oContainer._oExpandButton, sText, sTooltip, sIcon, sIconHovered);
 
-	}());
+	}
+
+	function _handleExpButtonPress(oEvent){
+
+		this.setExpanded(!this.getExpanded());
+
+	}
 
 	return FormContainer;
 
@@ -6737,7 +7400,7 @@ sap.ui.define("sap/ui/layout/form/FormElement",['jquery.sap.global', 'sap/ui/cor
 	 * @extends sap.ui.core.Element
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -6768,298 +7431,291 @@ sap.ui.define("sap/ui/layout/form/FormElement",['jquery.sap.global', 'sap/ui/cor
 
 			/**
 			 * Formular controls that belong together to be displayed in one row of a <code>Form</code>.
+			 *
+			 * <b>Note:</b> Do not put any layout controls in here. This could destroy the visual layout,
+			 * keyboard support and screen-reader support.
 			 */
 			fields : {type : "sap.ui.core.Control", multiple : true, singularName : "field"}
 		}
 	}});
 
-	/**
-	 * This file defines behavior for the control,
-	 */
+	FormElement.prototype.init = function(){
 
-	// TODO deactivated until Element/Control has been clarified: sap.ui.core.EnabledPropagator.call(sap.ui.layout.form.FormElement.prototype);
+		this._oFieldDelegate = {oElement: this, onAfterRendering: _fieldOnAfterRendering};
 
-	(function() {
+	};
 
-		FormElement.prototype.init = function(){
+	FormElement.prototype.exit = function(){
 
-			this._oFieldDelegate = {oElement: this, onAfterRendering: _fieldOnAfterRendering};
+		if (this._oLabel) {
+			this._oLabel.destroy();
+			delete this._oLabel;
+		}
 
-		};
+		this._oFieldDelegate = undefined;
 
-		FormElement.prototype.exit = function(){
+	};
 
+/*
+ * sets the label for the FormElement. If it's only a string an internal label is created.
+ * overwrite the isRequired and the getLabelForRendering functions with Form specific ones.
+ */
+	FormElement.prototype.setLabel = function(vAny) {
+
+		if (!this._oLabel) {
+			var oOldLabel = this.getLabel();
+			if (oOldLabel && oOldLabel.isRequired) {
+				oOldLabel.isRequired = oOldLabel._sapuiIsRequired;
+				oOldLabel._sapuiIsRequired = undefined;
+			}
+		}
+
+		this.setAggregation("label", vAny);
+		var oLabel = vAny;
+		if (typeof oLabel === "string") {
+			if (!this._oLabel) {
+				this._oLabel = sap.ui.layout.form.FormHelper.createLabel(oLabel);
+				this._oLabel.setParent(this);
+				if (oLabel.isRequired) {
+					this._oLabel.isRequired = _labelIsRequired;
+				}
+			} else {
+				this._oLabel.setText(oLabel);
+			}
+		} else {
 			if (this._oLabel) {
 				this._oLabel.destroy();
 				delete this._oLabel;
 			}
+			if (oLabel && oLabel.isRequired) {
+				oLabel._sapuiIsRequired = oLabel.isRequired;
+				oLabel.isRequired = _labelIsRequired;
+			}
+		}
 
-			this._oFieldDelegate = undefined;
+		_updateLabelFor(this);
 
-		};
+		return this;
+
+	};
+
+	/**
+	 * Returns the <code>Label</code> of the <code>FormElement</code>, even if the <code>Label</code> is assigned as string.
+	 * The <code>FormLayout</code> needs the information of the label to render the <code>Form</code>.
+	 *
+	 * @returns {sap.ui.core.Label} <code>Label</code> control used to render the label
+	 * @public
+	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	FormElement.prototype.getLabelControl = function() {
+
+		if (this._oLabel) {
+			return this._oLabel;
+		} else {
+			return this.getLabel();
+		}
+
+	};
+
+	FormElement.prototype.addField = function(oField) {
+
+		this.addAggregation("fields", oField);
+		oField.addDelegate(this._oFieldDelegate);
+		_updateLabelFor(this);
+
+		return this;
+
+	};
+
+	FormElement.prototype.insertField = function(oField, iIndex) {
+
+		this.insertAggregation("fields", oField, iIndex);
+		oField.addDelegate(this._oFieldDelegate);
+		_updateLabelFor(this);
+
+		return this;
+
+	};
+
+	FormElement.prototype.removeField = function(oField) {
+
+		var oRemovedField = this.removeAggregation("fields", oField);
+		oRemovedField.removeDelegate(this._oFieldDelegate);
+		_updateLabelFor(this);
+
+		return oRemovedField;
+
+	};
+
+	FormElement.prototype.removeAllFields = function() {
+
+		var aRemovedFields = this.removeAllAggregation("fields");
+
+		for ( var i = 0; i < aRemovedFields.length; i++) {
+			var oRemovedField = aRemovedFields[i];
+			oRemovedField.removeDelegate(this._oFieldDelegate);
+		}
+		_updateLabelFor(this);
+
+		return aRemovedFields;
+
+	};
+
+	FormElement.prototype.destroyFields = function() {
+
+		var aFields = this.getFields();
+
+		for ( var i = 0; i < aFields.length; i++) {
+			var oField = aFields[i];
+			oField.removeDelegate(this._oFieldDelegate);
+		}
+
+		this.destroyAggregation("fields");
+
+		_updateLabelFor(this);
+
+		return this;
+
+	};
+
+	FormElement.prototype.updateFields = function() {
+
+		var aFields = this.getFields();
+		var oField;
+		var i = 0;
+
+		for (i = 0; i < aFields.length; i++) {
+			oField = aFields[i];
+			oField.removeDelegate(this._oFieldDelegate);
+		}
+
+		this.updateAggregation("fields");
+
+		aFields = this.getFields();
+
+		for (i = 0; i < aFields.length; i++) {
+			oField = aFields[i];
+			oField.addDelegate(this._oFieldDelegate);
+		}
+
+		_updateLabelFor(this);
+
+		return this;
+
+	};
 
 	/*
-	 * sets the label for the FormElement. If it's only a string an internal label is created.
-	 * overwrite the isRequired and the getLabelForRendering functions with Form specific ones.
+	 * Enhance Aria properties of fields to set aria-labelledby to FormElements label if not set otherwise
+	 * Set aria-describedby to the title of the container, but only for the first field in the container
+	 * This function is called during rendering.
 	 */
-		FormElement.prototype.setLabel = function(vAny) {
+	FormElement.prototype.enhanceAccessibilityState = function(oElement, mAriaProps) {
 
-			if (!this._oLabel) {
-				var oOldLabel = this.getLabel();
-				if (oOldLabel && oOldLabel.isRequired) {
-					oOldLabel.isRequired = oOldLabel._sapuiIsRequired;
-					oOldLabel._sapuiIsRequired = undefined;
-				}
-			}
+		var oLabel = this.getLabelControl();
+		if (oLabel && oLabel != oElement) {
 
-			this.setAggregation("label", vAny);
-			var oLabel = vAny;
-			if (typeof oLabel === "string") {
-				if (!this._oLabel) {
-					this._oLabel = sap.ui.layout.form.FormHelper.createLabel(oLabel);
-					this._oLabel.setParent(this);
-					if (oLabel.isRequired) {
-						this._oLabel.isRequired = _labelIsRequired;
-					}
-				} else {
-					this._oLabel.setText(oLabel);
-				}
+			var sLabelledBy = mAriaProps["labelledby"];
+			if (!sLabelledBy) {
+				sLabelledBy = oLabel.getId();
 			} else {
-				if (this._oLabel) {
-					this._oLabel.destroy();
-					delete this._oLabel;
-				}
-				if (oLabel && oLabel.isRequired) {
-					oLabel._sapuiIsRequired = oLabel.isRequired;
-					oLabel.isRequired = _labelIsRequired;
+				var aLabels = sLabelledBy.split(" ");
+				if (jQuery.inArray(oLabel.getId(), aLabels) < 0) {
+					aLabels.splice(0, 0, oLabel.getId());
+					sLabelledBy = aLabels.join(" ");
 				}
 			}
-
-			_updateLabelFor(this);
-
-			return this;
-
-		};
-
-		/**
-		 * Returns the <code>Label</code> of the <code>FormElement</code>, even if the <code>Label</code> is assigned as string.
-		 * The <code>FormLayout</code> needs the information of the label to render the <code>Form</code>.
-		 *
-		 * @returns {sap.ui.core.Label} <code>Label</code> control used to render the label
-		 * @public
-		 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
-		 */
-		FormElement.prototype.getLabelControl = function() {
-
-			if (this._oLabel) {
-				return this._oLabel;
-			} else {
-				return this.getLabel();
-			}
-
-		};
-
-		FormElement.prototype.addField = function(oField) {
-
-			this.addAggregation("fields", oField);
-			oField.addDelegate(this._oFieldDelegate);
-			_updateLabelFor(this);
-
-			return this;
-
-		};
-
-		FormElement.prototype.insertField = function(oField, iIndex) {
-
-			this.insertAggregation("fields", oField, iIndex);
-			oField.addDelegate(this._oFieldDelegate);
-			_updateLabelFor(this);
-
-			return this;
-
-		};
-
-		FormElement.prototype.removeField = function(oField) {
-
-			var oRemovedField = this.removeAggregation("fields", oField);
-			oRemovedField.removeDelegate(this._oFieldDelegate);
-			_updateLabelFor(this);
-
-			return oRemovedField;
-
-		};
-
-		FormElement.prototype.removeAllFields = function() {
-
-			var aRemovedFields = this.removeAllAggregation("fields");
-
-			for ( var i = 0; i < aRemovedFields.length; i++) {
-				var oRemovedField = aRemovedFields[i];
-				oRemovedField.removeDelegate(this._oFieldDelegate);
-			}
-			_updateLabelFor(this);
-
-			return aRemovedFields;
-
-		};
-
-		FormElement.prototype.destroyFields = function() {
-
-			var aFields = this.getFields();
-
-			for ( var i = 0; i < aFields.length; i++) {
-				var oField = aFields[i];
-				oField.removeDelegate(this._oFieldDelegate);
-			}
-
-			this.destroyAggregation("fields");
-
-			_updateLabelFor(this);
-
-			return this;
-
-		};
-
-		FormElement.prototype.updateFields = function() {
-
-			var aFields = this.getFields();
-			var oField;
-			var i = 0;
-
-			for (i = 0; i < aFields.length; i++) {
-				oField = aFields[i];
-				oField.removeDelegate(this._oFieldDelegate);
-			}
-
-			this.updateAggregation("fields");
-
-			aFields = this.getFields();
-
-			for (i = 0; i < aFields.length; i++) {
-				oField = aFields[i];
-				oField.addDelegate(this._oFieldDelegate);
-			}
-
-			_updateLabelFor(this);
-
-			return this;
-
-		};
-
-		/*
-		 * Enhance Aria properties of fields to set aria-labelledby to FormElements label if not set otherwise
-		 * Set aria-describedby to the title of the container, but only for the first field in the container
-		 * This function is called during rendering.
-		 */
-		FormElement.prototype.enhanceAccessibilityState = function(oElement, mAriaProps) {
-
-			var oLabel = this.getLabelControl();
-			if (oLabel && oLabel != oElement) {
-
-				var sLabelledBy = mAriaProps["labelledby"];
-				if (!sLabelledBy) {
-					sLabelledBy = oLabel.getId();
-				} else {
-					var aLabels = sLabelledBy.split(" ");
-					if (jQuery.inArray(oLabel.getId(), aLabels) < 0) {
-						aLabels.splice(0, 0, oLabel.getId());
-						sLabelledBy = aLabels.join(" ");
-					}
-				}
-				mAriaProps["labelledby"] = sLabelledBy;
-
-			}
-
-			return mAriaProps;
-
-		};
-
-		/*
-		 * If LayoutData changed on control this may need changes on the layout. So bubble to the form
-		 */
-		FormElement.prototype.onLayoutDataChange = function(oEvent){
-
-			// call function of parent (if assigned)
-			var oParent = this.getParent();
-			if (oParent && oParent.onLayoutDataChange) {
-				oParent.onLayoutDataChange(oEvent);
-			}
-
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the FormElement has a DOM representation this function returns it,
-		 * independent from the ID of this DOM element
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		FormElement.prototype.getRenderedDomRef = function(){
-
-			var that = this;
-			var oContainer = this.getParent();
-
-			if (oContainer && oContainer.getElementRenderedDomRef) {
-				return oContainer.getElementRenderedDomRef(that);
-			}else {
-				return null;
-			}
-
-		};
-
-		// *** Private helper functions ***
-
-		/*
-		 * overwrite Labels isRequired function to check if one of the fields in the element is required,
-		 * not only the one directly assigned.
-		 */
-		function _labelIsRequired(){
-
-			var oFormElement = this.getParent();
-			var aFields = oFormElement.getFields();
-
-			for ( var i = 0; i < aFields.length; i++) {
-				var oField = aFields[i];
-				if (oField.getRequired && oField.getRequired() === true) {
-					return true;
-				}
-			}
-
-			return false;
+			mAriaProps["labelledby"] = sLabelledBy;
 
 		}
 
-		/*
-		 * Update the for association of the related label
-		 */
-		function _updateLabelFor(oFormElement){
-			var aFields = oFormElement.getFields();
-			var oField = aFields.length > 0 ? aFields[0] : null;
+		return mAriaProps;
 
-			var oLabel = oFormElement._oLabel;
-			if (oLabel) {
-				oLabel.setAlternativeLabelFor(oField);
-			}
-			oLabel = oFormElement.getLabel();
-			if (oLabel instanceof sap.ui.core.Control /*might also be a string*/) {
-				oLabel.setAlternativeLabelFor(oField);
+	};
+
+	/*
+	 * If LayoutData changed on control this may need changes on the layout. So bubble to the form
+	 */
+	FormElement.prototype.onLayoutDataChange = function(oEvent){
+
+		// call function of parent (if assigned)
+		var oParent = this.getParent();
+		if (oParent && oParent.onLayoutDataChange) {
+			oParent.onLayoutDataChange(oEvent);
+		}
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the FormElement has a DOM representation this function returns it,
+	 * independent from the ID of this DOM element
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	FormElement.prototype.getRenderedDomRef = function(){
+
+		var that = this;
+		var oContainer = this.getParent();
+
+		if (oContainer && oContainer.getElementRenderedDomRef) {
+			return oContainer.getElementRenderedDomRef(that);
+		}else {
+			return null;
+		}
+
+	};
+
+	// *** Private helper functions ***
+
+	/*
+	 * overwrite Labels isRequired function to check if one of the fields in the element is required,
+	 * not only the one directly assigned.
+	 */
+	function _labelIsRequired(){
+
+		var oFormElement = this.getParent();
+		var aFields = oFormElement.getFields();
+
+		for ( var i = 0; i < aFields.length; i++) {
+			var oField = aFields[i];
+			if (oField.getRequired && oField.getRequired() === true) {
+				return true;
 			}
 		}
 
-		/*
-		 * If onAfterRendering of a field is processed the Form (layout) might need to change it.
-		 */
-		function _fieldOnAfterRendering(oEvent){
+		return false;
 
-			// call function of parent (if assigned)
-			var oParent = this.oElement.getParent();
-			if (oParent && oParent.contentOnAfterRendering) {
-				oParent.contentOnAfterRendering( this.oElement, oEvent.srcControl);
-			}
+	}
 
+	/*
+	 * Update the for association of the related label
+	 */
+	function _updateLabelFor(oFormElement){
+		var aFields = oFormElement.getFields();
+		var oField = aFields.length > 0 ? aFields[0] : null;
+
+		var oLabel = oFormElement._oLabel;
+		if (oLabel) {
+			oLabel.setAlternativeLabelFor(oField);
+		}
+		oLabel = oFormElement.getLabel();
+		if (oLabel instanceof sap.ui.core.Control /*might also be a string*/) {
+			oLabel.setAlternativeLabelFor(oField);
+		}
+	}
+
+	/*
+	 * If onAfterRendering of a field is processed the Form (layout) might need to change it.
+	 */
+	function _fieldOnAfterRendering(oEvent){
+
+		// call function of parent (if assigned)
+		var oParent = this.oElement.getParent();
+		if (oParent && oParent.contentOnAfterRendering) {
+			oParent.contentOnAfterRendering( this.oElement, oEvent.srcControl);
 		}
 
-	}());
+	}
 
 	return FormElement;
 
@@ -7095,7 +7751,7 @@ sap.ui.define("sap/ui/layout/form/FormLayout",['jquery.sap.global', 'sap/ui/core
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -7105,410 +7761,121 @@ sap.ui.define("sap/ui/layout/form/FormLayout",['jquery.sap.global', 'sap/ui/core
 	 */
 	var FormLayout = Control.extend("sap.ui.layout.form.FormLayout", /** @lends sap.ui.layout.form.FormLayout.prototype */ { metadata : {
 
-		library : "sap.ui.layout"
+		library : "sap.ui.layout",
+		properties : {
+			/**
+			 * Specifies the background color of the <code>Form</code> content.
+			 *
+			 * The visualization of the different options depends on the used theme.
+			 *
+			 * @since 1.36.0
+			 */
+			backgroundDesign : {type : "sap.ui.layout.BackgroundDesign", group : "Appearance", defaultValue : sap.ui.layout.BackgroundDesign.Translucent}
+		}
 	}});
 
-	/**
-	 * This file defines behavior for the control,
+	/* eslint-disable no-lonely-if */
+
+	FormLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			jQuery(oControl.getFocusDomRef()).data("sap.InNavArea", true);
+		}
+
+	};
+
+	FormLayout.prototype.toggleContainerExpanded = function(oContainer){
+
+		var bExpanded = oContainer.getExpanded();
+		if (this.getDomRef()) {
+			if (bExpanded) {
+				//show content
+				oContainer.$("content").css("display", "");
+			} else {
+				//hide content
+				oContainer.$("content").css("display", "none");
+			}
+		}
+
+	};
+
+	/*
+	 * gets the layout data of a element (container, control...) for the needed layout data type
+	 */
+	FormLayout.prototype.getLayoutDataForElement = function(oElement, sType){
+
+		var oLayoutData = oElement.getLayoutData();
+
+		var oClass = jQuery.sap.getObject(sType);
+
+		if (!oLayoutData) {
+			return undefined;
+		} else if (oLayoutData instanceof oClass) {
+			return oLayoutData;
+		} else if (oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
+			// multiple LayoutData available - search here
+			var aLayoutData = oLayoutData.getMultipleLayoutData();
+			for ( var i = 0; i < aLayoutData.length; i++) {
+				var oLayoutData2 = aLayoutData[i];
+				if (oLayoutData2 instanceof oClass) {
+					return oLayoutData2;
+				}
+			}
+		}
+
+	};
+
+	/* Keyboard handling
+	 * In the FormLayout just a basic keyboard handling is implemented.
+	 * This must be enhanced in the other Layouts if needed.
+	 *
+	 * The main idea is to navigate via arrow keys from control to control
+	 * using Tab only the editable/active controls are reached. So the tab-chain is short
+	 * Via F6 the navigation goes to the next container
+	 * There is an "edit mode" to allow arrow key navigation inside of controls.
+	 * For mobile application the Arrow-key navigation should be disabled
 	 */
 
+	FormLayout.prototype.onsapright = function(oEvent){
 
-	(function() {
-		/* eslint-disable no-lonely-if */
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var bRtl = sap.ui.getCore().getConfiguration().getRTL();
+			var that = this;
 
-		FormLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				jQuery(oControl.getFocusDomRef()).data("sap.InNavArea", true);
-			}
-
-		};
-
-		FormLayout.prototype.toggleContainerExpanded = function(oContainer){
-
-			var bExpanded = oContainer.getExpanded();
-			if (this.getDomRef()) {
-				if (bExpanded) {
-					//show content
-					oContainer.$("content").css("display", "");
-				} else {
-					//hide content
-					oContainer.$("content").css("display", "none");
-				}
-			}
-
-		};
-
-		/*
-		 * gets the layout data of a element (container, control...) for the needed layout data type
-		 */
-		FormLayout.prototype.getLayoutDataForElement = function(oElement, sType){
-
-			var oLayoutData = oElement.getLayoutData();
-
-			var oClass = jQuery.sap.getObject(sType);
-
-			if (!oLayoutData) {
-				return undefined;
-			} else if (oLayoutData instanceof oClass) {
-				return oLayoutData;
-			} else if (oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
-				// multiple LayoutData available - search here
-				var aLayoutData = oLayoutData.getMultipleLayoutData();
-				for ( var i = 0; i < aLayoutData.length; i++) {
-					var oLayoutData2 = aLayoutData[i];
-					if (oLayoutData2 instanceof oClass) {
-						return oLayoutData2;
-					}
-				}
-			}
-
-		};
-
-		/* Keyboard handling
-		 * In the FormLayout just a basic keyboard handling is implemented.
-		 * This must be enhanced in the other Layouts if needed.
-		 *
-		 * The main idea is to navigate via arrow keys from control to control
-		 * using Tab only the editable/active controls are reached. So the tab-chain is short
-		 * Via F6 the navigation goes to the next container
-		 * There is an "edit mode" to allow arrow key navigation inside of controls.
-		 * For mobile application the Arrow-key navigation should be disabled
-		 */
-
-		FormLayout.prototype.onsapright = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var bRtl = sap.ui.getCore().getConfiguration().getRTL();
-				var that = this;
-
-				if (!bRtl) {
-					this.navigateForward(oEvent, that);
-				} else {
-					this.navigateBack(oEvent, that);
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapleft = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var bRtl = sap.ui.getCore().getConfiguration().getRTL();
-				var that = this;
-
-				if (!bRtl) {
-					this.navigateBack(oEvent, that);
-				} else {
-					this.navigateForward(oEvent, that);
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapdown = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var oNewDomRef;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				oControl = oRoot.rootControl;
-				if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-					oNewDomRef = this.findFieldBelow(oControl, oElement);
-				} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-					// current control is not inside an Element - maybe a title or expander?
-					oNewDomRef = this.findFirstFieldOfNextElement(oElement, 0);
-				}
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapup = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var iCurrentIndex = 0;
-				var oNewDomRef;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				oControl = oRoot.rootControl;
-				if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-					oNewDomRef = this.findFieldAbove(oControl, oElement);
-				} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-					// current control is not inside an Element - maybe a title or expander?
-					var oForm = oElement.getParent();
-					iCurrentIndex = oForm.indexOfFormContainer(oElement);
-					oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
-				}
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsaphome = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var iCurrentIndex = 0;
-				var oNewDomRef;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				var oContainer = oElement.getParent();
-				var oForm = oContainer.getParent();
-
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				// actually it's within the same container
-				oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex);
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsaptop = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				var oNewDomRef;
-				var oContainer;
-
-				if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-					oContainer = oElement.getParent();
-				} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-					// current control is not inside an Element - maybe a title or expander?
-					oContainer = oElement;
-				}
-				var oForm = oContainer.getParent();
-
-				oNewDomRef = this.findFirstFieldOfForm(oForm);
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapend = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var iCurrentIndex = 0;
-				var oNewDomRef;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				var oContainer = oElement.getParent();
-				var oForm = oContainer.getParent();
-
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex);
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapbottom = function(oEvent){
-
-			if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
-				var oControl = oEvent.srcControl;
-				var oRoot = this.findElement(oControl);
-				var oElement = oRoot.element;
-				var oNewDomRef;
-				var oContainer;
-
-				if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-					oContainer = oElement.getParent();
-				} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-					// current control is not inside an Element - maybe a title or expander?
-					oContainer = oElement;
-				}
-				var oForm = oContainer.getParent();
-
-				var aContainers = oForm.getFormContainers();
-				var iLength = aContainers.length;
-
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iLength - 1);
-
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault(); // to avoid moving cursor in next field
-				}
-			}
-
-		};
-
-		FormLayout.prototype.onsapexpand = function(oEvent){
-
-			var oControl = oEvent.srcControl;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			var oContainer = oElement.getParent();
-
-			if (oContainer.getExpandable()) {
-				oContainer.setExpanded(true);
-			}
-		};
-
-		FormLayout.prototype.onsapcollapse = function(oEvent){
-
-			var oControl = oEvent.srcControl;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			var oContainer = oElement.getParent();
-
-			if (oContainer.getExpandable()) {
-				oContainer.setExpanded(false);
-			}
-		};
-
-		FormLayout.prototype.onsapskipforward = function(oEvent){
-
-			var oControl = oEvent.srcControl;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			oControl = oRoot.rootControl;
-			var oNewDomRef;
-			var oContainer;
-
-			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				oContainer = oElement.getParent();
-			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-				// current control is not inside an Element - maybe a title or expander?
-				oContainer = oElement;
-			}
-			var oForm = oContainer.getParent();
-			var iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-
-			// goto next container
-			oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
-
-			if (oNewDomRef) {
-				jQuery.sap.focus(oNewDomRef);
-				oEvent.preventDefault(); // to avoid moving cursor in next field
-			}
-
-		};
-
-		FormLayout.prototype.onsapskipback = function(oEvent){
-
-			var oControl = oEvent.srcControl;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			oControl = oRoot.rootControl;
-			var oNewDomRef;
-			var oContainer;
-
-			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				oContainer = oElement.getParent();
-			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-				// current control is not inside an Element - maybe a title or expander?
-				oContainer = oElement;
-			}
-			var oForm = oContainer.getParent();
-			var aContainers = oForm.getFormContainers();
-			var iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-
-			// goto previous container
-			while (!oNewDomRef && iCurrentIndex >= 0) {
-				var oPrevContainer = aContainers[iCurrentIndex - 1];
-				if (!oPrevContainer.getExpandable() || oPrevContainer.getExpanded()) {
-					oNewDomRef = this.findFirstFieldOfFirstElementInPrevContainer(oForm, iCurrentIndex - 1);
-				}
-				iCurrentIndex = iCurrentIndex - 1;
-			}
-
-			if (oNewDomRef) {
-				jQuery.sap.focus(oNewDomRef);
-				oEvent.preventDefault(); // to avoid moving cursor in next field
-			}
-
-		};
-
-		FormLayout.prototype.onBeforeFastNavigationFocus = function(oEvent){
-			if (jQuery.contains(this.getDomRef(), oEvent.source)) {
-				oEvent.srcControl = jQuery(oEvent.source).control(0);
-				if (oEvent.forward) {
-					this.onsapskipforward(oEvent);
-				} else {
-					this.onsapskipback(oEvent);
-				}
+			if (!bRtl) {
+				this.navigateForward(oEvent, that);
 			} else {
-				var oNewDomRef = oEvent.forward ? this.findFirstFieldOfForm(this.getParent()) : this.findFirstFieldOfLastContainerOfForm(this.getParent());
-				if (oNewDomRef) {
-					jQuery.sap.focus(oNewDomRef);
-					oEvent.preventDefault();
-				}
+				this.navigateBack(oEvent, that);
 			}
-		};
+		}
 
-		FormLayout.prototype.findElement = function(oControl){
-			// since the source control can be part of a child control or layout we have to look in the control tree
-			// to find the FormElement where the control is assigned
+	};
 
-			var oElement = oControl.getParent();
-			var oRootControl = oControl;
+	FormLayout.prototype.onsapleft = function(oEvent){
 
-			while (oElement && !(oElement instanceof sap.ui.layout.form.FormElement) &&
-					!(oElement && oElement instanceof sap.ui.layout.form.FormContainer) &&
-					!(oElement && oElement instanceof Form)) {
-				oRootControl = oElement;
-				oElement = oElement.getParent();
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var bRtl = sap.ui.getCore().getConfiguration().getRTL();
+			var that = this;
+
+			if (!bRtl) {
+				this.navigateBack(oEvent, that);
+			} else {
+				this.navigateForward(oEvent, that);
 			}
+		}
 
-			return ({rootControl: oRootControl, element: oElement});
+	};
 
-		};
+	FormLayout.prototype.onsapdown = function(oEvent){
 
-		FormLayout.prototype.navigateForward = function(oEvent){
-
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
 			var oControl = oEvent.srcControl;
-			var iCurrentIndex = 0;
 			var oNewDomRef;
 			var oRoot = this.findElement(oControl);
 			var oElement = oRoot.element;
 			oControl = oRoot.rootControl;
-
 			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				if (oControl == oElement.getLabelControl()) {
-					iCurrentIndex = -1;
-				} else {
-					iCurrentIndex = oElement.indexOfField(oControl);
-				}
-				oNewDomRef = this.findNextFieldOfElement(oElement, iCurrentIndex + 1);
-
-				if (!oNewDomRef) {
-					// use 1st field of next Element
-					var oContainer = oElement.getParent();
-					iCurrentIndex = oContainer.indexOfFormElement(oElement);
-					oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1);
-
-					if (!oNewDomRef) {
-						// no next element -> look in next container
-						var oForm = oContainer.getParent();
-						iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-						oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
-					}
-				}
+				oNewDomRef = this.findFieldBelow(oControl, oElement);
 			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
 				// current control is not inside an Element - maybe a title or expander?
 				oNewDomRef = this.findFirstFieldOfNextElement(oElement, 0);
@@ -7518,444 +7885,734 @@ sap.ui.define("sap/ui/layout/form/FormLayout",['jquery.sap.global', 'sap/ui/core
 				jQuery.sap.focus(oNewDomRef);
 				oEvent.preventDefault(); // to avoid moving cursor in next field
 			}
+		}
 
-		};
+	};
 
-		FormLayout.prototype.tabForward = function(oEvent){
+	FormLayout.prototype.onsapup = function(oEvent){
 
-			var oForm;
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
 			var oControl = oEvent.srcControl;
 			var iCurrentIndex = 0;
 			var oNewDomRef;
 			var oRoot = this.findElement(oControl);
 			var oElement = oRoot.element;
 			oControl = oRoot.rootControl;
-
 			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				if (oControl == oElement.getLabelControl()) {
-					iCurrentIndex = -1;
-				} else {
-					iCurrentIndex = oElement.indexOfField(oControl);
-				}
-				oNewDomRef = this.findNextFieldOfElement(oElement, iCurrentIndex + 1, true);
-
-				if (!oNewDomRef) {
-					// use 1st field of next Element
-					var oContainer = oElement.getParent();
-					iCurrentIndex = oContainer.indexOfFormElement(oElement);
-					oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1, true);
-
-					if (!oNewDomRef) {
-						// no next element -> look in next container
-						oForm = oContainer.getParent();
-						iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-						oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1, true);
-					}
-				}
+				oNewDomRef = this.findFieldAbove(oControl, oElement);
 			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
 				// current control is not inside an Element - maybe a title or expander?
-				oNewDomRef = this.findFirstFieldOfNextElement(oElement, 0, true);
+				var oForm = oElement.getParent();
+				iCurrentIndex = oForm.indexOfFormContainer(oElement);
+				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+			}
+
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault(); // to avoid moving cursor in next field
+			}
+		}
+
+	};
+
+	FormLayout.prototype.onsaphome = function(oEvent){
+
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var oControl = oEvent.srcControl;
+			var iCurrentIndex = 0;
+			var oNewDomRef;
+			var oRoot = this.findElement(oControl);
+			var oElement = oRoot.element;
+			var oContainer = oElement.getParent();
+			var oForm = oContainer.getParent();
+
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			// actually it's within the same container
+			oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex);
+
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault(); // to avoid moving cursor in next field
+			}
+		}
+
+	};
+
+	FormLayout.prototype.onsaptop = function(oEvent){
+
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var oControl = oEvent.srcControl;
+			var oRoot = this.findElement(oControl);
+			var oElement = oRoot.element;
+			var oNewDomRef;
+			var oContainer;
+
+			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+				oContainer = oElement.getParent();
+			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+				// current control is not inside an Element - maybe a title or expander?
+				oContainer = oElement;
+			}
+			var oForm = oContainer.getParent();
+
+			oNewDomRef = this.findFirstFieldOfForm(oForm);
+
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault(); // to avoid moving cursor in next field
+			}
+		}
+
+	};
+
+	FormLayout.prototype.onsapend = function(oEvent){
+
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var oControl = oEvent.srcControl;
+			var iCurrentIndex = 0;
+			var oNewDomRef;
+			var oRoot = this.findElement(oControl);
+			var oElement = oRoot.element;
+			var oContainer = oElement.getParent();
+			var oForm = oContainer.getParent();
+
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex);
+
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault(); // to avoid moving cursor in next field
+			}
+		}
+
+	};
+
+	FormLayout.prototype.onsapbottom = function(oEvent){
+
+		if (sap.ui.layout.form.FormHelper.bArrowKeySupport) {
+			var oControl = oEvent.srcControl;
+			var oRoot = this.findElement(oControl);
+			var oElement = oRoot.element;
+			var oNewDomRef;
+			var oContainer;
+
+			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+				oContainer = oElement.getParent();
+			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+				// current control is not inside an Element - maybe a title or expander?
+				oContainer = oElement;
+			}
+			var oForm = oContainer.getParent();
+
+			var aContainers = oForm.getFormContainers();
+			var iLength = aContainers.length;
+
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iLength - 1);
+
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault(); // to avoid moving cursor in next field
+			}
+		}
+
+	};
+
+	FormLayout.prototype.onsapexpand = function(oEvent){
+
+		var oControl = oEvent.srcControl;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		var oContainer = oElement.getParent();
+
+		if (oContainer.getExpandable()) {
+			oContainer.setExpanded(true);
+		}
+	};
+
+	FormLayout.prototype.onsapcollapse = function(oEvent){
+
+		var oControl = oEvent.srcControl;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		var oContainer = oElement.getParent();
+
+		if (oContainer.getExpandable()) {
+			oContainer.setExpanded(false);
+		}
+	};
+
+	FormLayout.prototype.onsapskipforward = function(oEvent){
+
+		var oControl = oEvent.srcControl;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
+		var oNewDomRef;
+		var oContainer;
+
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			oContainer = oElement.getParent();
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oContainer = oElement;
+		}
+		var oForm = oContainer.getParent();
+		var iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+
+		// goto next container
+		oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
+
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
+
+	};
+
+	FormLayout.prototype.onsapskipback = function(oEvent){
+
+		var oControl = oEvent.srcControl;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
+		var oNewDomRef;
+		var oContainer;
+
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			oContainer = oElement.getParent();
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oContainer = oElement;
+		}
+		var oForm = oContainer.getParent();
+		var aContainers = oForm.getFormContainers();
+		var iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+
+		// goto previous container
+		while (!oNewDomRef && iCurrentIndex >= 0) {
+			var oPrevContainer = aContainers[iCurrentIndex - 1];
+			if (!oPrevContainer.getExpandable() || oPrevContainer.getExpanded()) {
+				oNewDomRef = this.findFirstFieldOfFirstElementInPrevContainer(oForm, iCurrentIndex - 1);
+			}
+			iCurrentIndex = iCurrentIndex - 1;
+		}
+
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
+
+	};
+
+	FormLayout.prototype.onBeforeFastNavigationFocus = function(oEvent){
+		if (jQuery.contains(this.getDomRef(), oEvent.source)) {
+			oEvent.srcControl = jQuery(oEvent.source).control(0);
+			if (oEvent.forward) {
+				this.onsapskipforward(oEvent);
+			} else {
+				this.onsapskipback(oEvent);
+			}
+		} else {
+			var oNewDomRef = oEvent.forward ? this.findFirstFieldOfForm(this.getParent()) : this.findFirstFieldOfLastContainerOfForm(this.getParent());
+			if (oNewDomRef) {
+				jQuery.sap.focus(oNewDomRef);
+				oEvent.preventDefault();
+			}
+		}
+	};
+
+	FormLayout.prototype.findElement = function(oControl){
+		// since the source control can be part of a child control or layout we have to look in the control tree
+		// to find the FormElement where the control is assigned
+
+		var oElement = oControl.getParent();
+		var oRootControl = oControl;
+
+		while (oElement && !(oElement instanceof sap.ui.layout.form.FormElement) &&
+				!(oElement && oElement instanceof sap.ui.layout.form.FormContainer) &&
+				!(oElement && oElement instanceof Form)) {
+			oRootControl = oElement;
+			oElement = oElement.getParent();
+		}
+
+		return ({rootControl: oRootControl, element: oElement});
+
+	};
+
+	FormLayout.prototype.navigateForward = function(oEvent){
+
+		var oControl = oEvent.srcControl;
+		var iCurrentIndex = 0;
+		var oNewDomRef;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
+
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			if (oControl == oElement.getLabelControl()) {
+				iCurrentIndex = -1;
+			} else {
+				iCurrentIndex = oElement.indexOfField(oControl);
+			}
+			oNewDomRef = this.findNextFieldOfElement(oElement, iCurrentIndex + 1);
+
+			if (!oNewDomRef) {
+				// use 1st field of next Element
+				var oContainer = oElement.getParent();
+				iCurrentIndex = oContainer.indexOfFormElement(oElement);
+				oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1);
+
 				if (!oNewDomRef) {
 					// no next element -> look in next container
-					oForm = oElement.getParent();
-					iCurrentIndex = oForm.indexOfFormContainer(oElement);
+					var oForm = oContainer.getParent();
+					iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+					oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
+				}
+			}
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oNewDomRef = this.findFirstFieldOfNextElement(oElement, 0);
+		}
+
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
+
+	};
+
+	FormLayout.prototype.tabForward = function(oEvent){
+
+		var oForm;
+		var oControl = oEvent.srcControl;
+		var iCurrentIndex = 0;
+		var oNewDomRef;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
+
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			if (oControl == oElement.getLabelControl()) {
+				iCurrentIndex = -1;
+			} else {
+				iCurrentIndex = oElement.indexOfField(oControl);
+			}
+			oNewDomRef = this.findNextFieldOfElement(oElement, iCurrentIndex + 1, true);
+
+			if (!oNewDomRef) {
+				// use 1st field of next Element
+				var oContainer = oElement.getParent();
+				iCurrentIndex = oContainer.indexOfFormElement(oElement);
+				oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1, true);
+
+				if (!oNewDomRef) {
+					// no next element -> look in next container
+					oForm = oContainer.getParent();
+					iCurrentIndex = oForm.indexOfFormContainer(oContainer);
 					oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1, true);
 				}
 			}
-
-			if (oNewDomRef) {
-				jQuery.sap.focus(oNewDomRef);
-				oEvent.preventDefault(); // to avoid moving cursor in next field
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oNewDomRef = this.findFirstFieldOfNextElement(oElement, 0, true);
+			if (!oNewDomRef) {
+				// no next element -> look in next container
+				oForm = oElement.getParent();
+				iCurrentIndex = oForm.indexOfFormContainer(oElement);
+				oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1, true);
 			}
+		}
 
-		};
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
 
-		FormLayout.prototype.findNextFieldOfElement = function(oElement, iStartIndex, bTabOver){
+	};
 
-			var aFields = oElement.getFields();
-			var iLength = aFields.length;
-			var oNewDomRef;
+	FormLayout.prototype.findNextFieldOfElement = function(oElement, iStartIndex, bTabOver){
 
-			for ( var i = iStartIndex; i < iLength; i++) {
-				// find the next enabled control thats rendered
-				var oField = aFields[i];
-				var oDomRef = this._getDomRef(oField);
-				if (bTabOver == true) {
-					if ((!oField.getEditable || oField.getEditable()) && (!oField.getEnabled || oField.getEnabled()) && oDomRef) {
-						oNewDomRef = oDomRef;
-						break;
-					}
-				} else {
-					if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
-						oNewDomRef = oDomRef;
-						break;
-					}
+		var aFields = oElement.getFields();
+		var iLength = aFields.length;
+		var oNewDomRef;
+
+		for ( var i = iStartIndex; i < iLength; i++) {
+			// find the next enabled control thats rendered
+			var oField = aFields[i];
+			var oDomRef = this._getDomRef(oField);
+			if (bTabOver == true) {
+				if ((!oField.getEditable || oField.getEditable()) && (!oField.getEnabled || oField.getEnabled()) && oDomRef) {
+					oNewDomRef = oDomRef;
+					break;
+				}
+			} else {
+				if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
+					oNewDomRef = oDomRef;
+					break;
 				}
 			}
+		}
 
-			return oNewDomRef;
+		return oNewDomRef;
 
-		};
+	};
 
-		FormLayout.prototype.findFirstFieldOfNextElement = function(oContainer, iStartIndex, bTabOver){
+	FormLayout.prototype.findFirstFieldOfNextElement = function(oContainer, iStartIndex, bTabOver){
 
-			var aElements = oContainer.getFormElements();
-			var iLength = aElements.length;
-			var oNewDomRef;
-			var i = iStartIndex;
+		var aElements = oContainer.getFormElements();
+		var iLength = aElements.length;
+		var oNewDomRef;
+		var i = iStartIndex;
 
-			while (!oNewDomRef && i < iLength) {
-				var oElement = aElements[i];
-				if (bTabOver == true) {
-					oNewDomRef = this.findNextFieldOfElement(oElement, 0, true);
-				} else {
-					oNewDomRef = this.findNextFieldOfElement(oElement, 0);
-				}
-				i++;
+		while (!oNewDomRef && i < iLength) {
+			var oElement = aElements[i];
+			if (bTabOver == true) {
+				oNewDomRef = this.findNextFieldOfElement(oElement, 0, true);
+			} else {
+				oNewDomRef = this.findNextFieldOfElement(oElement, 0);
 			}
+			i++;
+		}
 
-			return oNewDomRef;
+		return oNewDomRef;
 
-		};
+	};
 
-		FormLayout.prototype.findFirstFieldOfForm = function(oForm){
-			var aContainers = oForm.getFormContainers();
-			var oNewDomRef;
-			var oContainer = aContainers[0];
+	FormLayout.prototype.findFirstFieldOfForm = function(oForm){
+		var aContainers = oForm.getFormContainers();
+		var oNewDomRef;
+		var oContainer = aContainers[0];
+		if (!oContainer.getExpandable() || oContainer.getExpanded()) {
+			oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0);
+		}
+
+		return oNewDomRef;
+
+	};
+
+	FormLayout.prototype.findFirstFieldOfLastContainerOfForm = function(oForm){
+		var oNewDomRef;
+		var aContainers = oForm.getFormContainers();
+		var iCurrentIndex = aContainers.length;
+		// goto previous container
+		while (!oNewDomRef && iCurrentIndex >= 0) {
+			var oPrevContainer = aContainers[iCurrentIndex - 1];
+			if (!oPrevContainer.getExpandable() || oPrevContainer.getExpanded()) {
+				oNewDomRef = this.findFirstFieldOfFirstElementInPrevContainer(oForm, iCurrentIndex - 1);
+			}
+			iCurrentIndex = iCurrentIndex - 1;
+		}
+		return oNewDomRef;
+	};
+
+	FormLayout.prototype.findFirstFieldOfFirstElementInNextContainer = function(oForm, iStartIndex, bTabOver){
+
+		var aContainers = oForm.getFormContainers();
+		var iLength = aContainers.length;
+		var oNewDomRef;
+		var i = iStartIndex;
+
+		while (!oNewDomRef && i < iLength) {
+			var oContainer = aContainers[i];
+			if (oContainer.getExpandable() && bTabOver) {
+				oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
+				if (oNewDomRef) {
+					break;
+				}
+			}
+			if (!oContainer.getExpandable() || oContainer.getExpanded()) {
+				if (bTabOver == true) {
+					oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0, true);
+				} else {
+					oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0);
+				}
+			}
+			i++;
+		}
+
+		return oNewDomRef;
+
+	};
+
+	FormLayout.prototype.findFirstFieldOfFirstElementInPrevContainer = function(oForm, iStartIndex){
+
+		var aContainers = oForm.getFormContainers();
+		var iLength = aContainers.length;
+		var oNewDomRef;
+		var i = iStartIndex;
+
+		while (!oNewDomRef && i < iLength && i >= 0) {
+			var oContainer = aContainers[i];
 			if (!oContainer.getExpandable() || oContainer.getExpanded()) {
 				oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0);
 			}
+			i++;
+		}
 
-			return oNewDomRef;
+		return oNewDomRef;
 
-		};
+	};
 
-		FormLayout.prototype.findFirstFieldOfLastContainerOfForm = function(oForm){
-			var oNewDomRef;
-			var aContainers = oForm.getFormContainers();
-			var iCurrentIndex = aContainers.length;
-			// goto previous container
-			while (!oNewDomRef && iCurrentIndex >= 0) {
-				var oPrevContainer = aContainers[iCurrentIndex - 1];
-				if (!oPrevContainer.getExpandable() || oPrevContainer.getExpanded()) {
-					oNewDomRef = this.findFirstFieldOfFirstElementInPrevContainer(oForm, iCurrentIndex - 1);
-				}
-				iCurrentIndex = iCurrentIndex - 1;
+	FormLayout.prototype.navigateBack = function(oEvent){
+
+		var oForm;
+		var oControl = oEvent.srcControl;
+		var iCurrentIndex = 0;
+		var oNewDomRef;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
+
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			if (oControl == oElement.getLabelControl()) {
+				iCurrentIndex = 0;
+			} else {
+				iCurrentIndex = oElement.indexOfField(oControl);
 			}
-			return oNewDomRef;
-		};
-
-		FormLayout.prototype.findFirstFieldOfFirstElementInNextContainer = function(oForm, iStartIndex, bTabOver){
-
-			var aContainers = oForm.getFormContainers();
-			var iLength = aContainers.length;
-			var oNewDomRef;
-			var i = iStartIndex;
-
-			while (!oNewDomRef && i < iLength) {
-				var oContainer = aContainers[i];
-				if (oContainer.getExpandable() && bTabOver) {
-					oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
-					if (oNewDomRef) {
-						break;
-					}
-				}
-				if (!oContainer.getExpandable() || oContainer.getExpanded()) {
-					if (bTabOver == true) {
-						oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0, true);
-					} else {
-						oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0);
-					}
-				}
-				i++;
-			}
-
-			return oNewDomRef;
-
-		};
-
-		FormLayout.prototype.findFirstFieldOfFirstElementInPrevContainer = function(oForm, iStartIndex){
-
-			var aContainers = oForm.getFormContainers();
-			var iLength = aContainers.length;
-			var oNewDomRef;
-			var i = iStartIndex;
-
-			while (!oNewDomRef && i < iLength && i >= 0) {
-				var oContainer = aContainers[i];
-				if (!oContainer.getExpandable() || oContainer.getExpanded()) {
-					oNewDomRef = this.findFirstFieldOfNextElement(oContainer, 0);
-				}
-				i++;
-			}
-
-			return oNewDomRef;
-
-		};
-
-		FormLayout.prototype.navigateBack = function(oEvent){
-
-			var oForm;
-			var oControl = oEvent.srcControl;
-			var iCurrentIndex = 0;
-			var oNewDomRef;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			oControl = oRoot.rootControl;
-
-			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				if (oControl == oElement.getLabelControl()) {
-					iCurrentIndex = 0;
-				} else {
-					iCurrentIndex = oElement.indexOfField(oControl);
-				}
-				oNewDomRef = this.findPrevFieldOfElement(oElement, iCurrentIndex - 1);
-
-				if (!oNewDomRef) {
-					// use 1st field of next Element
-					var oContainer = oElement.getParent();
-					iCurrentIndex = oContainer.indexOfFormElement(oElement);
-					oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iCurrentIndex - 1);
-
-					if (!oNewDomRef) {
-						// no next element -> look in next container
-						oForm = oContainer.getParent();
-						iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-						oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
-					}
-				}
-			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-				// current control is not inside an Element - maybe a title or expander?
-				oForm = oElement.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oElement);
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
-			}
-
-			if (oNewDomRef) {
-				jQuery.sap.focus(oNewDomRef);
-				oEvent.preventDefault(); // to avoid moving cursor in next field
-			}
-
-		};
-
-		FormLayout.prototype.tabBack = function(oEvent){
-
-			var oForm;
-			var oControl = oEvent.srcControl;
-			var iCurrentIndex = 0;
-			var oNewDomRef;
-			var oRoot = this.findElement(oControl);
-			var oElement = oRoot.element;
-			oControl = oRoot.rootControl;
-
-			if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
-				if (oControl == oElement.getLabelControl()) {
-					iCurrentIndex = 0;
-				} else {
-					iCurrentIndex = oElement.indexOfField(oControl);
-				}
-				oNewDomRef = this.findPrevFieldOfElement(oElement, iCurrentIndex - 1, true);
-
-				if (!oNewDomRef) {
-					// use 1st field of next Element
-					var oContainer = oElement.getParent();
-					iCurrentIndex = oContainer.indexOfFormElement(oElement);
-					oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iCurrentIndex - 1, true);
-
-					if (!oNewDomRef) {
-						// no next element -> look in next container
-						oForm = oContainer.getParent();
-						iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-						if (oContainer.getExpandable()) {
-							oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
-						}
-						if (!oNewDomRef) {
-							oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1, true);
-						}
-					}
-				}
-			} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
-				// current control is not inside an Element - maybe a title or expander?
-				oForm = oElement.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oElement);
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1, true);
-			}
-
-			if (oNewDomRef) {
-				jQuery.sap.focus(oNewDomRef);
-				oEvent.preventDefault(); // to avoid moving cursor in next field
-			}
-
-		};
-
-		FormLayout.prototype.findPrevFieldOfElement = function(oElement, iStartIndex, bTabOver){
-
-			var aFields = oElement.getFields();
-			var oNewDomRef;
-
-			for ( var i = iStartIndex; i >= 0; i--) {
-				// find the next enabled control thats rendered
-				var oField = aFields[i];
-				var oDomRef = this._getDomRef(oField);
-				if (bTabOver == true) {
-					if ((!oField.getEditable || oField.getEditable()) && (!oField.getEnabled || oField.getEnabled()) && oDomRef) {
-						oNewDomRef = oDomRef;
-						break;
-					}
-				} else {
-					if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
-						oNewDomRef = oDomRef;
-						break;
-					}
-				}
-			}
-
-			return oNewDomRef;
-
-		};
-
-		FormLayout.prototype.findLastFieldOfPrevElement = function(oContainer, iStartIndex, bTabOver){
-
-			var aElements = oContainer.getFormElements();
-			var oNewDomRef;
-			var i = iStartIndex;
-
-			while (!oNewDomRef && i >= 0) {
-				var oElement = aElements[i];
-				var iLength = oElement.getFields().length;
-
-				if (bTabOver == true) {
-					oNewDomRef = this.findPrevFieldOfElement(oElement, iLength - 1, true);
-				} else {
-					oNewDomRef = this.findPrevFieldOfElement(oElement, iLength - 1);
-				}
-				i--;
-			}
-
-			return oNewDomRef;
-
-		};
-
-		FormLayout.prototype.findLastFieldOfLastElementInPrevContainer = function(oForm, iStartIndex, bTabOver){
-
-			var aContainers = oForm.getFormContainers();
-			var oNewDomRef;
-			var i = iStartIndex;
-
-			while (!oNewDomRef && i >= 0) {
-				var oContainer = aContainers[i];
-				if (oContainer.getExpandable() && !oContainer.getExpanded() && bTabOver) {
-					oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
-					if (oNewDomRef) {
-						break;
-					}
-				}
-				if (!oContainer.getExpandable() || oContainer.getExpanded()) {
-					var iLength = oContainer.getFormElements().length;
-					if (bTabOver == true) {
-						oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iLength - 1, true);
-					} else {
-						oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iLength - 1, 0);
-					}
-				}
-				i--;
-			}
-
-			return oNewDomRef;
-
-		};
-
-		FormLayout.prototype.findFieldBelow = function(oControl, oElement){
-
-			var oContainer = oElement.getParent();
-			var iCurrentIndex = oContainer.indexOfFormElement(oElement);
-			var oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1);
+			oNewDomRef = this.findPrevFieldOfElement(oElement, iCurrentIndex - 1);
 
 			if (!oNewDomRef) {
-				// no next element -> look in next container
-				var oForm = oContainer.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
+				// use 1st field of next Element
+				var oContainer = oElement.getParent();
+				iCurrentIndex = oContainer.indexOfFormElement(oElement);
+				oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iCurrentIndex - 1);
+
+				if (!oNewDomRef) {
+					// no next element -> look in next container
+					oForm = oContainer.getParent();
+					iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+					oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+				}
 			}
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oForm = oElement.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oElement);
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+		}
 
-			return oNewDomRef;
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
 
-		};
+	};
 
-		FormLayout.prototype.findFieldAbove = function(oControl, oElement){
+	FormLayout.prototype.tabBack = function(oEvent){
 
-			var oContainer = oElement.getParent();
-			var iCurrentIndex = oContainer.indexOfFormElement(oElement);
+		var oForm;
+		var oControl = oEvent.srcControl;
+		var iCurrentIndex = 0;
+		var oNewDomRef;
+		var oRoot = this.findElement(oControl);
+		var oElement = oRoot.element;
+		oControl = oRoot.rootControl;
 
-			var aElements = oContainer.getFormElements();
-			var oNewDomRef;
-			var i = iCurrentIndex - 1;
-
-			while (!oNewDomRef && i >= 0) {
-				var oMyElement = aElements[i];
-				oNewDomRef = this.findPrevFieldOfElement(oMyElement, 0);
-				i--;
+		if (oElement && oElement instanceof sap.ui.layout.form.FormElement) {
+			if (oControl == oElement.getLabelControl()) {
+				iCurrentIndex = 0;
+			} else {
+				iCurrentIndex = oElement.indexOfField(oControl);
 			}
+			oNewDomRef = this.findPrevFieldOfElement(oElement, iCurrentIndex - 1, true);
 
 			if (!oNewDomRef) {
-				// no next element -> look in previous container
-				var oForm = oContainer.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+				// use 1st field of next Element
+				var oContainer = oElement.getParent();
+				iCurrentIndex = oContainer.indexOfFormElement(oElement);
+				oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iCurrentIndex - 1, true);
+
+				if (!oNewDomRef) {
+					// no next element -> look in next container
+					oForm = oContainer.getParent();
+					iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+					if (oContainer.getExpandable()) {
+						oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
+					}
+					if (!oNewDomRef) {
+						oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1, true);
+					}
+				}
 			}
+		} else if (oElement && oElement instanceof sap.ui.layout.form.FormContainer) {
+			// current control is not inside an Element - maybe a title or expander?
+			oForm = oElement.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oElement);
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1, true);
+		}
 
-			return oNewDomRef;
+		if (oNewDomRef) {
+			jQuery.sap.focus(oNewDomRef);
+			oEvent.preventDefault(); // to avoid moving cursor in next field
+		}
 
-		};
+	};
 
-		FormLayout.prototype._getDomRef = function( oControl ){
+	FormLayout.prototype.findPrevFieldOfElement = function(oElement, iStartIndex, bTabOver){
 
-			// get focusDOMRef of the control, but only if it's focusable
-			var oDomRef = oControl.getFocusDomRef();
-			if (!jQuery(oDomRef).is(":sapFocusable")) {
-				oDomRef = undefined;
+		var aFields = oElement.getFields();
+		var oNewDomRef;
+
+		for ( var i = iStartIndex; i >= 0; i--) {
+			// find the next enabled control thats rendered
+			var oField = aFields[i];
+			var oDomRef = this._getDomRef(oField);
+			if (bTabOver == true) {
+				if ((!oField.getEditable || oField.getEditable()) && (!oField.getEnabled || oField.getEnabled()) && oDomRef) {
+					oNewDomRef = oDomRef;
+					break;
+				}
+			} else {
+				if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
+					oNewDomRef = oDomRef;
+					break;
+				}
 			}
+		}
 
-			return oDomRef;
+		return oNewDomRef;
 
-		};
+	};
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * In this basic <code>FormLayout</code> each <code>FormContainer</code> has its own DOM.
-		 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		FormLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
+	FormLayout.prototype.findLastFieldOfPrevElement = function(oContainer, iStartIndex, bTabOver){
 
-			if (this.getDomRef()) {
-				return jQuery.sap.domById(oContainer.getId());
-			}else {
-				return null;
+		var aElements = oContainer.getFormElements();
+		var oNewDomRef;
+		var i = iStartIndex;
+
+		while (!oNewDomRef && i >= 0) {
+			var oElement = aElements[i];
+			var iLength = oElement.getFields().length;
+
+			if (bTabOver == true) {
+				oNewDomRef = this.findPrevFieldOfElement(oElement, iLength - 1, true);
+			} else {
+				oNewDomRef = this.findPrevFieldOfElement(oElement, iLength - 1);
 			}
+			i--;
+		}
 
-		};
+		return oNewDomRef;
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * In this basic <code>FormLayout</code> each <code>FormElement</code> has its own DOM.
-		 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		FormLayout.prototype.getElementRenderedDomRef = function(oElement) {
+	};
 
-			if (this.getDomRef()) {
-				return jQuery.sap.domById(oElement.getId());
-			}else {
-				return null;
+	FormLayout.prototype.findLastFieldOfLastElementInPrevContainer = function(oForm, iStartIndex, bTabOver){
+
+		var aContainers = oForm.getFormContainers();
+		var oNewDomRef;
+		var i = iStartIndex;
+
+		while (!oNewDomRef && i >= 0) {
+			var oContainer = aContainers[i];
+			if (oContainer.getExpandable() && !oContainer.getExpanded() && bTabOver) {
+				oNewDomRef = oContainer._oExpandButton.getFocusDomRef();
+				if (oNewDomRef) {
+					break;
+				}
 			}
+			if (!oContainer.getExpandable() || oContainer.getExpanded()) {
+				var iLength = oContainer.getFormElements().length;
+				if (bTabOver == true) {
+					oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iLength - 1, true);
+				} else {
+					oNewDomRef = this.findLastFieldOfPrevElement(oContainer, iLength - 1, 0);
+				}
+			}
+			i--;
+		}
 
-		};
+		return oNewDomRef;
 
-	}());
+	};
 
+	FormLayout.prototype.findFieldBelow = function(oControl, oElement){
+
+		var oContainer = oElement.getParent();
+		var iCurrentIndex = oContainer.indexOfFormElement(oElement);
+		var oNewDomRef = this.findFirstFieldOfNextElement(oContainer, iCurrentIndex + 1);
+
+		if (!oNewDomRef) {
+			// no next element -> look in next container
+			var oForm = oContainer.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
+		}
+
+		return oNewDomRef;
+
+	};
+
+	FormLayout.prototype.findFieldAbove = function(oControl, oElement){
+
+		var oContainer = oElement.getParent();
+		var iCurrentIndex = oContainer.indexOfFormElement(oElement);
+
+		var aElements = oContainer.getFormElements();
+		var oNewDomRef;
+		var i = iCurrentIndex - 1;
+
+		while (!oNewDomRef && i >= 0) {
+			var oMyElement = aElements[i];
+			oNewDomRef = this.findPrevFieldOfElement(oMyElement, 0);
+			i--;
+		}
+
+		if (!oNewDomRef) {
+			// no next element -> look in previous container
+			var oForm = oContainer.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+		}
+
+		return oNewDomRef;
+
+	};
+
+	FormLayout.prototype._getDomRef = function( oControl ){
+
+		// get focusDOMRef of the control, but only if it's focusable
+		var oDomRef = oControl.getFocusDomRef();
+		if (!jQuery(oDomRef).is(":sapFocusable")) {
+			oDomRef = undefined;
+		}
+
+		return oDomRef;
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * In this basic <code>FormLayout</code> each <code>FormContainer</code> has its own DOM.
+	 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	FormLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
+
+		if (this.getDomRef()) {
+			return jQuery.sap.domById(oContainer.getId());
+		}else {
+			return null;
+		}
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * In this basic <code>FormLayout</code> each <code>FormElement</code> has its own DOM.
+	 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	FormLayout.prototype.getElementRenderedDomRef = function(oElement) {
+
+		if (this.getDomRef()) {
+			return jQuery.sap.domById(oElement.getId());
+		}else {
+			return null;
+		}
+
+	};
 
 	return FormLayout;
 
@@ -7988,7 +8645,7 @@ sap.ui.define("sap/ui/layout/form/GridContainerData",['jquery.sap.global', 'sap/
 	 * @extends sap.ui.core.LayoutData
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -8047,7 +8704,7 @@ sap.ui.define("sap/ui/layout/form/GridElementData",['jquery.sap.global', 'sap/ui
 	 * @extends sap.ui.core.LayoutData
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -8121,7 +8778,7 @@ sap.ui.define("sap/ui/layout/form/GridLayout",['jquery.sap.global', './FormLayou
 	 * @extends sap.ui.layout.form.FormLayout
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -8143,208 +8800,200 @@ sap.ui.define("sap/ui/layout/form/GridLayout",['jquery.sap.global', './FormLayou
 		}
 	}});
 
-	/**
-	 * This file defines behavior for the control
+	GridLayout.prototype.toggleContainerExpanded = function(oContainer){
+
+		// rerendering of the form is needed
+		this.invalidate();
+
+	};
+
+	GridLayout.prototype.onAfterRendering = function(){
+
+		// set tabindex of expander buttons to -1 to prevent tabbing from outside the Form
+		// directly to the expander
+		var oForm = this.getParent();
+		if (oForm) {
+			var aContainers = oForm.getFormContainers();
+			for ( var i = 0; i < aContainers.length; i++) {
+				var oContainer = aContainers[i];
+				if (oContainer.getExpandable()) {
+					oContainer._oExpandButton.$().attr("tabindex", "-1");
+				}
+			}
+		}
+
+	};
+
+	/*
+	 * If onAfterRendering of a field is processed the width must be set to 100%
 	 */
+	GridLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
 
-	(function() {
+		FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
 
-		GridLayout.prototype.toggleContainerExpanded = function(oContainer){
+		if (oControl.getMetadata().getName() != "sap.ui.commons.Image" ) {
+			oControl.$().css("width", "100%");
+		}
 
-			// rerendering of the form is needed
+	};
+
+	/*
+	 * If LayoutData changed on one control this needs to rerender the whole table
+	 * because it may influence other rows and columns
+	 */
+	GridLayout.prototype.onLayoutDataChange = function(oEvent){
+
+		if (this.getDomRef()) {
+			// only if already rendered
 			this.invalidate();
+		}
 
-		};
+	};
 
-		GridLayout.prototype.onAfterRendering = function(){
+	GridLayout.prototype.onsaptabnext = function(oEvent){
 
-			// set tabindex of expander buttons to -1 to prevent tabbing from outside the Form
-			// directly to the expander
-			var oForm = this.getParent();
-			if (oForm) {
-				var aContainers = oForm.getFormContainers();
-				for ( var i = 0; i < aContainers.length; i++) {
-					var oContainer = aContainers[i];
-					if (oContainer.getExpandable()) {
-						oContainer._oExpandButton.$().attr("tabindex", "-1");
-					}
-				}
-			}
+		this.tabForward(oEvent);
 
-		};
+	};
 
-		/*
-		 * If onAfterRendering of a field is processed the width must be set to 100%
-		 */
-		GridLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+	GridLayout.prototype.onsaptabprevious = function(oEvent){
 
-			FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
+		this.tabBack(oEvent);
 
-			if (oControl.getMetadata().getName() != "sap.ui.commons.Image" ) {
-				oControl.$().css("width", "100%");
-			}
+	};
 
-		};
+	GridLayout.prototype.findFieldOfElement = function(oElement, iStartIndex, iLeft){
 
-		/*
-		 * If LayoutData changed on one control this needs to rerender the whole table
-		 * because it may influence other rows and columns
-		 */
-		GridLayout.prototype.onLayoutDataChange = function(oEvent){
+		if (!iLeft) {
+			return FormLayout.prototype.findPrevFieldOfElement.apply(this, arguments);
+		}
 
-			if (this.getDomRef()) {
-				// only if already rendered
-				this.rerender();
-			}
-
-		};
-
-		GridLayout.prototype.onsaptabnext = function(oEvent){
-
-			this.tabForward(oEvent);
-
-		};
-
-		GridLayout.prototype.onsaptabprevious = function(oEvent){
-
-			this.tabBack(oEvent);
-
-		};
-
-		GridLayout.prototype.findFieldOfElement = function(oElement, iStartIndex, iLeft){
-
-			if (!iLeft) {
-				return FormLayout.prototype.findPrevFieldOfElement.apply(this, arguments);
-			}
-
-			if (!oElement.getVisible()) {
-				return null;
-			}
-
-			var aFields = oElement.getFields();
-			var oNewDomRef;
-
-			var iIndex = aFields.length;
-			iStartIndex = iIndex - 1;
-
-
-			for ( var i = iStartIndex; i >= 0; i--) {
-				// find the next enabled control thats rendered
-				var oField = aFields[i];
-				var iLeftnew = oField.$().offset().left;
-				if (iLeft < iLeftnew && i != 0) {
-					continue;
-				}
-				var oDomRef = this._getDomRef(oField);
-				if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
-					oNewDomRef = oDomRef;
-					break;
-				}
-			}
-
-			return oNewDomRef;
-
-		};
-
-		GridLayout.prototype.findFieldBelow = function(oControl, oElement){
-
-			var oContainer = oElement.getParent();
-			var iCurrentIndex = oContainer.indexOfFormElement(oElement);
-			var oNewDomRef;
-
-			if (oContainer.getVisible()) {
-				var aElements = oContainer.getFormElements();
-				var iMax = aElements.length;
-				var i = iCurrentIndex + 1;
-				var iLeft = oControl.$().offset().left;
-
-				while (!oNewDomRef && i < iMax) {
-					var oNewElement = aElements[i];
-					oNewDomRef = this.findFieldOfElement(oNewElement, 0, iLeft);
-					i++;
-				}
-			}
-
-			if (!oNewDomRef) {
-				// no next element -> look in next container
-				var oForm = oContainer.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
-			}
-
-			return oNewDomRef;
-
-		};
-
-		GridLayout.prototype.findFieldAbove = function(oControl, oElement){
-
-			var oContainer = oElement.getParent();
-			var iCurrentIndex = oContainer.indexOfFormElement(oElement);
-			var oNewDomRef;
-
-			if (oContainer.getVisible()) {
-				var aElements = oContainer.getFormElements();
-				var i = iCurrentIndex - 1;
-				var iLeft = oControl.$().offset().left;
-
-				while (!oNewDomRef && i >= 0) {
-					var oNewElement = aElements[i];
-					oNewDomRef = this.findFieldOfElement(oNewElement, 0, iLeft);
-					i--;
-				}
-			}
-
-			if (!oNewDomRef) {
-				// no next element -> look in previous container
-				var oForm = oContainer.getParent();
-				iCurrentIndex = oForm.indexOfFormContainer(oContainer);
-				oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
-			}
-
-			return oNewDomRef;
-
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * In <code>GridLayout</code> a <code>FormContainer</code> can't have a surrounding DOM element,
-		 * so it always returns null
-		 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		GridLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
-
+		if (!oElement.getVisible()) {
 			return null;
+		}
 
-		};
+		var aFields = oElement.getFields();
+		var oNewDomRef;
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists.
-		 * In this layout a <code>FormElement</code> only has a DOM representation if its <code>FormContainer</code>
-		 * has the whole width
-		 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		GridLayout.prototype.getElementRenderedDomRef = function(oElement) {
+		var iIndex = aFields.length;
+		iStartIndex = iIndex - 1;
 
-			if (this.getDomRef()) {
-				var bSingleColumn = this.getSingleColumn();
-				var oContainer = oElement.getParent();
-				var oContainerData = this.getLayoutDataForElement(oContainer, "sap.ui.layout.form.GridContainerData");
-				var that = this;
 
-				if ((bSingleColumn || !oContainerData || !oContainerData.getHalfGrid()) && !this.getRenderer().checkFullSizeElement(that, oElement) ) {
-					return jQuery.sap.domById(oElement.getId());
-				}
+		for ( var i = iStartIndex; i >= 0; i--) {
+			// find the next enabled control thats rendered
+			var oField = aFields[i];
+			var iLeftnew = oField.$().offset().left;
+			if (iLeft < iLeftnew && i != 0) {
+				continue;
 			}
+			var oDomRef = this._getDomRef(oField);
+			if ((!oField.getEnabled || oField.getEnabled()) && oDomRef) {
+				oNewDomRef = oDomRef;
+				break;
+			}
+		}
 
-			return null;
+		return oNewDomRef;
 
-		};
+	};
 
-	}());
+	GridLayout.prototype.findFieldBelow = function(oControl, oElement){
+
+		var oContainer = oElement.getParent();
+		var iCurrentIndex = oContainer.indexOfFormElement(oElement);
+		var oNewDomRef;
+
+		if (oContainer.getVisible()) {
+			var aElements = oContainer.getFormElements();
+			var iMax = aElements.length;
+			var i = iCurrentIndex + 1;
+			var iLeft = oControl.$().offset().left;
+
+			while (!oNewDomRef && i < iMax) {
+				var oNewElement = aElements[i];
+				oNewDomRef = this.findFieldOfElement(oNewElement, 0, iLeft);
+				i++;
+			}
+		}
+
+		if (!oNewDomRef) {
+			// no next element -> look in next container
+			var oForm = oContainer.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			oNewDomRef = this.findFirstFieldOfFirstElementInNextContainer(oForm, iCurrentIndex + 1);
+		}
+
+		return oNewDomRef;
+
+	};
+
+	GridLayout.prototype.findFieldAbove = function(oControl, oElement){
+
+		var oContainer = oElement.getParent();
+		var iCurrentIndex = oContainer.indexOfFormElement(oElement);
+		var oNewDomRef;
+
+		if (oContainer.getVisible()) {
+			var aElements = oContainer.getFormElements();
+			var i = iCurrentIndex - 1;
+			var iLeft = oControl.$().offset().left;
+
+			while (!oNewDomRef && i >= 0) {
+				var oNewElement = aElements[i];
+				oNewDomRef = this.findFieldOfElement(oNewElement, 0, iLeft);
+				i--;
+			}
+		}
+
+		if (!oNewDomRef) {
+			// no next element -> look in previous container
+			var oForm = oContainer.getParent();
+			iCurrentIndex = oForm.indexOfFormContainer(oContainer);
+			oNewDomRef = this.findLastFieldOfLastElementInPrevContainer(oForm, iCurrentIndex - 1);
+		}
+
+		return oNewDomRef;
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * In <code>GridLayout</code> a <code>FormContainer</code> can't have a surrounding DOM element,
+	 * so it always returns null
+	 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	GridLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
+
+		return null;
+
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists.
+	 * In this layout a <code>FormElement</code> only has a DOM representation if its <code>FormContainer</code>
+	 * has the whole width
+	 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	GridLayout.prototype.getElementRenderedDomRef = function(oElement) {
+
+		if (this.getDomRef()) {
+			var bSingleColumn = this.getSingleColumn();
+			var oContainer = oElement.getParent();
+			var oContainerData = this.getLayoutDataForElement(oContainer, "sap.ui.layout.form.GridContainerData");
+			var that = this;
+
+			if ((bSingleColumn || !oContainerData || !oContainerData.getHalfGrid()) && !this.getRenderer().checkFullSizeElement(that, oElement) ) {
+				return jQuery.sap.domById(oElement.getId());
+			}
+		}
+
+		return null;
+
+	};
 
 	return GridLayout;
 
@@ -8386,7 +9035,7 @@ sap.ui.define("sap/ui/layout/form/ResponsiveGridLayout",['jquery.sap.global', 's
 	 *
 	 * This control cannot be used standalone, it only renders a <code>Form</code>, so it must be assigned to a <code>Form</code>.
 	 * @extends sap.ui.layout.form.FormLayout
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -8596,12 +9245,19 @@ sap.ui.define("sap/ui/layout/form/ResponsiveGridLayout",['jquery.sap.global', 's
 
 			var bExpandable = oContainer.getExpandable();
 			var sTooltip = oContainer.getTooltip_AsString();
+			var oToolbar = oContainer.getToolbar();
+			var oTitle = oContainer.getTitle();
 
 			oRm.write("<div");
 			oRm.writeControlData(oPanel);
 			oRm.addClass("sapUiRGLContainer");
 			if (bExpandable && !oContainer.getExpanded()) {
 				oRm.addClass("sapUiRGLContainerColl");
+			}
+			if (oToolbar) {
+				oRm.addClass("sapUiFormContainerToolbar");
+			} else if (oTitle) {
+				oRm.addClass("sapUiFormContainerTitle");
 			}
 
 			if (sTooltip) {
@@ -8614,8 +9270,10 @@ sap.ui.define("sap/ui/layout/form/ResponsiveGridLayout",['jquery.sap.global', 's
 			oRm.write(">");
 
 			// container header
-			if (oContainer.getTitle()) {
-				oLayout.getRenderer().renderTitle(oRm, oContainer.getTitle(), oContainer._oExpandButton, bExpandable, false, oContainer.getId());
+			if (oToolbar) {
+				oRm.renderControl(oToolbar);
+			} else if (oContainer.getTitle()) {
+				oLayout.getRenderer().renderTitle(oRm, oTitle, oContainer._oExpandButton, bExpandable, false, oContainer.getId());
 			}
 
 			if (oContent) {
@@ -8633,885 +9291,903 @@ sap.ui.define("sap/ui/layout/form/ResponsiveGridLayout",['jquery.sap.global', 's
 
 	});
 
-	(function() {
-		/* eslint-disable no-lonely-if */
+	/* eslint-disable no-lonely-if */
 
-		ResponsiveGridLayout.prototype.init = function(){
+	ResponsiveGridLayout.prototype.init = function(){
 
-			this.mContainers = {}; //association of container to panel and Grid
-			this.oDummyLayoutData = new GridData(this.getId() + "--Dummy");
-		};
+		this.mContainers = {}; //association of container to panel and Grid
+		this.oDummyLayoutData = new GridData(this.getId() + "--Dummy");
+	};
 
-		ResponsiveGridLayout.prototype.exit = function(){
+	ResponsiveGridLayout.prototype.exit = function(){
 
-			var that = this;
+		var that = this;
 
-			// clear panels
+		// clear panels
+		for ( var sContainerId in this.mContainers) {
+			_cleanContainer(that, sContainerId);
+		}
+
+		// clear main Grid
+		if (this._mainGrid) {
+			this._mainGrid.destroy();
+			delete this._mainGrid;
+		}
+
+		this.oDummyLayoutData.destroy();
+		this.oDummyLayoutData = undefined;
+
+	};
+
+	ResponsiveGridLayout.prototype.onBeforeRendering = function( oEvent ){
+
+		var oForm = this.getParent();
+		if (!oForm || !(oForm instanceof sap.ui.layout.form.Form)) {
+			// layout not assigned to form - nothing to do
+			return;
+		}
+
+		oForm._bNoInvalidate = true; // don't invalidate Form if only the Grids, Panels and LayoutData are created or changed)
+		var that = this;
+		_createPanels(that, oForm);
+		_createMainGrid(that, oForm);
+		oForm._bNoInvalidate = false;
+
+	};
+
+	ResponsiveGridLayout.prototype.onAfterRendering = function( oEvent ){
+
+		// if main grid is used, deregister resize listeners of container grids. Because resize is triggered from main grid
+		// container grids can't resize if main grid is not resized.
+		if (this._mainGrid && this._mainGrid.__bIsUsed ) {
 			for ( var sContainerId in this.mContainers) {
-				_cleanContainer(that, sContainerId);
+				if (this.mContainers[sContainerId][1]._sContainerResizeListener) {
+					sap.ui.core.ResizeHandler.deregister(this.mContainers[sContainerId][1]._sContainerResizeListener);
+					this.mContainers[sContainerId][1]._sContainerResizeListener = null;
+				}
 			}
+		}
 
-			// clear main Grid
+	};
+
+	/*
+	 * If onAfterRendering of a field is processed, the width must be set to 100% (if no other width set)
+	 */
+	ResponsiveGridLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+
+		FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
+
+		if (oControl.getWidth && ( !oControl.getWidth() || oControl.getWidth() == "auto" ) && oControl.getMetadata().getName() != "sap.ui.commons.Image") {
+			oControl.$().css("width", "100%");
+		}
+
+	};
+
+	ResponsiveGridLayout.prototype.toggleContainerExpanded = function(oContainer){
+
+		//adapt the corresponding panel
+		var sContainerId = oContainer.getId();
+		if (this.mContainers[sContainerId] && this.mContainers[sContainerId][0]) {
+			var oPanel = this.mContainers[sContainerId][0];
+			oPanel.refreshExpanded();
+		}
+
+	};
+
+	ResponsiveGridLayout.prototype.onLayoutDataChange = function(oEvent){
+
+		var oSource = oEvent.srcControl;
+
+		// if layoutData changed for a Container, Element, or Field call the
+		// onLayoutDataChange function of the parent ResponsiveFlowLayout
+
+		if (oSource instanceof sap.ui.layout.form.FormContainer) {
 			if (this._mainGrid) {
-				this._mainGrid.destroy();
-				delete this._mainGrid;
+				this._mainGrid.onLayoutDataChange(oEvent);
 			}
-
-			this.oDummyLayoutData.destroy();
-			this.oDummyLayoutData = undefined;
-
-		};
-
-		ResponsiveGridLayout.prototype.onBeforeRendering = function( oEvent ){
-
-			var oForm = this.getParent();
-			if (!oForm || !(oForm instanceof sap.ui.layout.form.Form)) {
-				// layout not assigned to form - nothing to do
-				return;
-			}
-
-			oForm._bNoInvalidate = true; // don't invalidate Form if only the Grids, Panels and LayoutData are created or changed)
-			var that = this;
-			_createPanels(that, oForm);
-			_createMainGrid(that, oForm);
-			oForm._bNoInvalidate = false;
-
-		};
-
-		ResponsiveGridLayout.prototype.onAfterRendering = function( oEvent ){
-
-			// if main grid is used, deregister resize listeners of container grids. Because resize is triggered from main grid
-			// container grids can't resize if main grid is not resized.
-			if (this._mainGrid && this._mainGrid.__bIsUsed ) {
-				for ( var sContainerId in this.mContainers) {
-					if (this.mContainers[sContainerId][1]._sContainerResizeListener) {
-						sap.ui.core.ResizeHandler.deregister(this.mContainers[sContainerId][1]._sContainerResizeListener);
-						this.mContainers[sContainerId][1]._sContainerResizeListener = null;
-					}
-				}
-			}
-
-		};
-
-		/*
-		 * If onAfterRendering of a field is processed, the width must be set to 100% (if no other width set)
-		 */
-		ResponsiveGridLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
-
-			FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
-
-			if (oControl.getWidth && ( !oControl.getWidth() || oControl.getWidth() == "auto" ) && oControl.getMetadata().getName() != "sap.ui.commons.Image") {
-				oControl.$().css("width", "100%");
-			}
-
-		};
-
-		ResponsiveGridLayout.prototype.toggleContainerExpanded = function(oContainer){
-
-			//adapt the corresponding panel
-			var sContainerId = oContainer.getId();
-			if (this.mContainers[sContainerId] && this.mContainers[sContainerId][0]) {
-				var oPanel = this.mContainers[sContainerId][0];
-				oPanel.refreshExpanded();
-			}
-
-		};
-
-		ResponsiveGridLayout.prototype.onLayoutDataChange = function(oEvent){
-
-			var oSource = oEvent.srcControl;
-
-			// if layoutData changed for a Container, Element, or Field call the
-			// onLayoutDataChange function of the parent ResponsiveFlowLayout
-
-			if (oSource instanceof sap.ui.layout.form.FormContainer) {
-				if (this._mainGrid) {
-					this._mainGrid.onLayoutDataChange(oEvent);
-				}
-			} else if (!(oSource instanceof sap.ui.layout.form.FormElement)) { // LayoutData on FormElement not supported in ResponsiveGridLayout
-				var oParent = oSource.getParent();
-				if (oParent instanceof sap.ui.layout.form.FormElement) {
-					var oContainer = oParent.getParent();
-					var sContainerId = oContainer.getId();
-					if (this.mContainers[sContainerId] && this.mContainers[sContainerId][1]) {
-						this.mContainers[sContainerId][1].onLayoutDataChange(oEvent);
-					}
-				}
-			}
-
-		};
-
-		ResponsiveGridLayout.prototype.onsapup = function(oEvent){
-			this.onsapleft(oEvent);
-		};
-
-		ResponsiveGridLayout.prototype.onsapdown = function(oEvent){
-			this.onsapright(oEvent);
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not clear if one exists.
-		 * If the <code>FormContainer</code> has a title or is expandable an internal panel is rendered.
-		 * In this case, the panel's DOM reference is returned, otherwise the DOM reference
-		 * of the <code>Grid</code> rendering the container's content.
-		 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		ResponsiveGridLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
-
-			if (this.getDomRef()) {
+		} else if (!(oSource instanceof sap.ui.layout.form.FormElement)) { // LayoutData on FormElement not supported in ResponsiveGridLayout
+			var oParent = oSource.getParent();
+			if (oParent instanceof sap.ui.layout.form.FormElement) {
+				var oContainer = oParent.getParent();
 				var sContainerId = oContainer.getId();
-				if (this.mContainers[sContainerId]) {
-					if (this.mContainers[sContainerId][0]) {
-						var oPanel = this.mContainers[sContainerId][0];
-						return oPanel.getDomRef();
-					}else if (this.mContainers[sContainerId][1]){
-						// no panel used -> return Grid
-						var oGrid = this.mContainers[sContainerId][1];
-						return oGrid.getDomRef();
-					}
+				if (this.mContainers[sContainerId] && this.mContainers[sContainerId][1]) {
+					this.mContainers[sContainerId][1].onLayoutDataChange(oEvent);
 				}
 			}
-
-			return null;
-
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not clear if one exists.
-		 * In this Layout a <code>FormElement</code> has no DOM representation,
-		 * so null will always be returned
-		 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		ResponsiveGridLayout.prototype.getElementRenderedDomRef = function(oElement) {
-
-			return null;
-
-		};
-
-		function _createPanels( oLayout, oForm ) {
-
-			var aContainers = oForm.getFormContainers();
-			var iLength = aContainers.length;
-			var iVisibleContainers = 0;
-			var iVisibleContainer = 0;
-			var aVisibleContainers = [];
-			var oPanel;
-			var oGrid;
-			var oContainer;
-			var sContainerId;
-			var i = 0;
-			for ( i = 0; i < iLength; i++) {
-				oContainer = aContainers[i];
-				oContainer._checkProperties();
-				if (oContainer.getVisible()) {
-					iVisibleContainers++;
-					aVisibleContainers.push(oContainer);
-				}
-			}
-			for ( i = 0; i < iVisibleContainers; i++) {
-				oContainer = aVisibleContainers[i];
-				if (oContainer.getVisible()) {
-					iVisibleContainer++;
-					sContainerId = oContainer.getId();
-					oPanel = undefined;
-					oGrid = undefined;
-					var oContainerNext = aVisibleContainers[i + 1];
-					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][1]) {
-						// Grid already created
-						oGrid = oLayout.mContainers[sContainerId][1];
-					} else {
-						oGrid = _createGrid(oLayout, oContainer);
-					}
-
-					var oTitle = oContainer.getTitle();
-					if (oTitle || oContainer.getExpandable()) {
-						// only if container has a title a panel is used
-						if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
-							// Panel already created
-							oPanel = oLayout.mContainers[sContainerId][0];
-						} else {
-							oPanel = _createPanel(oLayout, oContainer, oGrid);
-							_changeGetLayoutDataOfGrid(oGrid, true);
-						}
-						_setLayoutDataForLinebreak(oPanel, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers);
-					} else {
-						if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
-							// panel not longer needed
-							_deletePanel(oLayout.mContainers[sContainerId][0]);
-						}
-						_changeGetLayoutDataOfGrid(oGrid, false);
-						_setLayoutDataForLinebreak(oGrid, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers);
-					}
-
-					oLayout.mContainers[sContainerId] = [oPanel, oGrid];
-				}
-			}
-
-			var iObjectLength = _objectLength(oLayout.mContainers);
-			if (iVisibleContainers < iObjectLength) {
-				// delete old containers panels
-				for ( sContainerId in oLayout.mContainers) {
-					var bFound = false;
-					for ( i = 0; i < iLength; i++) {
-						oContainer = aContainers[i];
-						if (sContainerId == oContainer.getId() && oContainer.getVisible()) {
-							bFound = true;
-							break;
-						}
-					}
-					if (!bFound) {
-						_cleanContainer(oLayout, sContainerId);
-					}
-				}
-			}
-
 		}
 
-		function _createPanel( oLayout, oContainer, oGrid ) {
+	};
 
+	ResponsiveGridLayout.prototype.onsapup = function(oEvent){
+		this.onsapleft(oEvent);
+	};
+
+	ResponsiveGridLayout.prototype.onsapdown = function(oEvent){
+		this.onsapright(oEvent);
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not clear if one exists.
+	 * If the <code>FormContainer</code> has a title or is expandable an internal panel is rendered.
+	 * In this case, the panel's DOM reference is returned, otherwise the DOM reference
+	 * of the <code>Grid</code> rendering the container's content.
+	 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	ResponsiveGridLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
+
+		if (this.getDomRef()) {
 			var sContainerId = oContainer.getId();
-			var oPanel = new sap.ui.layout.form.ResponsiveGridLayoutPanel(sContainerId + "---Panel", {
-				container: oContainer,
-				layout   : oLayout,
-				content : oGrid
-			});
-
-			return oPanel;
-
-		}
-
-		/*
-		 * clear content before delete panel
-		 */
-		function _deletePanel( oPanel ) {
-
-			oPanel.setContent("");
-			oPanel.setLayout("");
-			oPanel.setContainer("");
-			oPanel.destroy();
-
-		}
-
-		function _createGrid( oLayout, oContainer ) {
-
-			var sId = oContainer.getId() + "--Grid";
-
-			var oGrid = new Grid(sId, {vSpacing: 0, hSpacing: 0, containerQuery: true});
-			oGrid.__myParentLayout = oLayout;
-			oGrid.__myParentContainerId = oContainer.getId();
-			oGrid.addStyleClass("sapUiFormResGridCont");
-
-			oGrid.getContent = function(){
-				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-				if (oContainer) {
-					var aContent = [];
-					var aElements = oContainer.getFormElements();
-					var aFields;
-					var oLabel;
-					for ( var i = 0; i < aElements.length; i++) {
-						var oElement = aElements[i];
-						if (oElement.getVisible()) {
-							oLabel = oElement.getLabelControl();
-							if (oLabel) {
-								aContent.push(oLabel);
-							}
-							aFields = oElement.getFields();
-							for ( var j = 0; j < aFields.length; j++) {
-								aContent.push(aFields[j]);
-							}
-						}
-					}
-					return aContent;
-				} else {
-					return false;
+			if (this.mContainers[sContainerId]) {
+				if (this.mContainers[sContainerId][0]) {
+					var oPanel = this.mContainers[sContainerId][0];
+					return oPanel.getDomRef();
+				}else if (this.mContainers[sContainerId][1]){
+					// no panel used -> return Grid
+					var oGrid = this.mContainers[sContainerId][1];
+					return oGrid.getDomRef();
 				}
-			};
+			}
+		}
 
-			oGrid._getLayoutDataForControl = function(oControl) {
-				var oLayout = this.__myParentLayout;
-				var oLD = oLayout.getLayoutDataForElement(oControl, "sap.ui.layout.GridData");
+		return null;
 
-				var oElement = oControl.getParent();
-				var oLabel = oElement.getLabelControl();
-				if (oLD) {
-					if (oLabel == oControl) {
-						oLD._setStylesInternal("sapUiFormElementLbl");
-					}
-					return oLD;
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not clear if one exists.
+	 * In this Layout a <code>FormElement</code> has no DOM representation,
+	 * so null will always be returned
+	 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	ResponsiveGridLayout.prototype.getElementRenderedDomRef = function(oElement) {
+
+		return null;
+
+	};
+
+	function _createPanels( oLayout, oForm ) {
+
+		var aContainers = oForm.getFormContainers();
+		var iLength = aContainers.length;
+		var iVisibleContainers = 0;
+		var iVisibleContainer = 0;
+		var aVisibleContainers = [];
+		var oPanel;
+		var oGrid;
+		var oContainer;
+		var sContainerId;
+		var i = 0;
+		for ( i = 0; i < iLength; i++) {
+			oContainer = aContainers[i];
+			oContainer._checkProperties();
+			if (oContainer.getVisible()) {
+				iVisibleContainers++;
+				aVisibleContainers.push(oContainer);
+			}
+		}
+		for ( i = 0; i < iVisibleContainers; i++) {
+			oContainer = aVisibleContainers[i];
+			if (oContainer.getVisible()) {
+				iVisibleContainer++;
+				sContainerId = oContainer.getId();
+				oPanel = undefined;
+				oGrid = undefined;
+				var oContainerNext = aVisibleContainers[i + 1];
+				if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][1]) {
+					// Grid already created
+					oGrid = oLayout.mContainers[sContainerId][1];
 				} else {
-					// calculate Layout Data for control
-					var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-					var oContainerLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
-					var oForm = oContainer.getParent();
-					// for overall grid, label has default Span of 2, but in L 2 Containers are in one line, so 2 Grids are in one line
-					var iLabelLSpan = oLayout.getLabelSpanL();
-					var iLabelMSpan = oLayout.getLabelSpanM();
-					var iLabelSSpan = oLayout.getLabelSpanS();
+					oGrid = _createGrid(oLayout, oContainer);
+				}
 
-					if (oLayout.getAdjustLabelSpan()) {
-						if (oForm.getFormContainers().length >= 1 && oLayout.getColumnsM() > 1) {
-							// More than one Container in line
-							iLabelMSpan = oLayout.getLabelSpanL();
+				var oTitle = oContainer.getTitle();
+				var oToolbar = oContainer.getToolbar();
+				if (oToolbar || oTitle || oContainer.getExpandable()) {
+					// only if container has a title a panel is used
+					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
+						// Panel already created
+						oPanel = oLayout.mContainers[sContainerId][0];
+					} else {
+						oPanel = _createPanel(oLayout, oContainer, oGrid);
+						_changeGetLayoutDataOfGrid(oGrid, true);
+					}
+					_setLayoutDataForLinebreak(oPanel, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers);
+				} else {
+					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
+						// panel not longer needed
+						_deletePanel(oLayout.mContainers[sContainerId][0]);
+					}
+					_changeGetLayoutDataOfGrid(oGrid, false);
+					_setLayoutDataForLinebreak(oGrid, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers);
+				}
+
+				oLayout.mContainers[sContainerId] = [oPanel, oGrid];
+			}
+		}
+
+		var iObjectLength = _objectLength(oLayout.mContainers);
+		if (iVisibleContainers < iObjectLength) {
+			// delete old containers panels
+			for ( sContainerId in oLayout.mContainers) {
+				var bFound = false;
+				for ( i = 0; i < iLength; i++) {
+					oContainer = aContainers[i];
+					if (sContainerId == oContainer.getId() && oContainer.getVisible()) {
+						bFound = true;
+						break;
+					}
+				}
+				if (!bFound) {
+					_cleanContainer(oLayout, sContainerId);
+				}
+			}
+		}
+
+	}
+
+	function _createPanel( oLayout, oContainer, oGrid ) {
+
+		var sContainerId = oContainer.getId();
+		var oPanel = new sap.ui.layout.form.ResponsiveGridLayoutPanel(sContainerId + "---Panel", {
+			container: oContainer,
+			layout   : oLayout,
+			content : oGrid
+		});
+
+		return oPanel;
+
+	}
+
+	/*
+	 * clear content before delete panel
+	 */
+	function _deletePanel( oPanel ) {
+
+		oPanel.setContent("");
+		oPanel.setLayout("");
+		oPanel.setContainer("");
+		oPanel.destroy();
+
+	}
+
+	function _createGrid( oLayout, oContainer ) {
+
+		var sId = oContainer.getId() + "--Grid";
+
+		var oGrid = new Grid(sId, {vSpacing: 0, hSpacing: 0, containerQuery: true});
+		oGrid.__myParentLayout = oLayout;
+		oGrid.__myParentContainerId = oContainer.getId();
+		oGrid.addStyleClass("sapUiFormResGridCont");
+
+		oGrid.getContent = function(){
+			var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+			if (oContainer) {
+				var aContent = [];
+				var aElements = oContainer.getFormElements();
+				var aFields;
+				var oLabel;
+				for ( var i = 0; i < aElements.length; i++) {
+					var oElement = aElements[i];
+					if (oElement.getVisible()) {
+						oLabel = oElement.getLabelControl();
+						if (oLabel) {
+							aContent.push(oLabel);
 						}
-						if (oContainerLD) {
-							if (oContainerLD._getEffectiveSpanLarge() == 12) {
-								// If Container has the Full width in large Screen, use 2 as Label Span to be in line
-								iLabelLSpan = oLayout.getLabelSpanM();
-								iLabelMSpan = oLayout.getLabelSpanM();
-							}
+						aFields = oElement.getFields();
+						for ( var j = 0; j < aFields.length; j++) {
+							aContent.push(aFields[j]);
 						}
-						if (oForm.getFormContainers().length == 1 || oLayout.getColumnsL() == 1) {
-							// only one container -> it's full size
+					}
+				}
+				return aContent;
+			} else {
+				return false;
+			}
+		};
+
+		oGrid._getLayoutDataForControl = function(oControl) {
+			var oLayout = this.__myParentLayout;
+			var oLD = oLayout.getLayoutDataForElement(oControl, "sap.ui.layout.GridData");
+
+			var oElement = oControl.getParent();
+			var oLabel = oElement.getLabelControl();
+			if (oLD) {
+				if (oLabel == oControl) {
+					oLD._setStylesInternal("sapUiFormElementLbl");
+				}
+				return oLD;
+			} else {
+				// calculate Layout Data for control
+				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+				var oContainerLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
+				var oForm = oContainer.getParent();
+				// for overall grid, label has default Span of 2, but in L 2 Containers are in one line, so 2 Grids are in one line
+				var iLabelLSpan = oLayout.getLabelSpanL();
+				var iLabelMSpan = oLayout.getLabelSpanM();
+				var iLabelSSpan = oLayout.getLabelSpanS();
+
+				if (oLayout.getAdjustLabelSpan()) {
+					if (oForm.getFormContainers().length >= 1 && oLayout.getColumnsM() > 1) {
+						// More than one Container in line
+						iLabelMSpan = oLayout.getLabelSpanL();
+					}
+					if (oContainerLD) {
+						if (oContainerLD._getEffectiveSpanLarge() == 12) {
+							// If Container has the Full width in large Screen, use 2 as Label Span to be in line
 							iLabelLSpan = oLayout.getLabelSpanM();
 							iLabelMSpan = oLayout.getLabelSpanM();
 						}
 					}
+					if (oForm.getFormContainers().length == 1 || oLayout.getColumnsL() == 1) {
+						// only one container -> it's full size
+						iLabelLSpan = oLayout.getLabelSpanM();
+						iLabelMSpan = oLayout.getLabelSpanM();
+					}
+				}
 
-					// If no explicit value of Label span for XL is set then the value of the Label span for L is used (from the backwardcompatibility reasons).
-					var iLabelXLSpan = oLayout.getLabelSpanXL();
-					if (iLabelXLSpan < 0) {
-						iLabelXLSpan = iLabelLSpan;
+				// If no explicit value of Label span for XL is set then the value of the Label span for L is used (from the backwardcompatibility reasons).
+				var iLabelXLSpan = oLayout.getLabelSpanXL();
+				if (iLabelXLSpan < 0) {
+					iLabelXLSpan = iLabelLSpan;
+				}
+
+				if (oLabel == oControl) {
+					oLayout.oDummyLayoutData.setSpan("XL" + iLabelXLSpan + " L" + iLabelLSpan + " M" + iLabelMSpan + " S" + iLabelSSpan);
+					oLayout.oDummyLayoutData.setLinebreak(true);
+					oLayout.oDummyLayoutData._setStylesInternal("sapUiFormElementLbl");
+					return oLayout.oDummyLayoutData;
+				} else {
+					var iLSpan = 12 - oLayout.getEmptySpanL();
+					var iMSpan = 12 - oLayout.getEmptySpanM();
+					var iSSpan = 12 - oLayout.getEmptySpanS();
+
+					// If no explicit value for XL empty span is set then the value of the L empty span is used (from the backwardcompatibility reasons).
+					var iXLSpan = iLSpan;
+					var iEmptyXLSpan = oLayout.getEmptySpanXL();
+					if (iEmptyXLSpan > -1) {
+						iXLSpan = 12 - iEmptyXLSpan;
 					}
 
-					if (oLabel == oControl) {
-						oLayout.oDummyLayoutData.setSpan("XL" + iLabelXLSpan + " L" + iLabelLSpan + " M" + iLabelMSpan + " S" + iLabelSSpan);
-						oLayout.oDummyLayoutData.setLinebreak(true);
-						oLayout.oDummyLayoutData._setStylesInternal("sapUiFormElementLbl");
-						return oLayout.oDummyLayoutData;
-					} else {
-						var iLSpan = 12 - oLayout.getEmptySpanL();
-						var iMSpan = 12 - oLayout.getEmptySpanM();
-						var iSSpan = 12 - oLayout.getEmptySpanS();
-
-						// If no explicit value for XL empty span is set then the value of the L empty span is used (from the backwardcompatibility reasons).
-						var iXLSpan = iLSpan;
-						var iEmptyXLSpan = oLayout.getEmptySpanXL();
-						if (iEmptyXLSpan > -1) {
-							iXLSpan = 12 - iEmptyXLSpan;
-						}
-
-						var iEffectiveSpan;
-						if (oLabel) {
-							var oLabelLD = oLayout.getLayoutDataForElement(oLabel, "sap.ui.layout.GridData");
-							if (oLabelLD) {
-								iEffectiveSpan = oLabelLD._getEffectiveSpanLarge();
-								if (iEffectiveSpan) {
-									iLabelLSpan = iEffectiveSpan;
-								}
-
-								iEffectiveSpan = oLabelLD._getEffectiveSpanXLarge();
-								if (iEffectiveSpan) {
-									iLabelXLSpan = iEffectiveSpan;
-								}
-								if (iLabelXLSpan < 0) {
-									iLabelXLSpan = iLabelLSpan;
-								}
-
-								iEffectiveSpan = oLabelLD._getEffectiveSpanMedium();
-								if (iEffectiveSpan) {
-									iLabelMSpan = iEffectiveSpan;
-								}
-								iEffectiveSpan = oLabelLD._getEffectiveSpanSmall();
-								if (iEffectiveSpan) {
-									iLabelSSpan = iEffectiveSpan;
-								}
+					var iEffectiveSpan;
+					if (oLabel) {
+						var oLabelLD = oLayout.getLayoutDataForElement(oLabel, "sap.ui.layout.GridData");
+						if (oLabelLD) {
+							iEffectiveSpan = oLabelLD._getEffectiveSpanLarge();
+							if (iEffectiveSpan) {
+								iLabelLSpan = iEffectiveSpan;
 							}
 
-							if (iLabelXLSpan < 12) {
-								iXLSpan = iXLSpan - iLabelXLSpan;
+							iEffectiveSpan = oLabelLD._getEffectiveSpanXLarge();
+							if (iEffectiveSpan) {
+								iLabelXLSpan = iEffectiveSpan;
 							}
-							if (iLabelLSpan < 12) {
-								iLSpan = iLSpan - iLabelLSpan;
+							if (iLabelXLSpan < 0) {
+								iLabelXLSpan = iLabelLSpan;
 							}
-							if (iLabelMSpan < 12) {
-								iMSpan = iMSpan - iLabelMSpan;
+
+							iEffectiveSpan = oLabelLD._getEffectiveSpanMedium();
+							if (iEffectiveSpan) {
+								iLabelMSpan = iEffectiveSpan;
 							}
-							if (iLabelSSpan < 12) {
-								iSSpan = iSSpan - iLabelSSpan;
+							iEffectiveSpan = oLabelLD._getEffectiveSpanSmall();
+							if (iEffectiveSpan) {
+								iLabelSSpan = iEffectiveSpan;
 							}
 						}
 
-						var aFields = oElement.getFields();
-						var iLength = aFields.length;
-						var iDefaultFields = 1; // because current field has no LayoutData
-						var bFirstField = false;
-						for ( var i = 0; i < iLength; i++) {
-							var oField = aFields[i];
-							if (oField != oControl) {
-								// check if other fields have layoutData
-								var oFieldLD = oLayout.getLayoutDataForElement(oField, "sap.ui.layout.GridData");
-								// is Spans are too large - ignore in calculation....
-								if (oFieldLD) {
-									iEffectiveSpan = oFieldLD._getEffectiveSpanLarge();
-									if (iEffectiveSpan && iEffectiveSpan < iLSpan) {
-										iLSpan = iLSpan - iEffectiveSpan;
-									}
+						if (iLabelXLSpan < 12) {
+							iXLSpan = iXLSpan - iLabelXLSpan;
+						}
+						if (iLabelLSpan < 12) {
+							iLSpan = iLSpan - iLabelLSpan;
+						}
+						if (iLabelMSpan < 12) {
+							iMSpan = iMSpan - iLabelMSpan;
+						}
+						if (iLabelSSpan < 12) {
+							iSSpan = iSSpan - iLabelSSpan;
+						}
+					}
 
-									var iEffectiveSpanXL = oFieldLD._getEffectiveSpanXLarge();
-									if (iEffectiveSpanXL) {
-										if (iEffectiveSpanXL < iXLSpan) {
-											iXLSpan = iXLSpan - iEffectiveSpanXL;
-										}
-									} else {
-										if (iEffectiveSpan && iEffectiveSpan < iXLSpan) {
-											iXLSpan = iXLSpan - iEffectiveSpan;
-										}
-									}
+					var aFields = oElement.getFields();
+					var iLength = aFields.length;
+					var iDefaultFields = 1; // because current field has no LayoutData
+					var bFirstField = false;
+					for ( var i = 0; i < iLength; i++) {
+						var oField = aFields[i];
+						if (oField != oControl) {
+							// check if other fields have layoutData
+							var oFieldLD = oLayout.getLayoutDataForElement(oField, "sap.ui.layout.GridData");
+							// is Spans are too large - ignore in calculation....
+							if (oFieldLD) {
+								iEffectiveSpan = oFieldLD._getEffectiveSpanLarge();
+								if (iEffectiveSpan && iEffectiveSpan < iLSpan) {
+									iLSpan = iLSpan - iEffectiveSpan;
+								}
 
-									iEffectiveSpan = oFieldLD._getEffectiveSpanMedium();
-									if (iEffectiveSpan && iEffectiveSpan < iMSpan) {
-										iMSpan = iMSpan - iEffectiveSpan;
-									}
-									iEffectiveSpan = oFieldLD._getEffectiveSpanSmall();
-									if (iEffectiveSpan && iEffectiveSpan < iSSpan) {
-										iSSpan = iSSpan - iEffectiveSpan;
+								var iEffectiveSpanXL = oFieldLD._getEffectiveSpanXLarge();
+								if (iEffectiveSpanXL) {
+									if (iEffectiveSpanXL < iXLSpan) {
+										iXLSpan = iXLSpan - iEffectiveSpanXL;
 									}
 								} else {
-									iDefaultFields++;
+									if (iEffectiveSpan && iEffectiveSpan < iXLSpan) {
+										iXLSpan = iXLSpan - iEffectiveSpan;
+									}
+								}
+
+								iEffectiveSpan = oFieldLD._getEffectiveSpanMedium();
+								if (iEffectiveSpan && iEffectiveSpan < iMSpan) {
+									iMSpan = iMSpan - iEffectiveSpan;
+								}
+								iEffectiveSpan = oFieldLD._getEffectiveSpanSmall();
+								if (iEffectiveSpan && iEffectiveSpan < iSSpan) {
+									iSSpan = iSSpan - iEffectiveSpan;
 								}
 							} else {
-								if (iDefaultFields == 1) {
-									bFirstField = true;
-								}
-							}
-						}
-						var iMyXLSpan, iMyLSpan, iMyMSpan, iMySSpan = 12;
-						if (bFirstField) {
-							var iRest = iXLSpan - Math.floor(iXLSpan / iDefaultFields) * iDefaultFields;
-							iMyXLSpan = Math.floor(iXLSpan / iDefaultFields) + iRest;
-							iRest = iLSpan - Math.floor(iLSpan / iDefaultFields) * iDefaultFields;
-							iMyLSpan = Math.floor(iLSpan / iDefaultFields) + iRest;
-							iRest = iMSpan - Math.floor(iMSpan / iDefaultFields) * iDefaultFields;
-							iMyMSpan = Math.floor(iMSpan / iDefaultFields) + iRest;
-							if (iLabelSSpan < 12) {
-								// label is defined to not be full size -> make fields left of it
-								iRest = iSSpan - Math.floor(iSSpan / iDefaultFields) * iDefaultFields;
-								iMySSpan = Math.floor(iSSpan / iDefaultFields) + iRest;
+								iDefaultFields++;
 							}
 						} else {
-							iMyXLSpan = Math.floor(iXLSpan / iDefaultFields);
-							iMyLSpan = Math.floor(iLSpan / iDefaultFields);
-							iMyMSpan = Math.floor(iMSpan / iDefaultFields);
-							if (iLabelSSpan < 12) {
-								// label is defined to not be full size -> make fields left of it
-								iMySSpan = Math.floor(iSSpan / iDefaultFields);
+							if (iDefaultFields == 1) {
+								bFirstField = true;
 							}
 						}
-
-						oLayout.oDummyLayoutData.setSpan("XL" + iMyXLSpan + " L" + iMyLSpan + " M" + iMyMSpan + " S" + iMySSpan);
-						oLayout.oDummyLayoutData.setLinebreak(bFirstField && !oLabel);
-						oLayout.oDummyLayoutData._setStylesInternal(undefined);
-						return oLayout.oDummyLayoutData;
 					}
-
-					return oLD;
-				}
-			};
-
-			// change resize handler so that the container Grids always get the same Media size like the main grid
-			oGrid._onParentResizeOrig = oGrid._onParentResize;
-			oGrid._onParentResize = function() {
-
-				// Prove if Dom reference exist, and if not - clean up the references.
-				if (!this.getDomRef()) {
-					this._cleanup();
-					return;
-				}
-
-				if (!jQuery(this.getDomRef()).is(":visible")) {
-					return;
-				}
-
-				var oLayout = this.__myParentLayout;
-				if (!oLayout._mainGrid || !oLayout._mainGrid.__bIsUsed ) {
-					// no main grid used -> only 1 container
-					var aContainers = oLayout.getParent().getFormContainers();
-					var oFirstContainer;
-					for (var i = 0; i < aContainers.length; i++) {
-						if (aContainers[i].getVisible()) {
-							oFirstContainer = aContainers[i];
-							break;
-						}
-					}
-					if (!oFirstContainer || !oLayout.mContainers[oFirstContainer.getId()] || oFirstContainer.getId() != this.__myParentContainerId) {
-						// Form seems to be invalidated (container changed) but rerendering still not done
-						// -> ignore resize, it will be rerendered soon
-						return;
-					}
-					if (oLayout.mContainers[this.__myParentContainerId][0]) {
-						// panel used -> get size from panel
-						var oDomRef = oLayout.mContainers[this.__myParentContainerId][0].getDomRef();
-
-						var iCntWidth = oDomRef.clientWidth;
-						if (iCntWidth <= oLayout.getBreakpointM()) {
-							this._toggleClass("Phone");
-						} else if ((iCntWidth > oLayout.getBreakpointM()) && (iCntWidth <= oLayout.getBreakpointL())) {
-							this._toggleClass("Tablet");
-						} else if ((iCntWidth > oLayout.getBreakpointL()) && (iCntWidth <= oLayout.getBreakpointXL())) {
-							this._toggleClass("Desktop");
-						} else {
-							this._toggleClass("LargeDesktop");
+					var iMyXLSpan, iMyLSpan, iMyMSpan, iMySSpan = 12;
+					if (bFirstField) {
+						var iRest = iXLSpan - Math.floor(iXLSpan / iDefaultFields) * iDefaultFields;
+						iMyXLSpan = Math.floor(iXLSpan / iDefaultFields) + iRest;
+						iRest = iLSpan - Math.floor(iLSpan / iDefaultFields) * iDefaultFields;
+						iMyLSpan = Math.floor(iLSpan / iDefaultFields) + iRest;
+						iRest = iMSpan - Math.floor(iMSpan / iDefaultFields) * iDefaultFields;
+						iMyMSpan = Math.floor(iMSpan / iDefaultFields) + iRest;
+						if (iLabelSSpan < 12) {
+							// label is defined to not be full size -> make fields left of it
+							iRest = iSSpan - Math.floor(iSSpan / iDefaultFields) * iDefaultFields;
+							iMySSpan = Math.floor(iSSpan / iDefaultFields) + iRest;
 						}
 					} else {
-						this._setBreakPointTablet(oLayout.getBreakpointM());
-						this._setBreakPointDesktop(oLayout.getBreakpointL());
-						this._setBreakPointLargeDesktop(oLayout.getBreakpointXL());
-						this._onParentResizeOrig();
+						iMyXLSpan = Math.floor(iXLSpan / iDefaultFields);
+						iMyLSpan = Math.floor(iLSpan / iDefaultFields);
+						iMyMSpan = Math.floor(iMSpan / iDefaultFields);
+						if (iLabelSSpan < 12) {
+							// label is defined to not be full size -> make fields left of it
+							iMySSpan = Math.floor(iSSpan / iDefaultFields);
+						}
 					}
-				} else {
-					var $DomRefMain = oLayout._mainGrid.$();
 
-					if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Phone")) {
+					oLayout.oDummyLayoutData.setSpan("XL" + iMyXLSpan + " L" + iMyLSpan + " M" + iMyMSpan + " S" + iMySSpan);
+					oLayout.oDummyLayoutData.setLinebreak(bFirstField && !oLabel);
+					oLayout.oDummyLayoutData._setStylesInternal(undefined);
+					return oLayout.oDummyLayoutData;
+				}
+
+				return oLD;
+			}
+		};
+
+		// change resize handler so that the container Grids always get the same Media size like the main grid
+		oGrid._onParentResizeOrig = oGrid._onParentResize;
+		oGrid._onParentResize = function() {
+
+			// Prove if Dom reference exist, and if not - clean up the references.
+			if (!this.getDomRef()) {
+				this._cleanup();
+				return;
+			}
+
+			if (!jQuery(this.getDomRef()).is(":visible")) {
+				return;
+			}
+
+			var oLayout = this.__myParentLayout;
+			if (!oLayout._mainGrid || !oLayout._mainGrid.__bIsUsed ) {
+				// no main grid used -> only 1 container
+				var aContainers = oLayout.getParent().getFormContainers();
+				var oFirstContainer;
+				for (var i = 0; i < aContainers.length; i++) {
+					if (aContainers[i].getVisible()) {
+						oFirstContainer = aContainers[i];
+						break;
+					}
+				}
+				if (!oFirstContainer || !oLayout.mContainers[oFirstContainer.getId()] || oFirstContainer.getId() != this.__myParentContainerId) {
+					// Form seems to be invalidated (container changed) but rerendering still not done
+					// -> ignore resize, it will be rerendered soon
+					return;
+				}
+				if (oLayout.mContainers[this.__myParentContainerId][0]) {
+					// panel used -> get size from panel
+					var oDomRef = oLayout.mContainers[this.__myParentContainerId][0].getDomRef();
+
+					var iCntWidth = oDomRef.clientWidth;
+					if (iCntWidth <= oLayout.getBreakpointM()) {
 						this._toggleClass("Phone");
-					} else if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Tablet")) {
+					} else if ((iCntWidth > oLayout.getBreakpointM()) && (iCntWidth <= oLayout.getBreakpointL())) {
 						this._toggleClass("Tablet");
-					} else if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Desktop")) {
+					} else if ((iCntWidth > oLayout.getBreakpointL()) && (iCntWidth <= oLayout.getBreakpointXL())) {
 						this._toggleClass("Desktop");
 					} else {
 						this._toggleClass("LargeDesktop");
 					}
+				} else {
+					this._setBreakPointTablet(oLayout.getBreakpointM());
+					this._setBreakPointDesktop(oLayout.getBreakpointL());
+					this._setBreakPointLargeDesktop(oLayout.getBreakpointXL());
+					this._onParentResizeOrig();
 				}
-			};
-
-			oGrid._getAccessibleRole = function() {
-
-				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-				if (!oContainer.getTitle() && !oContainer.getExpandable()) {
-					return "form";
-				}
-
-			};
-
-			return oGrid;
-
-		}
-
-		/*
-		 * clear internal variables before delete grid
-		 */
-		function _deleteGrid( oGrid ) {
-
-			if (oGrid.__myParentContainerId) {
-				oGrid.__myParentContainerId = undefined;
-			}
-			oGrid.__myParentLayout = undefined;
-
-			oGrid.destroy();
-
-		}
-
-		function _changeGetLayoutDataOfGrid( oGrid, bOriginal ) {
-			// only GridData are from interest
-
-			if (bOriginal) {
-				if (oGrid.__originalGetLayoutData) {
-					oGrid.getLayoutData = oGrid.__originalGetLayoutData;
-					delete oGrid.__originalGetLayoutData;
-				}
-			} else if (!oGrid.__originalGetLayoutData) {
-				oGrid.__originalGetLayoutData = oGrid.getLayoutData;
-				oGrid.getLayoutData = function(){
-					var oLayout = this.__myParentLayout;
-					var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-
-					var oLD;
-					if (oContainer) {
-						oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
-					}
-
-					if (oLD) {
-						return oLD;
-					} else {
-						return this.getAggregation("layoutData");
-					}
-				};
-			}
-
-		}
-
-		// every second container gets a Linebreak for large screens
-		// oControl could be a Panel or a Grid( if no panel used)
-		function _setLayoutDataForLinebreak( oControl, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers ) {
-
-			var oLayout;
-			if (oControl instanceof sap.ui.layout.form.ResponsiveGridLayoutPanel) {
-				oLayout = sap.ui.getCore().byId(oControl.getLayout());
 			} else {
-				oLayout = oControl.__myParentLayout;
+				var $DomRefMain = oLayout._mainGrid.$();
+
+				if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Phone")) {
+					this._toggleClass("Phone");
+				} else if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Tablet")) {
+					this._toggleClass("Tablet");
+				} else if ($DomRefMain.hasClass("sapUiRespGridMedia-Std-Desktop")) {
+					this._toggleClass("Desktop");
+				} else {
+					this._toggleClass("LargeDesktop");
+				}
+			}
+		};
+
+		oGrid._getAccessibleRole = function() {
+
+			var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+			var oLayout = this.__myParentLayout;
+			if (oLayout._mainGrid && oLayout._mainGrid.__bIsUsed && !oContainer.getToolbar() && !oContainer.getTitle() && !oContainer.getExpandable()) {
+				return "form";
 			}
 
+		};
+
+		return oGrid;
+
+	}
+
+	/*
+	 * clear internal variables before delete grid
+	 */
+	function _deleteGrid( oGrid ) {
+
+		if (oGrid.__myParentContainerId) {
+			oGrid.__myParentContainerId = undefined;
+		}
+		oGrid.__myParentLayout = undefined;
+
+		oGrid.destroy();
+
+	}
+
+	function _changeGetLayoutDataOfGrid( oGrid, bOriginal ) {
+		// only GridData are from interest
+
+		if (bOriginal) {
+			if (oGrid.__originalGetLayoutData) {
+				oGrid.getLayoutData = oGrid.__originalGetLayoutData;
+				delete oGrid.__originalGetLayoutData;
+			}
+		} else if (!oGrid.__originalGetLayoutData) {
+			oGrid.__originalGetLayoutData = oGrid.getLayoutData;
+			oGrid.getLayoutData = function(){
+				var oLayout = this.__myParentLayout;
+				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+
+				var oLD;
+				if (oContainer) {
+					oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
+				}
+
+				if (oLD) {
+					return oLD;
+				} else {
+					return this.getAggregation("layoutData");
+				}
+			};
+		}
+
+	}
+
+	// every second container gets a Linebreak for large screens
+	// oControl could be a Panel or a Grid( if no panel used)
+	function _setLayoutDataForLinebreak( oControl, oContainer, iVisibleContainer, oContainerNext, iVisibleContainers ) {
+
+		var oLayout;
+		if (oControl instanceof sap.ui.layout.form.ResponsiveGridLayoutPanel) {
+			oLayout = sap.ui.getCore().byId(oControl.getLayout());
+		} else {
+			oLayout = oControl.__myParentLayout;
+		}
+
+		var oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
+		if (!oLD) {
+			// only needed if container has no own LayoutData
 			var iColumnsM = oLayout.getColumnsM();
 			var iColumnsL = oLayout.getColumnsL();
 			// If the columsnXL is not set the value of columnsL is used
 			var iColumnsXL = oLayout.getColumnsXL();
 
-			var oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.GridData");
+			var bLinebreakL = (iVisibleContainer % iColumnsL) == 1;
+			var bLastL = (iVisibleContainer % iColumnsL) == 0;
+			var bLastRowL = iVisibleContainer > (iVisibleContainers - iColumnsL + (iVisibleContainers % iColumnsL));
+			var bFirstRowL = iVisibleContainer <= iColumnsL;
+			var bLinebreakM = (iVisibleContainer % iColumnsM) == 1;
+			var bLastM = (iVisibleContainer % iColumnsM) == 0;
+			var bLastRowM = iVisibleContainer > (iVisibleContainers - iColumnsM + (iVisibleContainers % iColumnsM));
+			var bFirstRowM = iVisibleContainer <= iColumnsM;
+
 			var bLinebreakXL = false;
-			var bLastXL = false;
-			var bLastRowXL = false;
+			var bLastXL = bLastL;
+			var bLastRowXL = bLastRowL;
+			var bFirstRowXL = bFirstRowL;
+			if (iColumnsXL > 0) {
+				bLinebreakXL = (iVisibleContainer % iColumnsXL) == 1;
+				bLastXL = (iVisibleContainer % iColumnsXL) == 0;
+				bLastRowXL = iVisibleContainer > (iVisibleContainers - iColumnsXL + (iVisibleContainers % iColumnsXL));
+				bFirstRowXL = iVisibleContainer <= iColumnsXL;
+			}
+
+			if (oContainerNext) {
+				var oLDNext = oLayout.getLayoutDataForElement(oContainerNext, "sap.ui.layout.GridData");
+				if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakXL() )) {
+					bLastXL = true;
+					bLastRowXL = false;
+				}
+				if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakL() )) {
+					bLastL = true;
+					bLastRowL = false;
+				}
+				if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakM() )) {
+					bLastM = true;
+					bLastRowM = false;
+				}
+			}
+
+			var sStyle = "";
+
+			if (bLastXL) {
+				sStyle = "sapUiFormResGridLastContXL";
+			}
+			if (bLastL) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridLastContL";
+			}
+			if (bLastM) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridLastContM";
+			}
+
+			if (bLastRowXL) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridLastRowXL";
+			}
+			if (bLastRowL) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridLastRowL";
+			}
+			if (bLastRowM) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridLastRowM";
+			}
+
+			if (bFirstRowXL) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridFirstRowXL";
+			}
+			if (bFirstRowL) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridFirstRowL";
+			}
+			if (bFirstRowM) {
+				if (sStyle) {
+					sStyle = sStyle + " ";
+				}
+				sStyle = sStyle + "sapUiFormResGridFirstRowM";
+			}
+
+			oLD = oControl.getLayoutData();
 			if (!oLD) {
-				// only needed if container has no own LayoutData
-				var bLinebreakL = (iVisibleContainer % iColumnsL) == 1;
-				var bLastL = (iVisibleContainer % iColumnsL) == 0;
-				var bLastRowL = iVisibleContainer > (iVisibleContainers - iColumnsL + (iVisibleContainers % iColumnsL));
-				var bLinebreakM = (iVisibleContainer % iColumnsM) == 1;
-				var bLastM = (iVisibleContainer % iColumnsM) == 0;
-				var bLastRowM = iVisibleContainer > (iVisibleContainers - iColumnsM + (iVisibleContainers % iColumnsM));
-
-				if (iColumnsXL > 0) {
-					bLinebreakXL = (iVisibleContainer % iColumnsXL) == 1;
-					bLastXL = (iVisibleContainer % iColumnsXL) == 0;
-					bLastRowXL = iVisibleContainer > (iVisibleContainers - iColumnsXL + (iVisibleContainers % iColumnsXL));
-				} else {
-					bLastXL = bLastL;
-					bLastRowXL = bLastRowL;
-				}
-
-				if (oContainerNext) {
-					var oLDNext = oLayout.getLayoutDataForElement(oContainerNext, "sap.ui.layout.GridData");
-					if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakXL() )) {
-						bLastXL = true;
-						bLastRowXL = false;
-					}
-					if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakL() )) {
-						bLastL = true;
-						bLastRowL = false;
-					}
-					if (oLDNext && ( oLDNext.getLinebreak() || oLDNext.getLinebreakM() )) {
-						bLastM = true;
-						bLastRowM = false;
-					}
-				}
-
-				var sStyle = "";
-
-				if (bLastXL) {
-					sStyle = "sapUiFormResGridLastContXL";
-				}
-				if (bLastL) {
-					if (sStyle) {
-						sStyle = sStyle + " ";
-					}
-					sStyle = sStyle + "sapUiFormResGridLastContL";
-				}
-				if (bLastM) {
-					if (sStyle) {
-						sStyle = sStyle + " ";
-					}
-					sStyle = sStyle + "sapUiFormResGridLastContM";
-				}
-
-				if (bLastRowXL) {
-					if (sStyle) {
-						sStyle = sStyle + " ";
-					}
-					sStyle = sStyle + "sapUiFormResGridLastRowXL";
-				}
-				if (bLastRowL) {
-					if (sStyle) {
-						sStyle = sStyle + " ";
-					}
-					sStyle = sStyle + "sapUiFormResGridLastRowL";
-				}
-				if (bLastRowM) {
-					if (sStyle) {
-						sStyle = sStyle + " ";
-					}
-					sStyle = sStyle + "sapUiFormResGridLastRowM";
-				}
-
-				oLD = oControl.getLayoutData();
-				if (!oLD) {
-					oLD = new GridData(oControl.getId() + "--LD", { linebreakL: bLinebreakL, linebreakM: bLinebreakM });
-					oControl.setLayoutData( oLD );
-				} else {
-					oLD.setLinebreakL(bLinebreakL);
-					oLD.setLinebreakM(bLinebreakM);
-				}
-				if (iColumnsXL > 0) {
-					oLD.setLinebreakXL(bLinebreakXL);
-				}
-				oLD._setStylesInternal(sStyle);
-			}
-
-		}
-
-		function _cleanContainer( oLayout, sContainerId ) {
-
-			var aContainerContent = oLayout.mContainers[sContainerId];
-
-			//delete Grid
-			var oGrid = aContainerContent[1];
-			if (oGrid) {
-				_deleteGrid(oGrid);
-			}
-
-			//delete panel
-			var oPanel = aContainerContent[0];
-			if (oPanel) {
-				_deletePanel(oPanel);
-			}
-
-			delete oLayout.mContainers[sContainerId];
-
-		}
-
-		function _createMainGrid( oLayout, oForm ) {
-
-			var aContainers = oForm.getFormContainers();
-			var aVisibleContainers = [];
-			var oContainer;
-			var iLength = 0;
-			var iContentLenght = 0;
-			var i = 0;
-			var j = 0;
-
-			// count only visible containers
-			for ( i = 0; i < aContainers.length; i++) {
-				oContainer = aContainers[i];
-				if (oContainer.getVisible()) {
-					iLength++;
-					aVisibleContainers.push(oContainer);
-				}
-			}
-
-			// special case: only one container -> do not render an outer ResponsiveFlowLayout
-			if (iLength > 1 || !oLayout.getSingleContainerFullSize()) {
-				var iSpanM = Math.floor(12 / oLayout.getColumnsM());
-				var iSpanL = Math.floor(12 / oLayout.getColumnsL());
-				var iSpanXL;
-				var sDefaultSpan = "";
-
-				// If the columsnXL is not set the value of columnsL is used
-				var iColumnsXL = oLayout.getColumnsXL();
-				if (iColumnsXL >= 0) {
-					// if no columns for XL are defined ude no default span for XL. The grid then uses automatically the L one.
-					iSpanXL = Math.floor(12 / iColumnsXL);
-					sDefaultSpan = sDefaultSpan + "XL" + iSpanXL + " ";
-				}
-				sDefaultSpan = sDefaultSpan + "L" + iSpanL + " M" + iSpanM + " S12";
-
-				if (!oLayout._mainGrid) {
-					oLayout._mainGrid = new Grid(oForm.getId() + "--Grid",{
-						defaultSpan: sDefaultSpan,
-						hSpacing: 0,
-						vSpacing: 0,
-						containerQuery: true
-						}).setParent(oLayout);
-					oLayout._mainGrid.addStyleClass("sapUiFormResGridMain");
-					// change resize handler so that the main grid triggers the resize of it's children
-					oLayout._mainGrid._onParentResizeOrig = oLayout._mainGrid._onParentResize;
-					oLayout._mainGrid._onParentResize = function() {
-						this._onParentResizeOrig();
-
-						for ( var sContainerId in oLayout.mContainers) {
-							oLayout.mContainers[sContainerId][1]._onParentResize();
-						}
-
-					};
-				} else {
-					oLayout._mainGrid.setDefaultSpan(sDefaultSpan);
-					// update containers
-					var aLayoutContent = oLayout._mainGrid.getContent();
-					iContentLenght = aLayoutContent.length;
-					var bExchangeContent = false;
-					// check if content has changed
-					for ( i = 0; i < iContentLenght; i++) {
-						var oContentElement = aLayoutContent[i];
-						oContainer = undefined;
-						if (oContentElement.getContainer) {
-							// it's a panel
-							oContainer = sap.ui.getCore().byId(oContentElement.getContainer());
-						} else {
-							// it's a Grid
-							oContainer = sap.ui.getCore().byId(oContentElement.__myParentContainerId);
-						}
-						if (oContainer && oContainer.getVisible()) {
-							var oVisibleContainer = aVisibleContainers[j];
-							if (oContainer != oVisibleContainer) {
-								// order of containers has changed
-								bExchangeContent = true;
-								break;
-							}
-
-							var aContainerContent = oLayout.mContainers[oContainer.getId()];
-							if (aContainerContent[0] && aContainerContent[0] != oContentElement) {
-								// container uses panel but panel not the same element in content
-								bExchangeContent = true;
-								break;
-							}
-							if (!aContainerContent[0] && aContainerContent[1] && aContainerContent[1] != oContentElement) {
-								// container uses no panel but Grid not the same element in content
-								bExchangeContent = true;
-								break;
-							}
-							j++;
-						} else {
-							// no container exits for content -> just remove this content
-							oLayout._mainGrid.removeContent(oContentElement);
-						}
-					}
-					if (bExchangeContent) {
-						// remove all content and add it new.
-						oLayout._mainGrid.removeAllContent();
-						iContentLenght = 0;
-					}
-				}
-				oLayout._mainGrid._setBreakPointTablet(oLayout.getBreakpointM());
-				oLayout._mainGrid._setBreakPointDesktop(oLayout.getBreakpointL());
-				oLayout._mainGrid._setBreakPointLargeDesktop(oLayout.getBreakpointXL());
-				oLayout._mainGrid.__bIsUsed = true;
-
-				if (iContentLenght < iLength) {
-					// new containers added
-					var iStartIndex = 0;
-					if (iContentLenght > 0) {
-						iStartIndex = iContentLenght--;
-					}
-					for ( i = iStartIndex; i < aContainers.length; i++) {
-						oContainer = aContainers[i];
-						if (oContainer.getVisible()) {
-							var sContainerId = oContainer.getId();
-							if (oLayout.mContainers[sContainerId]) {
-								if (oLayout.mContainers[sContainerId][0]) {
-									// panel used
-									oLayout._mainGrid.addContent(oLayout.mContainers[sContainerId][0]);
-								} else if (oLayout.mContainers[sContainerId][1]) {
-									// no panel - used Grid directly
-									oLayout._mainGrid.addContent(oLayout.mContainers[sContainerId][1]);
-								}
-							}
-						}
-					}
-				}
-			} else if ( oLayout._mainGrid ) {
-				oLayout._mainGrid.__bIsUsed = false;
-			}
-
-		}
-
-		function _objectLength(oObject){
-
-			var iLength = 0;
-
-			if (!Object.keys) {
-				jQuery.each(oObject, function(){
-					iLength++;
-				});
+				oLD = new GridData(oControl.getId() + "--LD", { linebreakL: bLinebreakL, linebreakM: bLinebreakM });
+				oControl.setLayoutData( oLD );
 			} else {
-				iLength = Object.keys(oObject).length;
+				oLD.setLinebreakL(bLinebreakL);
+				oLD.setLinebreakM(bLinebreakM);
 			}
-
-			return iLength;
-
+			if (iColumnsXL > 0) {
+				oLD.setLinebreakXL(bLinebreakXL);
+			}
+			oLD._setStylesInternal(sStyle);
 		}
 
-	}());
+	}
 
+	function _cleanContainer( oLayout, sContainerId ) {
+
+		var aContainerContent = oLayout.mContainers[sContainerId];
+
+		//delete Grid
+		var oGrid = aContainerContent[1];
+		if (oGrid) {
+			_deleteGrid(oGrid);
+		}
+
+		//delete panel
+		var oPanel = aContainerContent[0];
+		if (oPanel) {
+			_deletePanel(oPanel);
+		}
+
+		delete oLayout.mContainers[sContainerId];
+
+	}
+
+	function _createMainGrid( oLayout, oForm ) {
+
+		var aContainers = oForm.getFormContainers();
+		var aVisibleContainers = [];
+		var oContainer;
+		var iLength = 0;
+		var iContentLenght = 0;
+		var i = 0;
+		var j = 0;
+
+		// count only visible containers
+		for ( i = 0; i < aContainers.length; i++) {
+			oContainer = aContainers[i];
+			if (oContainer.getVisible()) {
+				iLength++;
+				aVisibleContainers.push(oContainer);
+			}
+		}
+
+		// special case: only one container -> do not render an outer ResponsiveFlowLayout
+		if (iLength > 1 || !oLayout.getSingleContainerFullSize()) {
+			var iSpanM = Math.floor(12 / oLayout.getColumnsM());
+			var iSpanL = Math.floor(12 / oLayout.getColumnsL());
+			var iSpanXL;
+			var sDefaultSpan = "";
+
+			// If the columsnXL is not set the value of columnsL is used
+			var iColumnsXL = oLayout.getColumnsXL();
+			if (iColumnsXL >= 0) {
+				// if no columns for XL are defined ude no default span for XL. The grid then uses automatically the L one.
+				iSpanXL = Math.floor(12 / iColumnsXL);
+				sDefaultSpan = sDefaultSpan + "XL" + iSpanXL + " ";
+			}
+			sDefaultSpan = sDefaultSpan + "L" + iSpanL + " M" + iSpanM + " S12";
+
+			if (!oLayout._mainGrid) {
+				oLayout._mainGrid = new Grid(oForm.getId() + "--Grid",{
+					defaultSpan: sDefaultSpan,
+					hSpacing: 0,
+					vSpacing: 0,
+					containerQuery: true
+					}).setParent(oLayout);
+				oLayout._mainGrid.addStyleClass("sapUiFormResGridMain");
+				// change resize handler so that the main grid triggers the resize of it's children
+				oLayout._mainGrid._onParentResizeOrig = oLayout._mainGrid._onParentResize;
+				oLayout._mainGrid._onParentResize = function() {
+					this._onParentResizeOrig();
+
+					for ( var sContainerId in oLayout.mContainers) {
+						oLayout.mContainers[sContainerId][1]._onParentResize();
+					}
+
+				};
+			} else {
+				oLayout._mainGrid.setDefaultSpan(sDefaultSpan);
+				// update containers
+				var aLayoutContent = oLayout._mainGrid.getContent();
+				iContentLenght = aLayoutContent.length;
+				var bExchangeContent = false;
+				// check if content has changed
+				for ( i = 0; i < iContentLenght; i++) {
+					var oContentElement = aLayoutContent[i];
+					oContainer = undefined;
+					if (oContentElement.getContainer) {
+						// it's a panel
+						oContainer = sap.ui.getCore().byId(oContentElement.getContainer());
+					} else {
+						// it's a Grid
+						oContainer = sap.ui.getCore().byId(oContentElement.__myParentContainerId);
+					}
+					if (oContainer && oContainer.getVisible()) {
+						var oVisibleContainer = aVisibleContainers[j];
+						if (oContainer != oVisibleContainer) {
+							// order of containers has changed
+							bExchangeContent = true;
+							break;
+						}
+
+						var aContainerContent = oLayout.mContainers[oContainer.getId()];
+						if (aContainerContent[0] && aContainerContent[0] != oContentElement) {
+							// container uses panel but panel not the same element in content
+							bExchangeContent = true;
+							break;
+						}
+						if (!aContainerContent[0] && aContainerContent[1] && aContainerContent[1] != oContentElement) {
+							// container uses no panel but Grid not the same element in content
+							bExchangeContent = true;
+							break;
+						}
+						j++;
+					} else {
+						// no container exits for content -> just remove this content
+						oLayout._mainGrid.removeContent(oContentElement);
+					}
+				}
+				if (bExchangeContent) {
+					// remove all content and add it new.
+					oLayout._mainGrid.removeAllContent();
+					iContentLenght = 0;
+				}
+			}
+			oLayout._mainGrid._setBreakPointTablet(oLayout.getBreakpointM());
+			oLayout._mainGrid._setBreakPointDesktop(oLayout.getBreakpointL());
+			oLayout._mainGrid._setBreakPointLargeDesktop(oLayout.getBreakpointXL());
+			oLayout._mainGrid.__bIsUsed = true;
+
+			if (iContentLenght < iLength) {
+				// new containers added
+				var iStartIndex = 0;
+				if (iContentLenght > 0) {
+					iStartIndex = iContentLenght--;
+				}
+				for ( i = iStartIndex; i < aContainers.length; i++) {
+					oContainer = aContainers[i];
+					if (oContainer.getVisible()) {
+						var sContainerId = oContainer.getId();
+						if (oLayout.mContainers[sContainerId]) {
+							if (oLayout.mContainers[sContainerId][0]) {
+								// panel used
+								oLayout._mainGrid.addContent(oLayout.mContainers[sContainerId][0]);
+							} else if (oLayout.mContainers[sContainerId][1]) {
+								// no panel - used Grid directly
+								oLayout._mainGrid.addContent(oLayout.mContainers[sContainerId][1]);
+							}
+						}
+					}
+				}
+			}
+		} else if ( oLayout._mainGrid ) {
+			oLayout._mainGrid.__bIsUsed = false;
+		}
+
+	}
+
+	function _objectLength(oObject){
+
+		var iLength = 0;
+
+		if (!Object.keys) {
+			jQuery.each(oObject, function(){
+				iLength++;
+			});
+		} else {
+			iLength = Object.keys(oObject).length;
+		}
+
+		return iLength;
+
+	}
 
 	return ResponsiveGridLayout;
 
@@ -9550,7 +10226,7 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 	 * Use <code>LayoutData</code> to influence the layout for special cases in the Input/Display controls.
 	 * <b>Note:</b> If a more complex form is needed, use <code>Form</code> instead.
 	 * @extends sap.ui.core.Control
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -9744,7 +10420,16 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 			 * <b>Note:</b> This property is only used if a <code>ResponsiveGridLayout</code> is used as a layout.
 			 * @since 1.16.3
 			 */
-			breakpointM : {type : "int", group : "Misc", defaultValue : 600}
+			breakpointM : {type : "int", group : "Misc", defaultValue : 600},
+
+			/**
+			 * Specifies the background color of the <code>SimpleForm</code> content.
+			 *
+			 * The visualization of the different options depends on the used theme.
+			 *
+			 * @since 1.36.0
+			 */
+			backgroundDesign : {type : "sap.ui.layout.BackgroundDesign", group : "Appearance", defaultValue : sap.ui.layout.BackgroundDesign.Translucent}
 		},
 		defaultAggregation : "content",
 		aggregations : {
@@ -9752,7 +10437,7 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 			/**
 			 * The content of the form is structured in the following way:
 			 * <ul>
-			 * <li>Add a <code>Title</code> control to start a new group (<code>FormContainer</code>).</li>
+			 * <li>Add a <code>Title</code> or <code>Toolbar</code> control to start a new group (<code>FormContainer</code>).</li>
 			 * <li>Add a <code>Label</code> control to start a new row (<code>FormElement</code>).</li>
 			 * <li>Add controls as input fields, text fields or other as needed.</li>
 			 * <li>Use <code>LayoutData</code> to influence the layout for special cases in the single controls.
@@ -9768,6 +10453,9 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 			 * new sap.ui.commons.TextView({text:"Weight 1",
 			 * layoutData: new sap.ui.layout.ResponsiveFlowLayoutData({weight:1})}),
 			 * </pre>
+			 *
+			 * <b>Note:</b> Do not put any layout controls in here. This could destroy the visual layout,
+			 * keyboard support and screen-reader support.
 			 */
 			content : {type : "sap.ui.core.Element", multiple : true, singularName : "content"},
 
@@ -9780,7 +10468,17 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 			 * Title element of the <code>SimpleForm</code>. Can either be a <code>Title</code> control, or a string.
 			 * @since 1.16.3
 			 */
-			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false}
+			title : {type : "sap.ui.core.Title", altTypes : ["string"], multiple : false},
+
+			/**
+			 * Toolbar of the <code>SimpleForm</code>.
+			 *
+			 * <b>Note:</b> If a <code>Toolbar</code> is used, the <code>Title</code> is ignored.
+			 * If a title is needed inside the <code>Toolbar</code> it must be added at content to the <code>Toolbar</code>.
+			 * In this case add the <code>Title</code> to the <code>ariaLabelledBy</code> association.
+			 * @since 1.36.0
+			 */
+			toolbar : {type : "sap.ui.core.Toolbar", multiple : false}
 		},
 		associations: {
 
@@ -9789,1222 +10487,1908 @@ sap.ui.define("sap/ui/layout/form/SimpleForm",['jquery.sap.global', 'sap/ui/core
 			 * @since 1.32.0
 			 */
 			ariaLabelledBy: { type: "sap.ui.core.Control", multiple: true, singularName: "ariaLabelledBy" }
-		}
+		},
+		designTime: true
 	}});
 
-	///**
-	//* This file defines behavior for the control,
-	//*/
+	SimpleForm.prototype.init = function() {
 
-	(function() {
-
-		SimpleForm.prototype.init = function() {
-
-			this._iMaxWeight = 8;
-			this._iLabelWeight = 3;
-			this._iCurrentWidth = 0;
-			var oForm = new Form(this.getId() + "--Form");
-			// use title of SimpleForm in Form
-			oForm.getTitle = function(){
-				return this.getParent().getTitle();
-			};
-			oForm._origInvalidate = oForm.invalidate;
-			oForm.invalidate = function(oOrigin) {
-				this._origInvalidate(arguments);
-				if (this._bIsBeingDestroyed) {
-					return;
-				}
-				var oSimpleForm = this.getParent();
-				if (oSimpleForm) {
-					oSimpleForm._formInvalidated(oOrigin);
-				}
-			};
-
-			oForm.getAriaLabelledBy = function(){
-				var oSimpleForm = this.getParent();
-				if (oSimpleForm) {
-					return oSimpleForm.getAriaLabelledBy();
-				}else {
-					return null;
-				}
-			};
-
-			this.setAggregation("form",oForm);
-			this._aElements = null;
-			this._aLayouts = [];
-			this._changedFormContainers = [];
-			this._changedFormElements = [];
-
+		this._iMaxWeight = 8;
+		this._iLabelWeight = 3;
+		this._iCurrentWidth = 0;
+		var oForm = new Form(this.getId() + "--Form");
+		// use title of SimpleForm in Form
+		oForm.getTitle = function(){
+			return this.getParent().getTitle();
+		};
+		oForm._origInvalidate = oForm.invalidate;
+		oForm.invalidate = function(oOrigin) {
+			this._origInvalidate(arguments);
+			if (this._bIsBeingDestroyed) {
+				return;
+			}
+			var oSimpleForm = this.getParent();
+			if (oSimpleForm) {
+				oSimpleForm._formInvalidated(oOrigin);
+			}
 		};
 
-		SimpleForm.prototype.exit = function() {
-
-			var oForm = this.getAggregation("form");
-			oForm.invalidate = oForm._origInvalidate;
-
-			if (this._sResizeListenerId) {
-				sap.ui.core.ResizeHandler.deregister(this._sResizeListenerId);
-				this._sResizeListenerId = null;
+		oForm.getAriaLabelledBy = function(){
+			var oSimpleForm = this.getParent();
+			if (oSimpleForm) {
+				return oSimpleForm.getAriaLabelledBy();
+			}else {
+				return null;
 			}
-			for (var i = 0;i < this._aLayouts.length;i++) {
-				var oLayout = sap.ui.getCore().byId(this._aLayouts[i]);
-				if (oLayout && oLayout.destroy) {
-					oLayout.destroy();
-				}
-			}
-			this._aLayouts = [];
-			this._aElements = null;
-			this._changedFormContainers = [];
-			this._changedFormElements = [];
-
 		};
 
-		/*
-		 * Update FormContainers, FormElements and LayoutData before controls are rendered
-		 */
-		SimpleForm.prototype.onBeforeRendering = function() {
+		this.setAggregation("form",oForm);
+		this._aElements = null;
+		this._aLayouts = [];
+		this._changedFormContainers = [];
+		this._changedFormElements = [];
 
-			this._bChangedByMe = true;
-			//unregister resize
-			if (this._sResizeListenerId) {
-				sap.ui.core.ResizeHandler.deregister(this._sResizeListenerId);
-				this._sResizeListenerId = null;
+	};
+
+	SimpleForm.prototype.exit = function() {
+
+		var oForm = this.getAggregation("form");
+		oForm.invalidate = oForm._origInvalidate;
+
+		if (this._sResizeListenerId) {
+			sap.ui.core.ResizeHandler.deregister(this._sResizeListenerId);
+			this._sResizeListenerId = null;
+		}
+		for (var i = 0; i < this._aLayouts.length; i++) {
+			var oLayout = sap.ui.getCore().byId(this._aLayouts[i]);
+			if (oLayout && oLayout.destroy) {
+				oLayout.destroy();
 			}
-			var that = this;
-
-			var oForm = this.getAggregation("form");
-			if (!oForm.getLayout()) {
-				_setFormLayout(that);
-			}
-
-			_updateFormContainers(that);
-			this._bChangedByMe = false;
-
-		};
-
-		SimpleForm.prototype.onAfterRendering = function() {
-
-			if (this.getLayout() == sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout) {
-				this._bChangedByMe = true;
-				this.$().css("visibility", "hidden"); //avoid that a wrong layouting is visible
-				this._applyLinebreaks();
-
-				//attach the resize handler
-				this._sResizeListenerId = sap.ui.core.ResizeHandler.register(this.getDomRef(),  jQuery.proxy(this._resize, this));
-				this._bChangedByMe = false;
-			}
-
-		};
-
-		SimpleForm.prototype.setEditable = function(bEditable) {
-
-			this._bChangedByMe = true;
-			this.setProperty("editable", bEditable, true);
-
-			var oForm = this.getAggregation("form");
-			oForm.setEditable(bEditable);
-
-			this._bChangedByMe = false;
-			return this;
-
-		};
-
-		/*
-		 * Overwrite generated functions to use internal array to look for aggregation
-		 */
-		SimpleForm.prototype.indexOfContent = function(oObject) {
-
-			var aChildren = this._aElements;
-			if (aChildren) {
-				for (var i = 0; i < aChildren.length; i++) {
-					if (aChildren[i] == oObject) {
-						return i;
-					}
-				}
-			}
-			return -1;
-
-		};
-
-		SimpleForm.prototype.addContent = function(oElement) {
-
-			this._bChangedByMe = true;
-			oElement = this.validateAggregation("content", oElement, /* multiple */ true);
-
-			if (!this._aElements) {
-				this._aElements = [];
-			}
-
-			// try to find corresponding FormElement and FormContainer to update them
-			var iLength = this._aElements.length;
-			var oLastElement;
-			var oForm = this.getAggregation("form");
-			var oFormContainer;
-			var oFormElement;
-			var oParent;
-			var oLayoutData;
-
-			if (oElement instanceof sap.ui.core.Title) {
-				//start a new container with a title
-				oFormContainer = _createFormContainer(this, oElement);
-				oForm.addFormContainer(oFormContainer);
-				this._changedFormContainers.push(oFormContainer);
-			} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) { // if the control implements the label interface
-				// new label -> create new FormElement
-				// determine Container from last Content element
-				if (iLength > 0) {
-					oLastElement = this._aElements[iLength - 1];
-					oParent = oLastElement.getParent();
-					if (oParent instanceof FormElement) {
-						oFormContainer = oParent.getParent();
-					} else if (oParent instanceof FormContainer) {
-						oFormContainer = oParent;
-					}
-				}
-				if (!oFormContainer) {
-					oFormContainer = _createFormContainer(this);
-					oForm.addFormContainer(oFormContainer);
-					this._changedFormContainers.push(oFormContainer);
-				}
-
-				oFormElement = _addFormElement(this, oFormContainer, oElement);
-			} else {
-				// new Field -> add to last FormElement
-				if (iLength > 0) {
-					oLastElement = this._aElements[iLength - 1];
-					oParent = oLastElement.getParent();
-					if (oParent instanceof FormElement) {
-						oFormContainer = oParent.getParent();
-						oFormElement = oParent;
-						oLayoutData = _getFieldLayoutData(this, oElement);
-						if (oLayoutData instanceof ResponsiveFlowLayoutData && !_isMyLayoutData(this, oLayoutData)) {
-							if (oLayoutData.getLinebreak()) {
-								oFormElement = _addFormElement(this, oFormContainer);
-							}
-						}
-					} else if (oParent instanceof FormContainer) {
-						oFormContainer = oParent;
-						oFormElement = _addFormElement(this, oFormContainer);
-					}
-				} else {
-					// no FormContainer and FormElement exists
-					oFormContainer = _createFormContainer(this);
-					oForm.addFormContainer(oFormContainer);
-					this._changedFormContainers.push(oFormContainer);
-					oFormElement = _addFormElement(this, oFormContainer);
-				}
-
-				_createFieldLayoutData(this, oElement, 5, false, true);
-
-				oFormElement.addField(oElement);
-				_markFormElementForUpdate(this._changedFormElements, oFormElement);
-			}
-
-			this._aElements.push(oElement);
-			oElement.attachEvent("_change", _handleContentChange, this);
-			this.invalidate();
-			this._bChangedByMe = false;
-			return this;
-
-		};
-
-		SimpleForm.prototype.insertContent = function(oElement, iIndex) {
-
-			oElement = this.validateAggregation("content", oElement, /* multiple */ true);
-
-			if (!this._aElements) {
-				this._aElements = [];
-			}
-
-			var iLength = this._aElements.length;
-			var iNewIndex;
-			if (iIndex < 0) {
-				iNewIndex = 0;
-			} else if (iIndex > iLength) {
-				iNewIndex = iLength;
-			} else {
-				iNewIndex = iIndex;
-			}
-			if (iNewIndex !== iIndex) {
-				jQuery.sap.log.warning("SimpleForm.insertContent: index '" + iIndex + "' out of range [0," + iLength + "], forced to " + iNewIndex);
-			}
-
-			if (iNewIndex == iLength) {
-				// just added to the end -> use add function
-				this.addContent(oElement);
-				return this;
-			}
-
-			this._bChangedByMe = true;
-			var oOldElement = this._aElements[iNewIndex];
-			var oForm = this.getAggregation("form");
-			var oFormContainer;
-			var oFormElement;
-			var oOldFormContainer;
-			var oOldFormElement;
-			var iContainerIndex;
-			var iElementIndex = 0;
-			var iFieldIndex;
-			var aFields;
-			var aFormElements;
-			var aFormContainers;
-			var i = 0;
-			var oField;
-
-			if (oElement instanceof sap.ui.core.Title) {
-				//start a new container with a title
-				if (iIndex == 0 && !(oOldElement instanceof sap.ui.core.Title)) {
-					// special case - index==0 and first container has no title -> just add title to Container
-					oFormContainer = oOldElement.getParent().getParent();
-					oFormContainer.setTitle(oElement);
-				} else {
-					oFormContainer = _createFormContainer(this, oElement);
-					if (oOldElement instanceof sap.ui.core.Title) {
-						// insert before old container
-						oOldFormContainer = oOldElement.getParent();
-						iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
-					} else {
-						// insert after old container
-						oOldFormElement = oOldElement.getParent();
-						oOldFormContainer = oOldFormElement.getParent();
-						iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer) + 1;
-						iElementIndex = oOldFormContainer.indexOfFormElement(oOldFormElement);
-
-						// check if old FormElement must be splited
-						if (!oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
-							iFieldIndex = oOldFormElement.indexOfField(oOldElement);
-							if (iFieldIndex > 0 || oOldFormElement.getLabel()) {
-								// split FormElement
-								oFormElement = _addFormElement(this, oFormContainer);
-								this._changedFormElements.push(oFormElement);
-								_markFormElementForUpdate(this._changedFormElements, oOldFormElement);
-								// move all Fields after index into new FormElement
-								aFields = oOldFormElement.getFields();
-								for ( i = iFieldIndex; i < aFields.length; i++) {
-									oField = aFields[i];
-									oFormElement.addField(oField);
-								}
-								iElementIndex++;
-							}
-						}
-						// move all FormElements after the new content into the new container
-						aFormElements = oOldFormContainer.getFormElements();
-						for ( i = iElementIndex; i < aFormElements.length; i++) {
-							oFormContainer.addFormElement(aFormElements[i]);
-						}
-					}
-					oForm.insertFormContainer(oFormContainer, iContainerIndex);
-				}
-				this._changedFormContainers.push(oFormContainer);
-			} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
-				if (oOldElement instanceof sap.ui.core.Title) {
-					// add new FormElement to previous container
-					oOldFormContainer = oOldElement.getParent();
-					iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
-					aFormContainers = oForm.getFormContainers();
-					oFormContainer = aFormContainers[iContainerIndex - 1];
-					oFormElement = _addFormElement(this, oFormContainer, oElement);
-				} else if (oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
-					// insert new form element before this one
-					oOldFormContainer = oOldElement.getParent().getParent();
-					iElementIndex = oOldFormContainer.indexOfFormElement(oOldElement.getParent());
-					oFormElement = _insertFormElement(this, oOldFormContainer, oElement, iElementIndex);
-				} else {
-					// split FormElement
-					oOldFormElement = oOldElement.getParent();
-					oOldFormContainer = oOldFormElement.getParent();
-					iElementIndex = oOldFormContainer.indexOfFormElement(oOldFormElement) + 1;
-					iFieldIndex = oOldFormElement.indexOfField(oOldElement);
-
-					if (iFieldIndex == 0 && !oOldFormElement.getLabel()) {
-						// special case: Form Element has no label and inserted before first Field
-						oFormElement = oOldFormElement;
-						oFormElement.setLabel(oElement);
-						_createFieldLayoutData(this, oElement, this._iLabelWeight, false, true, this.getLabelMinWidth());
-					} else {
-						oFormElement = _insertFormElement(this, oOldFormContainer, oElement, iElementIndex);
-						_markFormElementForUpdate(this._changedFormElements, oOldFormElement);
-
-						// move all Fields after index into new FormElement
-						aFields = oOldFormElement.getFields();
-						for ( i = iFieldIndex; i < aFields.length; i++) {
-							oField = aFields[i];
-							oFormElement.addField(oField);
-						}
-					}
-				}
-				this._changedFormElements.push(oFormElement);
-			} else { // new field
-				if (oOldElement instanceof sap.ui.core.Title) {
-					// add new Field to last FormElement of previous FormContainer
-					oOldFormContainer = oOldElement.getParent();
-					iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
-
-					if (iContainerIndex == 0) {
-						// it's the first container - insert new container before
-						oFormContainer = _createFormContainer(this);
-						oForm.insertFormContainer(oFormContainer, iContainerIndex);
-						this._changedFormContainers.push(oFormContainer);
-					} else {
-						aFormContainers = oForm.getFormContainers();
-						oFormContainer = aFormContainers[iContainerIndex - 1];
-					}
-
-					aFormElements = oFormContainer.getFormElements();
-					if (aFormElements.length == 0) {
-						// container has no FormElements -> create one
-						oFormElement = _addFormElement(this, oFormContainer);
-					} else {
-						oFormElement = aFormElements[aFormElements.length - 1];
-					}
-
-					oFormElement.addField(oElement);
-				} else if (oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
-					// add new field to previous FormElement
-					oOldFormElement = oOldElement.getParent();
-					oFormContainer = oOldFormElement.getParent();
-					iElementIndex = oFormContainer.indexOfFormElement(oOldFormElement);
-
-					if (iElementIndex == 0) {
-						// it's already the first FormElement -> insert a new one before
-						oFormElement = _insertFormElement(this, oFormContainer, null, 0);
-					} else {
-						aFormElements = oFormContainer.getFormElements();
-						oFormElement = aFormElements[iElementIndex - 1];
-					}
-					oFormElement.addField(oElement);
-				} else {
-					// insert new field into same FormElement before old field
-					oFormElement = oOldElement.getParent();
-					iFieldIndex = oFormElement.indexOfField(oOldElement);
-					oFormElement.insertField(oElement, iFieldIndex);
-				}
-				_markFormElementForUpdate(this._changedFormElements, oFormElement);
-
-				_createFieldLayoutData(this, oElement, 5, false, true);
-			}
-
-			this._aElements.splice(iNewIndex, 0, oElement);
-			oElement.attachEvent("_change", _handleContentChange, this);
-			this.invalidate();
-			this._bChangedByMe = false;
-			return this;
-
-		};
-
-		SimpleForm.prototype.removeContent = function(vElement) {
-
-			var oElement = null;
-			var iIndex = -1;
-			var i = 0;
-
-			if (this._aElements) {
-
-				if (typeof (vElement) == "string") { // ID of the element is given
-					vElement = sap.ui.getCore().byId(vElement);
-				}
-
-				if (typeof (vElement) == "object") { // the element itself is given or has just been retrieved
-					for (i = 0; i < this._aElements.length; i++) {
-						if (this._aElements[i] == vElement) {
-							vElement = i;
-							break;
-						}
-					}
-				}
-
-				if (typeof (vElement) == "number") { // "vElement" is the index now
-					if (vElement < 0 || vElement >= this._aElements.length) {
-						jQuery.sap.log.warning("Element.removeAggregation called with invalid index: Items, " + vElement);
-					} else {
-						iIndex = vElement;
-						oElement = this._aElements[iIndex];
-					}
-				}
-			}
-			if (oElement) {
-				this._bChangedByMe = true;
-				var oForm = this.getAggregation("form");
-				var oFormContainer;
-				var oFormElement;
-				var aFormElements;
-				var aFields;
-
-				if (oElement instanceof sap.ui.core.Title) {
-					oFormContainer = oElement.getParent();
-					oFormContainer.setTitle(null);
-					if (iIndex > 0) {
-						// if it's the first container -> just remove title
-						// remove container and add content to previous container
-						aFormElements = oFormContainer.getFormElements();
-						var iContainerIndex = oForm.indexOfFormContainer(oFormContainer);
-						var oPrevFormContainer = oForm.getFormContainers()[iContainerIndex - 1];
-						if (aFormElements.length > 0 && !aFormElements[0].getLabel()) {
-							// first Form Element has no label -> add its fields to last Form Element of previous container
-							var aPrevFormElements = oPrevFormContainer.getFormElements();
-							var oLastFormElement = aPrevFormElements[aPrevFormElements.length - 1];
-							aFields = aFormElements[0].getFields();
-							for (i = 0; i < aFields.length; i++) {
-								oLastFormElement.addField(aFields[i]);
-							}
-							_markFormElementForUpdate(this._changedFormElements, oLastFormElement);
-							oFormContainer.removeFormElement(aFormElements[0]);
-							aFormElements[0].destroy();
-							aFormElements.splice(0,1);
-						}
-						for (i = 0; i < aFormElements.length; i++) {
-							oPrevFormContainer.addFormElement(aFormElements[i]);
-						}
-						_markFormElementForUpdate(this._changedFormContainers, oPrevFormContainer);
-						oForm.removeFormContainer(oFormContainer);
-						oFormContainer.destroy();
-					}
-				} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
-					oFormElement = oElement.getParent();
-					oFormContainer = oFormElement.getParent();
-					oFormElement.setLabel(null);
-					var iElementIndex = oFormContainer.indexOfFormElement(oFormElement);
-					if (iElementIndex == 0) {
-						// its the first Element of the container -> just remove label
-						if (!oFormElement.getFields()) {
-							// FormElement has no fields -> just delete
-							oFormContainer.removeFormElement(oFormElement);
-							oFormElement.destroy();
-						} else {
-							_markFormElementForUpdate(this._changedFormElements, oFormElement);
-						}
-					} else {
-						// add fields to previous FormElement
-						aFormElements = oFormContainer.getFormElements();
-						var oPrevFormElement = aFormElements[iElementIndex - 1];
-						aFields = oFormElement.getFields();
-						for (i = 0; i < aFields.length; i++) {
-							oPrevFormElement.addField(aFields[i]);
-						}
-						_markFormElementForUpdate(this._changedFormElements, oPrevFormElement);
-						oFormContainer.removeFormElement(oFormElement);
-						oFormElement.destroy();
-					}
-				} else { // remove field
-					oFormElement = oElement.getParent();
-					oFormElement.removeField(oElement);
-					if (!oFormElement.getFields() && !oFormElement.getLabel()) {
-						// FormElement has no more fields and no label -> just delete
-						oFormContainer = oFormElement.getParent();
-						oFormContainer.removeFormElement(oFormElement);
-						oFormElement.destroy();
-					} else {
-						_markFormElementForUpdate(this._changedFormElements, oFormElement);
-					}
-				}
-
-				this._aElements.splice(iIndex, 1);
-				oElement.setParent(null);
-				oElement.detachEvent("_change", _handleContentChange, this);
-				_removeLayoutData(this, oElement);
-
-				this.invalidate();
-				this._bChangedByMe = false;
-				return oElement;
-			}
-			return null;
-
-		};
-
-		SimpleForm.prototype.removeAllContent = function() {
-
-			var i = 0;
-
-			if (this._aElements) {
-				this._bChangedByMe = true;
-				var oForm = this.getAggregation("form");
-				var aFormContainers = oForm.getFormContainers();
-				for (i = 0; i < aFormContainers.length; i++) {
-					var oFormContainer = aFormContainers[i];
-					oFormContainer.setTitle(null);
-					var aFormElements = oFormContainer.getFormElements();
-					for ( var j = 0; j < aFormElements.length; j++) {
-						var oFormElement = aFormElements[j];
-						oFormElement.setLabel(null);
-						oFormElement.removeAllFields();
-					}
-					oFormContainer.destroyFormElements();
-				}
-				oForm.destroyFormContainers();
-
-				for (i = 0; i < this._aElements.length; i++) {
-					var oElement = this._aElements[i];
-					_removeLayoutData(this, oElement);
-					oElement.detachEvent("_change", _handleContentChange, this);
-				}
-				var aElements = this._aElements;
-				this._aElements = null;
-				this.invalidate();
-				this._bChangedByMe = false;
-				return aElements;
-			} else {
-				return [];
-			}
-
-		};
-
-		SimpleForm.prototype.destroyContent = function() {
-
-			var aElements = this.removeAllContent();
-
-			if (aElements) {
-				this._bChangedByMe = true;
-				for (var i = 0; i < aElements.length; i++) {
-					aElements[i].destroy();
-				}
-				this.invalidate();
-				this._bChangedByMe = false;
-			}
-			return this;
-
-		};
-
-		SimpleForm.prototype.getContent = function() {
-
-			if (!this._aElements) {
-				this._aElements = this.getAggregation("content", []);
-			}
-			return this._aElements;
-
-		};
+		}
+		this._aLayouts = [];
+		this._aElements = null;
+		this._changedFormContainers = [];
+		this._changedFormElements = [];
+
+	};
 
 	/*
-	 * Set the FormLayout to the Form. If a FormLayout is already set, just set a new one.
+	 * Update FormContainers, FormElements and LayoutData before controls are rendered
 	 */
-		SimpleForm.prototype.setLayout = function(sLayout) {
+	SimpleForm.prototype.onBeforeRendering = function() {
 
+		this._bChangedByMe = true;
+		//unregister resize
+		if (this._sResizeListenerId) {
+			sap.ui.core.ResizeHandler.deregister(this._sResizeListenerId);
+			this._sResizeListenerId = null;
+		}
+		var that = this;
+
+		var oForm = this.getAggregation("form");
+		if (!oForm.getLayout()) {
+			_setFormLayout(that);
+		}
+
+		_updateFormContainers(that);
+		this._bChangedByMe = false;
+
+	};
+
+	SimpleForm.prototype.onAfterRendering = function() {
+
+		if (this.getLayout() == sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout) {
 			this._bChangedByMe = true;
-			var sOldLayout = this.getLayout();
-			this.setProperty("layout", sLayout);
+			this.$().css("visibility", "hidden"); //avoid that a wrong layouting is visible
+			this._applyLinebreaks();
 
-			if (sLayout != sOldLayout) {
-				var that = this;
-				_setFormLayout(that);
+			//attach the resize handler
+			this._sResizeListenerId = sap.ui.core.ResizeHandler.register(this.getDomRef(),  jQuery.proxy(this._resize, this));
+			this._bChangedByMe = false;
+		}
 
-				// update LayoutData for Containers, Elements and Fields
-				var oForm = this.getAggregation("form");
-				var aContainers = oForm.getFormContainers();
-				var aElements;
-				var aFields;
-				var oLayoutData;
+	};
 
-				for ( var i = 0; i < aContainers.length; i++) {
-					var oContainer = aContainers[i];
-					this._changedFormContainers.push(oContainer);
-					oLayoutData = oContainer.getLayoutData();
-					if (oLayoutData) {
-						oLayoutData.destroy();
-					}
-					_createContainerLayoutData(this, oContainer);
-					aElements = oContainer.getFormElements();
-					for ( var j = 0; j < aElements.length; j++) {
-						var oElement = aElements[j];
-						_markFormElementForUpdate(this._changedFormElements, oElement);
-						oLayoutData = oElement.getLayoutData();
-						if (oLayoutData) {
-							oLayoutData.destroy();
-						}
-						_createElementLayoutData(this, oElement);
-						var oLabel = oElement.getLabel();
-						if (oLabel) {
-							_removeLayoutData(this, oLabel);
-							_createFieldLayoutData(this, oLabel, this._iLabelWeight, false, true, this.getLabelMinWidth());
-						}
-						aFields = oElement.getFields();
-						for ( var k = 0; k < aFields.length; k++) {
-							var oField = aFields[k];
-							_removeLayoutData(this, oField);
-							_createFieldLayoutData(this, oField, 5, false, true);
-						}
-					}
+	SimpleForm.prototype.setEditable = function(bEditable) {
+
+		this._bChangedByMe = true;
+		this.setProperty("editable", bEditable, true);
+
+		var oForm = this.getAggregation("form");
+		oForm.setEditable(bEditable);
+
+		this._bChangedByMe = false;
+		return this;
+
+	};
+
+	SimpleForm.prototype.setToolbar = function(oToolbar) {
+
+		this._bChangedByMe = true;
+		var oForm = this.getAggregation("form");
+		oForm.setToolbar(oToolbar);
+
+		this._bChangedByMe = false;
+		return this;
+
+	};
+
+	SimpleForm.prototype.getToolbar = function() {
+
+		var oForm = this.getAggregation("form");
+		return oForm.getToolbar();
+
+	};
+
+	/*
+	 * Overwrite generated functions to use internal array to look for aggregation
+	 */
+	SimpleForm.prototype.indexOfContent = function(oObject) {
+
+		var aChildren = this._aElements;
+		if (aChildren) {
+			for (var i = 0; i < aChildren.length; i++) {
+				if (aChildren[i] == oObject) {
+					return i;
 				}
 			}
+		}
+		return -1;
 
-			this._bChangedByMe = false;
+	};
+
+	SimpleForm.prototype.addContent = function(oElement) {
+
+		this._bChangedByMe = true;
+		oElement = this.validateAggregation("content", oElement, /* multiple */ true);
+
+		if (!this._aElements) {
+			this._aElements = [];
+		}
+
+		// try to find corresponding FormElement and FormContainer to update them
+		var iLength = this._aElements.length;
+		var oLastElement;
+		var oForm = this.getAggregation("form");
+		var oFormContainer;
+		var oFormElement;
+		var oParent;
+		var oLayoutData;
+
+		if (oElement instanceof sap.ui.core.Title || oElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+			//start a new container with a title
+			oFormContainer = _createFormContainer(this, oElement);
+			oForm.addFormContainer(oFormContainer);
+			this._changedFormContainers.push(oFormContainer);
+		} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) { // if the control implements the label interface
+			// new label -> create new FormElement
+			// determine Container from last Content element
+			if (iLength > 0) {
+				oLastElement = this._aElements[iLength - 1];
+				oParent = oLastElement.getParent();
+				if (oParent instanceof FormElement) {
+					oFormContainer = oParent.getParent();
+				} else if (oParent instanceof FormContainer) {
+					oFormContainer = oParent;
+				}
+			}
+			if (!oFormContainer) {
+				oFormContainer = _createFormContainer(this);
+				oForm.addFormContainer(oFormContainer);
+				this._changedFormContainers.push(oFormContainer);
+			}
+
+			oFormElement = _addFormElement(this, oFormContainer, oElement);
+		} else {
+			// new Field -> add to last FormElement
+			if (iLength > 0) {
+				oLastElement = this._aElements[iLength - 1];
+				oParent = oLastElement.getParent();
+				if (oParent instanceof FormElement) {
+					oFormContainer = oParent.getParent();
+					oFormElement = oParent;
+					oLayoutData = _getFieldLayoutData(this, oElement);
+					if (oLayoutData instanceof ResponsiveFlowLayoutData && !_isMyLayoutData(this, oLayoutData)) {
+						if (oLayoutData.getLinebreak()) {
+							oFormElement = _addFormElement(this, oFormContainer);
+						}
+					}
+				} else if (oParent instanceof FormContainer) {
+					oFormContainer = oParent;
+					oFormElement = _addFormElement(this, oFormContainer);
+				}
+			} else {
+				// no FormContainer and FormElement exists
+				oFormContainer = _createFormContainer(this);
+				oForm.addFormContainer(oFormContainer);
+				this._changedFormContainers.push(oFormContainer);
+				oFormElement = _addFormElement(this, oFormContainer);
+			}
+
+			_createFieldLayoutData(this, oElement, 5, false, true);
+
+			oFormElement.addField(oElement);
+			_markFormElementForUpdate(this._changedFormElements, oFormElement);
+		}
+
+		this._aElements.push(oElement);
+		oElement.attachEvent("_change", _handleContentChange, this);
+		this.invalidate();
+		this._bChangedByMe = false;
+		return this;
+
+	};
+
+	SimpleForm.prototype.insertContent = function(oElement, iIndex) {
+
+		oElement = this.validateAggregation("content", oElement, /* multiple */ true);
+
+		if (!this._aElements) {
+			this._aElements = [];
+		}
+
+		var iLength = this._aElements.length;
+		var iNewIndex;
+		if (iIndex < 0) {
+			iNewIndex = 0;
+		} else if (iIndex > iLength) {
+			iNewIndex = iLength;
+		} else {
+			iNewIndex = iIndex;
+		}
+		if (iNewIndex !== iIndex) {
+			jQuery.sap.log.warning("SimpleForm.insertContent: index '" + iIndex + "' out of range [0," + iLength + "], forced to " + iNewIndex);
+		}
+
+		if (iNewIndex == iLength) {
+			// just added to the end -> use add function
+			this.addContent(oElement);
 			return this;
-
-		};
-
-		/*
-		 * Overwrite the clone function because content will not be cloned in default one
-		 */
-		SimpleForm.prototype.clone = function(sIdSuffix) {
-
-			this._bChangedByMe = true;
-			var oClone = Control.prototype.clone.apply(this, arguments);
-			var aContent = this.getContent();
-
-			for ( var i = 0; i < aContent.length; i++) {
-				var oElement = aContent[i];
-				var oLayoutData = oElement.getLayoutData();
-				var oElementClone = oElement.clone(sIdSuffix);
-				if (oLayoutData) {
-					// mark private LayoutData
-					if (oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
-						var aLayoutData = oLayoutData.getMultipleLayoutData();
-						for ( var j = 0; j < aLayoutData.length; j++) {
-							if (_isMyLayoutData(this, aLayoutData[j])) {
-								oClone._aLayouts.push(oElementClone.getLayoutData().getMultipleLayoutData()[j].getId());
-							}
-						}
-					} else if (_isMyLayoutData(this, oLayoutData)) {
-						oClone._aLayouts.push(oElementClone.getLayoutData().getId());
-					}
-				}
-				oClone.addContent(oElementClone);
-			}
-
-			this._bChangedByMe = false;
-			return oClone;
-
-		};
-
-		function _setFormLayout(oThis) {
-
-				var oForm = oThis.getAggregation("form");
-				var oLayout = oForm.getLayout();
-				if (oLayout) {
-					oLayout.destroy();
-				}
-
-				switch (oThis.getLayout()) {
-				case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-					jQuery.sap.require("sap.ui.layout.form.ResponsiveLayout");
-					oForm.setLayout(new sap.ui.layout.form.ResponsiveLayout(oThis.getId() + "--Layout"));
-					break;
-				case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-					jQuery.sap.require("sap.ui.layout.form.GridLayout");
-					jQuery.sap.require("sap.ui.layout.form.GridContainerData");
-					jQuery.sap.require("sap.ui.layout.form.GridElementData");
-					oForm.setLayout(new sap.ui.layout.form.GridLayout(oThis.getId() + "--Layout"));
-					break;
-				case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
-					jQuery.sap.require("sap.ui.layout.form.ResponsiveGridLayout");
-					jQuery.sap.require("sap.ui.layout.GridData");
-					oForm.setLayout(new sap.ui.layout.form.ResponsiveGridLayout(oThis.getId() + "--Layout"));
-					break;
-
-				default:
-					break;
-				}
-
 		}
 
-		/*
-		 * Updates the FormContainers of the simple form.
-		 */
-		function _updateFormContainers(oThis) {
+		this._bChangedByMe = true;
+		var oOldElement = this._aElements[iNewIndex];
+		var oForm = this.getAggregation("form");
+		var oFormContainer;
+		var oFormElement;
+		var oOldFormContainer;
+		var oOldFormElement;
+		var iContainerIndex;
+		var iElementIndex = 0;
+		var iFieldIndex;
+		var aFields;
+		var aFormElements;
+		var aFormContainers;
+		var i = 0;
+		var oField;
 
-			oThis._changedFormContainers = [];
-
-			var sLayout = oThis.getLayout();
-			var oLayout;
-
-			switch (sLayout) {
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-				// set the default values for linebreakes to avoid flickering for default case
-				oThis._applyLinebreaks();
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-				_applyContainerSize(oThis);
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
-				oLayout = oThis.getAggregation("form").getLayout();
-				oLayout.setLabelSpanXL(oThis.getLabelSpanXL());
-				oLayout.setLabelSpanL(oThis.getLabelSpanL());
-				oLayout.setLabelSpanM(oThis.getLabelSpanM());
-				oLayout.setLabelSpanS(oThis.getLabelSpanS());
-				oLayout.setAdjustLabelSpan(oThis.getAdjustLabelSpan());
-				oLayout.setEmptySpanXL(oThis.getEmptySpanXL());
-				oLayout.setEmptySpanL(oThis.getEmptySpanL());
-				oLayout.setEmptySpanM(oThis.getEmptySpanM());
-				oLayout.setEmptySpanS(oThis.getEmptySpanS());
-				oLayout.setColumnsXL(oThis.getColumnsXL());
-				oLayout.setColumnsL(oThis.getColumnsL());
-				oLayout.setColumnsM(oThis.getColumnsM());
-				oLayout.setSingleContainerFullSize(oThis.getSingleContainerFullSize());
-				oLayout.setBreakpointXL(oThis.getBreakpointXL());
-				oLayout.setBreakpointL(oThis.getBreakpointL());
-				oLayout.setBreakpointM(oThis.getBreakpointM());
-				break;
-			default:
-				break;
-			}
-
-			for ( var i = 0; i < oThis._changedFormElements.length; i++) {
-				var oFormElement = oThis._changedFormElements[i];
-
-				switch (sLayout) {
-				case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-					_applyFieldWeight(oThis, oFormElement);
-					break;
-				case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-					break;
-				default:
-					break;
-				}
-
-				_updateVisibility(oThis, oFormElement);
-			}
-			oThis._changedFormElements = [];
-
-		}
-
-		/*
-		 * Checks whether the given LayoutData is created and added by this Simple Form
-		 * @param { sap.ui.layout.ResponsiveFlowLayoutData} optional (interface) The layout data
-		 * @returns {boolean} Whether the given layout was created by this Simple Form
-		 * @private
-		 */
-		function _isMyLayoutData(oThis, oLayoutData) {
-
-			var sId = oLayoutData.getId(),
-			sLayouts = " " + oThis._aLayouts.join(" ") + " ";
-			return sLayouts.indexOf(" " + sId + " ") >  -1;
-
-		}
-
-		/*
-		 * Creates new sap.ui.layout.ResponsiveFlowLayoutData with the given parameters
-		 * @param {int} iWeight the weight for the layout data
-		 * @param {boolean} bLinebreak Whether the layout data has a linebreak
-		 * @param {boolean} bLinebreakable Whether the layout data is linebreakable
-		 * @returns {sap.ui.layout.ResponsiveFlowLayoutData} The newly created ResponsiveFlowLayoutData
-		 * @private
-		 */
-		function _createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth) {
-
-			var oLayout = new ResponsiveFlowLayoutData({weight:iWeight,linebreak:bLinebreak === true,linebreakable: bLinebreakable === true});
-			if (iMinWidth) {
-				oLayout.setMinWidth(iMinWidth);
-			}
-			oThis._aLayouts.push(oLayout.getId());
-			return oLayout;
-
-		}
-
-		/*
-		 * There may be VariantLayoutData used -> so get the right one for the used Layout
-		 */
-		function _getFieldLayoutData(oThis, oField){
-
-			var oLayoutData;
-
-			switch (oThis.getLayout()) {
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-				oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.ResponsiveFlowLayoutData");
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-				oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.form.GridElementData");
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
-				oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.GridData");
-				break;
-
-			default:
-				break;
-			}
-
-			return oLayoutData;
-
-		}
-
-		function _createFieldLayoutData(oThis, oField, iWeight, bLinebreak, bLinebreakable, iMinWidth) {
-
-			var oLayoutData;
-
-			switch (oThis.getLayout()) {
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-				oLayoutData = _getFieldLayoutData(oThis, oField);
-				if (!oLayoutData || !_isMyLayoutData(oThis, oLayoutData)) {
-					oLayoutData = oField.getLayoutData();
-					if (oLayoutData && oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
-						oLayoutData.addMultipleLayoutData(_createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth));
-					} else if (!oLayoutData) {
-						oField.setLayoutData(_createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth));
-					} else {
-						jQuery.sap.log.warning("ResponsiveFlowLayoutData can not be set on Field " + oField.getId(), "_createFieldLayoutData", "SimpleForm");
-					}
-				}
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-				// no default LayoutData needed"
-				break;
-
-			default:
-				break;
-			}
-
-		}
-
-		function _createElementLayoutData(oThis, oElement) {
-
-			switch (oThis.getLayout()) {
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-				oElement.setLayoutData(new ResponsiveFlowLayoutData({linebreak:true, margin:false}));
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-				// no default LayoutData needed"
-				break;
-
-			default:
-				break;
-			}
-
-		}
-
-		function _createContainerLayoutData(oThis, oContainer) {
-
-			switch (oThis.getLayout()) {
-			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
-				oContainer.setLayoutData(new ResponsiveFlowLayoutData({minWidth:280}));
-				break;
-			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
-				if (oThis.getMaxContainerCols() > 1) {
-					oContainer.setLayoutData(new sap.ui.layout.form.GridContainerData({halfGrid: true}));
+		if (oElement instanceof sap.ui.core.Title || oElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+			//start a new container with a title
+			if (iIndex == 0 && !(oOldElement instanceof sap.ui.core.Title || oOldElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar"))) {
+				// special case - index==0 and first container has no title -> just add title to Container
+				oFormContainer = oOldElement.getParent().getParent();
+				if (oElement instanceof sap.ui.core.Title) {
+					oFormContainer.setTitle(oElement);
 				} else {
-					oContainer.setLayoutData(new sap.ui.layout.form.GridContainerData({halfGrid: false}));
+					oFormContainer.setToolbar(oElement);
 				}
-				break;
+			} else {
+				oFormContainer = _createFormContainer(this, oElement);
+				if (oOldElement instanceof sap.ui.core.Title || oOldElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+					// insert before old container
+					oOldFormContainer = oOldElement.getParent();
+					iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
+				} else {
+					// insert after old container
+					oOldFormElement = oOldElement.getParent();
+					oOldFormContainer = oOldFormElement.getParent();
+					iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer) + 1;
+					iElementIndex = oOldFormContainer.indexOfFormElement(oOldFormElement);
 
-			default:
-				break;
+					// check if old FormElement must be splited
+					if (!oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
+						iFieldIndex = oOldFormElement.indexOfField(oOldElement);
+						if (iFieldIndex > 0 || oOldFormElement.getLabel()) {
+							// split FormElement
+							oFormElement = _addFormElement(this, oFormContainer);
+							this._changedFormElements.push(oFormElement);
+							_markFormElementForUpdate(this._changedFormElements, oOldFormElement);
+							// move all Fields after index into new FormElement
+							aFields = oOldFormElement.getFields();
+							for ( i = iFieldIndex; i < aFields.length; i++) {
+								oField = aFields[i];
+								oFormElement.addField(oField);
+							}
+							iElementIndex++;
+						}
+					}
+					// move all FormElements after the new content into the new container
+					aFormElements = oOldFormContainer.getFormElements();
+					for ( i = iElementIndex; i < aFormElements.length; i++) {
+						oFormContainer.addFormElement(aFormElements[i]);
+					}
+				}
+				oForm.insertFormContainer(oFormContainer, iContainerIndex);
 			}
+			this._changedFormContainers.push(oFormContainer);
+		} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
+			if (oOldElement instanceof sap.ui.core.Title || oOldElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+				// add new FormElement to previous container
+				oOldFormContainer = oOldElement.getParent();
+				iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
+				aFormContainers = oForm.getFormContainers();
+				if (iContainerIndex == 0) {
+					// it's the first container - insert new container before
+					oFormContainer = _createFormContainer(this);
+					oForm.insertFormContainer(oFormContainer, iContainerIndex);
+					this._changedFormContainers.push(oFormContainer);
+				} else {
+					oFormContainer = aFormContainers[iContainerIndex - 1];
+				}
+				oFormElement = _addFormElement(this, oFormContainer, oElement);
+			} else if (oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
+				// insert new form element before this one
+				oOldFormContainer = oOldElement.getParent().getParent();
+				iElementIndex = oOldFormContainer.indexOfFormElement(oOldElement.getParent());
+				oFormElement = _insertFormElement(this, oOldFormContainer, oElement, iElementIndex);
+			} else {
+				// split FormElement
+				oOldFormElement = oOldElement.getParent();
+				oOldFormContainer = oOldFormElement.getParent();
+				iElementIndex = oOldFormContainer.indexOfFormElement(oOldFormElement) + 1;
+				iFieldIndex = oOldFormElement.indexOfField(oOldElement);
 
+				if (iFieldIndex == 0 && !oOldFormElement.getLabel()) {
+					// special case: Form Element has no label and inserted before first Field
+					oFormElement = oOldFormElement;
+					oFormElement.setLabel(oElement);
+					_createFieldLayoutData(this, oElement, this._iLabelWeight, false, true, this.getLabelMinWidth());
+				} else {
+					oFormElement = _insertFormElement(this, oOldFormContainer, oElement, iElementIndex);
+					_markFormElementForUpdate(this._changedFormElements, oOldFormElement);
+
+					// move all Fields after index into new FormElement
+					aFields = oOldFormElement.getFields();
+					for ( i = iFieldIndex; i < aFields.length; i++) {
+						oField = aFields[i];
+						oFormElement.addField(oField);
+					}
+				}
+			}
+			this._changedFormElements.push(oFormElement);
+		} else { // new field
+			if (oOldElement instanceof sap.ui.core.Title || oOldElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+				// add new Field to last FormElement of previous FormContainer
+				oOldFormContainer = oOldElement.getParent();
+				iContainerIndex = oForm.indexOfFormContainer(oOldFormContainer);
+
+				if (iContainerIndex == 0) {
+					// it's the first container - insert new container before
+					oFormContainer = _createFormContainer(this);
+					oForm.insertFormContainer(oFormContainer, iContainerIndex);
+					this._changedFormContainers.push(oFormContainer);
+				} else {
+					aFormContainers = oForm.getFormContainers();
+					oFormContainer = aFormContainers[iContainerIndex - 1];
+				}
+
+				aFormElements = oFormContainer.getFormElements();
+				if (aFormElements.length == 0) {
+					// container has no FormElements -> create one
+					oFormElement = _addFormElement(this, oFormContainer);
+				} else {
+					oFormElement = aFormElements[aFormElements.length - 1];
+				}
+
+				oFormElement.addField(oElement);
+			} else if (oOldElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
+				// add new field to previous FormElement
+				oOldFormElement = oOldElement.getParent();
+				oFormContainer = oOldFormElement.getParent();
+				iElementIndex = oFormContainer.indexOfFormElement(oOldFormElement);
+
+				if (iElementIndex == 0) {
+					// it's already the first FormElement -> insert a new one before
+					oFormElement = _insertFormElement(this, oFormContainer, null, 0);
+				} else {
+					aFormElements = oFormContainer.getFormElements();
+					oFormElement = aFormElements[iElementIndex - 1];
+				}
+				oFormElement.addField(oElement);
+			} else {
+				// insert new field into same FormElement before old field
+				oFormElement = oOldElement.getParent();
+				iFieldIndex = oFormElement.indexOfField(oOldElement);
+				oFormElement.insertField(oElement, iFieldIndex);
+			}
+			_markFormElementForUpdate(this._changedFormElements, oFormElement);
+
+			_createFieldLayoutData(this, oElement, 5, false, true);
 		}
 
-		function _removeLayoutData(oThis, oElement) {
+		this._aElements.splice(iNewIndex, 0, oElement);
+		oElement.attachEvent("_change", _handleContentChange, this);
+		this.invalidate();
+		this._bChangedByMe = false;
+		return this;
 
-			var oLayout = _getFieldLayoutData(oThis, oElement);
-			if (oLayout) {
-				var sLayoutId = oLayout.getId();
+	};
 
-				for ( var i = 0; i < oThis._aLayouts.length; i++) {
-					var sId = oThis._aLayouts[i];
-					if (sLayoutId == sId) {
-						oLayout.destroy(); // is removed from parent during destroy
-						oThis._aLayouts.splice(i, 1);
+	SimpleForm.prototype.removeContent = function(vElement) {
+
+		var oElement = null;
+		var iIndex = -1;
+		var i = 0;
+
+		if (this._aElements) {
+
+			if (typeof (vElement) == "string") { // ID of the element is given
+				vElement = sap.ui.getCore().byId(vElement);
+			}
+
+			if (typeof (vElement) == "object") { // the element itself is given or has just been retrieved
+				for (i = 0; i < this._aElements.length; i++) {
+					if (this._aElements[i] == vElement) {
+						vElement = i;
 						break;
 					}
 				}
 			}
 
-		}
-
-		/*
-		 * Adds a new form element to the given FormContainer and adds the given label to it.
-		 * @param {sap.ui.layout.form.FormContainer} The form container
-		 * @param {sap.ui.core.Label} optional (interface) The label of the element
-		 * @returns {sap.ui.layout.form.FormElement} The newly created FormElement
-		 * @private
-		 */
-		function _addFormElement(oThis, oFormContainer, oLabel) {
-
-			var oElement = _createFormElement(oThis, oLabel);
-			oFormContainer.addFormElement(oElement);
-			return oElement;
-
-		}
-
-		function _insertFormElement(oThis, oFormContainer, oLabel, iIndex) {
-
-			var oElement = _createFormElement(oThis, oLabel);
-			oFormContainer.insertFormElement(oElement, iIndex);
-			return oElement;
-
-		}
-
-		function _createFormElement(oThis, oLabel) {
-
-			var oElement = new FormElement();
-			_createElementLayoutData(oThis, oElement);
-			if (oLabel) {
-				oLabel.addStyleClass("sapUiFormLabel-CTX");
-				oElement.setLabel(oLabel);
-				if (!_getFieldLayoutData(oThis, oLabel)) {
-					_createFieldLayoutData(oThis, oLabel, oThis._iLabelWeight, false, true, oThis.getLabelMinWidth());
+			if (typeof (vElement) == "number") { // "vElement" is the index now
+				if (vElement < 0 || vElement >= this._aElements.length) {
+					jQuery.sap.log.warning("Element.removeAggregation called with invalid index: Items, " + vElement);
+				} else {
+					iIndex = vElement;
+					oElement = this._aElements[iIndex];
 				}
 			}
-			oElement.setVisible(false);
-			return oElement;
-
 		}
+		if (oElement) {
+			this._bChangedByMe = true;
+			var oForm = this.getAggregation("form");
+			var oFormContainer;
+			var oFormElement;
+			var aFormElements;
+			var aFields;
 
-		/*
-		 * Creates a new form container and adds the given title to it.
-		 * @param {sap.ui.core.Title} optional The title of the container
-		 * @returns {sap.ui.layout.form.FormContainer} The newly created FormContainer
-		 * @private
-		 */
-		function _createFormContainer(oThis, oTitle) {
-
-			var oContainer = new FormContainer();
-			_createContainerLayoutData(oThis, oContainer);
-			if (oTitle) {
-				oContainer.setTitle(oTitle);
-			}
-			return oContainer;
-
-		}
-
-		/*
-		 * Applies the weight property for the fields in the responsive layout.
-		 * @param {sap.ui.layout.form.FormElement} oElement The FormElement where the weight is applied.
-		 * @private
-		 */
-		function _applyFieldWeight(oThis, oElement){
-
-			var iMaxWeight = oThis._iMaxWeight;
-			var aFields = oElement.getFields();
-			var oField;
-			var iLength = aFields.length;
-			var oLabel = oElement.getLabel();
-			var oLayoutData;
-			var i = 0;
-
-			if (oLabel && _getFieldLayoutData(oThis, oLabel)) {
-				iMaxWeight = iMaxWeight - _getFieldLayoutData(oThis, oLabel).getWeight();
-			}
-
-			// determine weights set from application
-			for (i = 0; i < aFields.length; i++) {
-				oField = aFields[i];
-				oLayoutData = _getFieldLayoutData(oThis, oField);
-				if (oLayoutData instanceof ResponsiveFlowLayoutData && !_isMyLayoutData(oThis, oLayoutData)) {
-					iMaxWeight = iMaxWeight - oLayoutData.getWeight();
-					iLength--;
-				}
-			}
-
-			var iWeight = Math.floor(iMaxWeight / iLength);
-			var iRest = iMaxWeight % iLength;
-
-			for (i = 0; i < aFields.length; i++) {
-				oField = aFields[i];
-				oLayoutData = _getFieldLayoutData(oThis, oField);
-				var iCurrentWeight = iWeight;
-
-				if (!oLayoutData) {
-					_createFieldLayoutData(oThis, oField, iCurrentWeight, false, i == 0);
-				} else if (_isMyLayoutData(oThis, oLayoutData) && oLayoutData instanceof ResponsiveFlowLayoutData) {
-					// devide rest to first fields (not only to last one) (fist because to ignore manual set weigths)
-					if (iRest > 0) {
-						iCurrentWeight++;
-						iRest--;
+			if (oElement instanceof sap.ui.core.Title || oElement.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+				oFormContainer = oElement.getParent();
+				oFormContainer.setTitle(null);
+				oFormContainer.setToolbar(null);
+				if (iIndex > 0) {
+					// if it's the first container -> just remove title
+					// remove container and add content to previous container
+					aFormElements = oFormContainer.getFormElements();
+					var iContainerIndex = oForm.indexOfFormContainer(oFormContainer);
+					var oPrevFormContainer = oForm.getFormContainers()[iContainerIndex - 1];
+					if (aFormElements.length > 0 && !aFormElements[0].getLabel()) {
+						// first Form Element has no label -> add its fields to last Form Element of previous container
+						var aPrevFormElements = oPrevFormContainer.getFormElements();
+						var oLastFormElement = aPrevFormElements[aPrevFormElements.length - 1];
+						aFields = aFormElements[0].getFields();
+						for (i = 0; i < aFields.length; i++) {
+							oLastFormElement.addField(aFields[i]);
+						}
+						_markFormElementForUpdate(this._changedFormElements, oLastFormElement);
+						oFormContainer.removeFormElement(aFormElements[0]);
+						aFormElements[0].destroy();
+						aFormElements.splice(0,1);
 					}
-					oLayoutData.setWeight(iCurrentWeight);
+					for (i = 0; i < aFormElements.length; i++) {
+						oPrevFormContainer.addFormElement(aFormElements[i]);
+					}
+					_markFormElementForUpdate(this._changedFormContainers, oPrevFormContainer);
+					oForm.removeFormContainer(oFormContainer);
+					oFormContainer.destroy();
 				}
-			}
-
-		}
-
-		function _updateVisibility(oThis, oElement){
-
-			var aFields = oElement.getFields();
-			var bVisible = false;
-
-			for (var i = 0; i < aFields.length; i++) {
-				var oField = aFields[i];
-				if (!oField.getVisible || oField.getVisible()) {
-					// at least one Field is visible
-					bVisible = true;
-					break;
-				}
-			}
-
-			if (oElement.getVisible() != bVisible) {
-				// set visibility of FormElement
-				oElement.setVisible(bVisible);
-			}
-
-		}
-
-		/*
-		 * Applies the linebreaks of form containers according to the minWidth and maxContainerCol settings of the SimpleForm
-		 * @private
-		 */
-		SimpleForm.prototype._applyLinebreaks = function(){
-
-			var oForm = this.getAggregation("form"),
-			aContainers = oForm.getFormContainers();
-			// set line break on every container if Form is smaller than getMinWidth pixel
-			// and reset it if it's larger
-			var oDomRef = this.getDomRef();
-			var o$ = this.$();
-			for (var i = 1; i < aContainers.length; i++) {
-				var oContainer = aContainers[i],
-				oLayoutData = oContainer.getLayoutData();
-				if (!oDomRef || o$.outerWidth(true) > this.getMinWidth()) {
-					// if not already rendered use default values according to column number
-					if (i % this.getMaxContainerCols() == 0) {
-						oLayoutData.setLinebreak(true);
+			} else if (oElement.getMetadata().isInstanceOf("sap.ui.core.Label")) {
+				oFormElement = oElement.getParent();
+				oFormContainer = oFormElement.getParent();
+				oFormElement.setLabel(null);
+				var iElementIndex = oFormContainer.indexOfFormElement(oFormElement);
+				if (iElementIndex == 0) {
+					// its the first Element of the container -> just remove label
+					if (oFormElement.getFields().lenght == 0) {
+						// FormElement has no fields -> just delete
+						oFormContainer.removeFormElement(oFormElement);
+						oFormElement.destroy();
+						if (oFormContainer.getFormElements().length == 0) {
+							oForm.removeFormContainer(oFormContainer);
+							oFormContainer.destroy();
+						}
 					} else {
-						oLayoutData.setLinebreak(false);
+						_markFormElementForUpdate(this._changedFormElements, oFormElement);
 					}
 				} else {
-					oLayoutData.setLinebreak(true);
-				}
-			}
-			if (oDomRef && o$.css("visibility") == "hidden") {
-				var that = this;
-				setTimeout(function() {
-					if (that.getDomRef()) {
-						that.$().css("visibility", "");
+					// add fields to previous FormElement
+					aFormElements = oFormContainer.getFormElements();
+					var oPrevFormElement = aFormElements[iElementIndex - 1];
+					aFields = oFormElement.getFields();
+					for (i = 0; i < aFields.length; i++) {
+						oPrevFormElement.addField(aFields[i]);
 					}
-				},10);
+					_markFormElementForUpdate(this._changedFormElements, oPrevFormElement);
+					oFormContainer.removeFormElement(oFormElement);
+					oFormElement.destroy();
+					if (oFormContainer.getFormElements().length == 0) {
+						oForm.removeFormContainer(oFormContainer);
+						oFormContainer.destroy();
+					}
+				}
+			} else { // remove field
+				oFormElement = oElement.getParent();
+				oFormElement.removeField(oElement);
+				if (oFormElement.getFields().length == 0 && !oFormElement.getLabel()) {
+					// FormElement has no more fields and no label -> just delete
+					oFormContainer = oFormElement.getParent();
+					oFormContainer.removeFormElement(oFormElement);
+					oFormElement.destroy();
+					if (oFormContainer.getFormElements().length == 0) {
+						oForm.removeFormContainer(oFormContainer);
+						oFormContainer.destroy();
+					}
+				} else {
+					_markFormElementForUpdate(this._changedFormElements, oFormElement);
+				}
 			}
 
-		};
+			this._aElements.splice(iIndex, 1);
+			oElement.setParent(null);
+			oElement.detachEvent("_change", _handleContentChange, this);
+			_removeLayoutData(this, oElement);
 
-		/*
-		 * Applies size of the containers in GridLayout: if only one container is in the last line -> make it full size
-		 * @private
-		 */
-		function _applyContainerSize(oThis){
-
-			var oForm = oThis.getAggregation("form");
-			var aContainers = oForm.getFormContainers();
-			var iLength = aContainers.length;
-			if (iLength % 2 > 0) {
-				aContainers[iLength - 1].getLayoutData().setHalfGrid(false);
-			}
-		}
-
-		/*
-		 * Handles the resize event
-		 * @private
-		 */
-		SimpleForm.prototype._resize = function(){
-
-			this._bChangedByMe = true;
-			if (this._iCurrentWidth == this.$().outerWidth()) {
-				return;
-			}
-			this._iCurrentWidth = this.$().outerWidth();
-			this._applyLinebreaks();
+			this.invalidate();
 			this._bChangedByMe = false;
-
-		};
-
-		function _markFormElementForUpdate(aFormElements, oFormElement){
-
-			var bFound = false;
-			for ( var i = 0; i < aFormElements.length; i++) {
-				var oChangedFormElement = aFormElements[i];
-				if (oChangedFormElement == oFormElement) {
-					bFound = true;
-					break;
-				}
-			}
-			if (!bFound) {
-				aFormElements.push(oFormElement);
-			}
-
+			return oElement;
 		}
+		return null;
 
-		function _handleContentChange(oEvent) {
-			if (oEvent.getParameter("name") == "visible") {
-				var oFormElement = oEvent.oSource.getParent();
-				_updateVisibility(this, oFormElement);
-			}
-		}
+	};
 
-		function _getFormContent(oForm) {
+	SimpleForm.prototype.removeAllContent = function() {
 
-			var aElements = [];
+		var i = 0;
+
+		if (this._aElements) {
+			this._bChangedByMe = true;
+			var oForm = this.getAggregation("form");
 			var aFormContainers = oForm.getFormContainers();
-
-			for ( var i = 0; i < aFormContainers.length; i++) {
+			for (i = 0; i < aFormContainers.length; i++) {
 				var oFormContainer = aFormContainers[i];
-				var oTitle = oFormContainer.getTitle();
-				if (oTitle) {
-					aElements.push(oTitle);
-				}
-
+				oFormContainer.setTitle(null);
+				oFormContainer.setToolbar(null);
 				var aFormElements = oFormContainer.getFormElements();
 				for ( var j = 0; j < aFormElements.length; j++) {
 					var oFormElement = aFormElements[j];
-					var oLabel = oFormElement.getLabel();
-					if (oLabel) {
-						aElements.push(oLabel);
-					}
-					var aFields = oFormElement.getFields();
-					for (var k = 0; k < aFields.length; k++) {
-						var oField = aFields[k];
-						aElements.push(oField);
-					}
+					oFormElement.setLabel(null);
+					oFormElement.removeAllFields();
 				}
+				oFormContainer.destroyFormElements();
 			}
+			oForm.destroyFormContainers();
 
+			for (i = 0; i < this._aElements.length; i++) {
+				var oElement = this._aElements[i];
+				_removeLayoutData(this, oElement);
+				oElement.detachEvent("_change", _handleContentChange, this);
+			}
+			var aElements = this._aElements;
+			this._aElements = null;
+			this.invalidate();
+			this._bChangedByMe = false;
 			return aElements;
-
+		} else {
+			return [];
 		}
 
-		SimpleForm.prototype._formInvalidated = function(oOrigin){
+	};
 
-			if (!this._bChangedByMe) {
-				// check if content is still the same like in array
-				// maybe ca Control was destroyed or removed without using the SimpleForm API
-				// as invalidate is fired for every single object only one object can be changed
-				var aContent = _getFormContent(this.getAggregation("form"));
-				var i = 0;
-				var j = 0;
-				var bCreateNew = false;
+	SimpleForm.prototype.destroyContent = function() {
 
-				if (aContent.length < this._aElements.length) {
-					// at least one element must be removed -> create completely new,
-					// because for deleted controls it's hard to find out the old parent.
-					bCreateNew = true;
-				} else {
-					for (i = 0; i < aContent.length; i++) {
-						var oElement1 = aContent[i];
-						var oElement2 = this._aElements[j];
-						if (oElement1 === oElement2) {
-							j++;
-						} else {
-							// check if Element1 is new
-							var oElementNext = aContent[i + 1];
-							if (oElementNext === oElement2) {
-								this.insertContent(oElement1, i);
-								break;
-							}
+		var aElements = this.removeAllContent();
 
-							// check if Element2 is removed
-							oElementNext = this._aElements[j + 1];
-							if (oElementNext === oElement1) {
-								// difficult to find out old Formelement or FormContainer -> create content completely new.
-								bCreateNew = true;
-								break;
-							}
+		if (aElements) {
+			this._bChangedByMe = true;
+			for (var i = 0; i < aElements.length; i++) {
+				aElements[i].destroy();
+			}
+			this.invalidate();
+			this._bChangedByMe = false;
+		}
+		return this;
 
-							break;
-						}
+	};
+
+	SimpleForm.prototype.getContent = function() {
+
+		if (!this._aElements) {
+			this._aElements = this.getAggregation("content", []);
+		}
+		return this._aElements.slice();
+
+	};
+
+/*
+ * Set the FormLayout to the Form. If a FormLayout is already set, just set a new one.
+ */
+	SimpleForm.prototype.setLayout = function(sLayout) {
+
+		this._bChangedByMe = true;
+		var sOldLayout = this.getLayout();
+		this.setProperty("layout", sLayout);
+
+		if (sLayout != sOldLayout) {
+			var that = this;
+			_setFormLayout(that);
+
+			// update LayoutData for Containers, Elements and Fields
+			var oForm = this.getAggregation("form");
+			var aContainers = oForm.getFormContainers();
+			var aElements;
+			var aFields;
+			var oLayoutData;
+
+			for ( var i = 0; i < aContainers.length; i++) {
+				var oContainer = aContainers[i];
+				this._changedFormContainers.push(oContainer);
+				oLayoutData = oContainer.getLayoutData();
+				if (oLayoutData) {
+					oLayoutData.destroy();
+				}
+				_createContainerLayoutData(this, oContainer);
+				aElements = oContainer.getFormElements();
+				for ( var j = 0; j < aElements.length; j++) {
+					var oElement = aElements[j];
+					_markFormElementForUpdate(this._changedFormElements, oElement);
+					oLayoutData = oElement.getLayoutData();
+					if (oLayoutData) {
+						oLayoutData.destroy();
+					}
+					_createElementLayoutData(this, oElement);
+					var oLabel = oElement.getLabel();
+					if (oLabel) {
+						_removeLayoutData(this, oLabel);
+						_createFieldLayoutData(this, oLabel, this._iLabelWeight, false, true, this.getLabelMinWidth());
+					}
+					aFields = oElement.getFields();
+					for ( var k = 0; k < aFields.length; k++) {
+						var oField = aFields[k];
+						_removeLayoutData(this, oField);
+						_createFieldLayoutData(this, oField, 5, false, true);
 					}
 				}
+			}
+		}
 
-				if (bCreateNew) {
-					this.removeAllContent();
-					for (i = 0; i < aContent.length; i++) {
-						var oElement = aContent[i];
-						this.addContent(oElement);
+		this._bChangedByMe = false;
+		return this;
+
+	};
+
+	/*
+	 * Overwrite the clone function because content will not be cloned in default one
+	 */
+	SimpleForm.prototype.clone = function(sIdSuffix) {
+
+		this._bChangedByMe = true;
+		var oClone = Control.prototype.clone.apply(this, arguments);
+		var aContent = this.getContent();
+
+		for ( var i = 0; i < aContent.length; i++) {
+			var oElement = aContent[i];
+			var oLayoutData = oElement.getLayoutData();
+			var oElementClone = oElement.clone(sIdSuffix);
+			if (oLayoutData) {
+				// mark private LayoutData
+				if (oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
+					var aLayoutData = oLayoutData.getMultipleLayoutData();
+					for ( var j = 0; j < aLayoutData.length; j++) {
+						if (_isMyLayoutData(this, aLayoutData[j])) {
+							oClone._aLayouts.push(oElementClone.getLayoutData().getMultipleLayoutData()[j].getId());
+						}
+					}
+				} else if (_isMyLayoutData(this, oLayoutData)) {
+					oClone._aLayouts.push(oElementClone.getLayoutData().getId());
+				}
+			}
+			oClone.addContent(oElementClone);
+		}
+
+		this._bChangedByMe = false;
+		return oClone;
+
+	};
+
+	function _setFormLayout(oThis) {
+
+			var oForm = oThis.getAggregation("form");
+			var oLayout = oForm.getLayout();
+			if (oLayout) {
+				oLayout.destroy();
+			}
+
+			switch (oThis.getLayout()) {
+			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+				jQuery.sap.require("sap.ui.layout.form.ResponsiveLayout");
+				oForm.setLayout(new sap.ui.layout.form.ResponsiveLayout(oThis.getId() + "--Layout"));
+				break;
+			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+				jQuery.sap.require("sap.ui.layout.form.GridLayout");
+				jQuery.sap.require("sap.ui.layout.form.GridContainerData");
+				jQuery.sap.require("sap.ui.layout.form.GridElementData");
+				oForm.setLayout(new sap.ui.layout.form.GridLayout(oThis.getId() + "--Layout"));
+				break;
+			case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
+				jQuery.sap.require("sap.ui.layout.form.ResponsiveGridLayout");
+				jQuery.sap.require("sap.ui.layout.GridData");
+				oForm.setLayout(new sap.ui.layout.form.ResponsiveGridLayout(oThis.getId() + "--Layout"));
+				break;
+
+			default:
+				break;
+			}
+
+	}
+
+	/*
+	 * Updates the FormContainers of the simple form.
+	 */
+	function _updateFormContainers(oThis) {
+
+		oThis._changedFormContainers = [];
+
+		var sLayout = oThis.getLayout();
+		var oLayout = oThis.getAggregation("form").getLayout();
+
+		oLayout.setBackgroundDesign(oThis.getBackgroundDesign());
+
+		switch (sLayout) {
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+			// set the default values for linebreakes to avoid flickering for default case
+			oThis._applyLinebreaks();
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+			_applyContainerSize(oThis);
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
+			oLayout.setLabelSpanXL(oThis.getLabelSpanXL());
+			oLayout.setLabelSpanL(oThis.getLabelSpanL());
+			oLayout.setLabelSpanM(oThis.getLabelSpanM());
+			oLayout.setLabelSpanS(oThis.getLabelSpanS());
+			oLayout.setAdjustLabelSpan(oThis.getAdjustLabelSpan());
+			oLayout.setEmptySpanXL(oThis.getEmptySpanXL());
+			oLayout.setEmptySpanL(oThis.getEmptySpanL());
+			oLayout.setEmptySpanM(oThis.getEmptySpanM());
+			oLayout.setEmptySpanS(oThis.getEmptySpanS());
+			oLayout.setColumnsXL(oThis.getColumnsXL());
+			oLayout.setColumnsL(oThis.getColumnsL());
+			oLayout.setColumnsM(oThis.getColumnsM());
+			oLayout.setSingleContainerFullSize(oThis.getSingleContainerFullSize());
+			oLayout.setBreakpointXL(oThis.getBreakpointXL());
+			oLayout.setBreakpointL(oThis.getBreakpointL());
+			oLayout.setBreakpointM(oThis.getBreakpointM());
+			break;
+		default:
+			break;
+		}
+
+		for ( var i = 0; i < oThis._changedFormElements.length; i++) {
+			var oFormElement = oThis._changedFormElements[i];
+
+			switch (sLayout) {
+			case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+				_applyFieldWeight(oThis, oFormElement);
+				break;
+			case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+				break;
+			default:
+				break;
+			}
+
+			_updateVisibility(oThis, oFormElement);
+		}
+		oThis._changedFormElements = [];
+
+	}
+
+	/*
+	 * Checks whether the given LayoutData is created and added by this Simple Form
+	 * @param { sap.ui.layout.ResponsiveFlowLayoutData} optional (interface) The layout data
+	 * @returns {boolean} Whether the given layout was created by this Simple Form
+	 * @private
+	 */
+	function _isMyLayoutData(oThis, oLayoutData) {
+
+		var sId = oLayoutData.getId(),
+		sLayouts = " " + oThis._aLayouts.join(" ") + " ";
+		return sLayouts.indexOf(" " + sId + " ") >  -1;
+
+	}
+
+	/*
+	 * Creates new sap.ui.layout.ResponsiveFlowLayoutData with the given parameters
+	 * @param {int} iWeight the weight for the layout data
+	 * @param {boolean} bLinebreak Whether the layout data has a linebreak
+	 * @param {boolean} bLinebreakable Whether the layout data is linebreakable
+	 * @returns {sap.ui.layout.ResponsiveFlowLayoutData} The newly created ResponsiveFlowLayoutData
+	 * @private
+	 */
+	function _createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth) {
+
+		var oLayout = new ResponsiveFlowLayoutData({weight:iWeight,linebreak:bLinebreak === true,linebreakable: bLinebreakable === true});
+		if (iMinWidth) {
+			oLayout.setMinWidth(iMinWidth);
+		}
+		oThis._aLayouts.push(oLayout.getId());
+		return oLayout;
+
+	}
+
+	/*
+	 * There may be VariantLayoutData used -> so get the right one for the used Layout
+	 */
+	function _getFieldLayoutData(oThis, oField){
+
+		var oLayoutData;
+
+		switch (oThis.getLayout()) {
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+			oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.ResponsiveFlowLayoutData");
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+			oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.form.GridElementData");
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveGridLayout:
+			oLayoutData = FormLayout.prototype.getLayoutDataForElement(oField, "sap.ui.layout.GridData");
+			break;
+
+		default:
+			break;
+		}
+
+		return oLayoutData;
+
+	}
+
+	function _createFieldLayoutData(oThis, oField, iWeight, bLinebreak, bLinebreakable, iMinWidth) {
+
+		var oLayoutData;
+
+		switch (oThis.getLayout()) {
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+			oLayoutData = _getFieldLayoutData(oThis, oField);
+			if (!oLayoutData || !_isMyLayoutData(oThis, oLayoutData)) {
+				oLayoutData = oField.getLayoutData();
+				if (oLayoutData && oLayoutData.getMetadata().getName() == "sap.ui.core.VariantLayoutData") {
+					oLayoutData.addMultipleLayoutData(_createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth));
+				} else if (!oLayoutData) {
+					oField.setLayoutData(_createRFLayoutData(oThis, iWeight, bLinebreak, bLinebreakable, iMinWidth));
+				} else {
+					jQuery.sap.log.warning("ResponsiveFlowLayoutData can not be set on Field " + oField.getId(), "_createFieldLayoutData", "SimpleForm");
+				}
+			}
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+			// no default LayoutData needed"
+			break;
+
+		default:
+			break;
+		}
+
+	}
+
+	function _createElementLayoutData(oThis, oElement) {
+
+		switch (oThis.getLayout()) {
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+			oElement.setLayoutData(new ResponsiveFlowLayoutData({linebreak:true, margin:false}));
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+			// no default LayoutData needed"
+			break;
+
+		default:
+			break;
+		}
+
+	}
+
+	function _createContainerLayoutData(oThis, oContainer) {
+
+		switch (oThis.getLayout()) {
+		case sap.ui.layout.form.SimpleFormLayout.ResponsiveLayout:
+			oContainer.setLayoutData(new ResponsiveFlowLayoutData({minWidth:280}));
+			break;
+		case sap.ui.layout.form.SimpleFormLayout.GridLayout:
+			if (oThis.getMaxContainerCols() > 1) {
+				oContainer.setLayoutData(new sap.ui.layout.form.GridContainerData({halfGrid: true}));
+			} else {
+				oContainer.setLayoutData(new sap.ui.layout.form.GridContainerData({halfGrid: false}));
+			}
+			break;
+
+		default:
+			break;
+		}
+
+	}
+
+	function _removeLayoutData(oThis, oElement) {
+
+		var oLayout = _getFieldLayoutData(oThis, oElement);
+		if (oLayout) {
+			var sLayoutId = oLayout.getId();
+
+			for ( var i = 0; i < oThis._aLayouts.length; i++) {
+				var sId = oThis._aLayouts[i];
+				if (sLayoutId == sId) {
+					oLayout.destroy(); // is removed from parent during destroy
+					oThis._aLayouts.splice(i, 1);
+					break;
+				}
+			}
+		}
+
+	}
+
+	/*
+	 * Adds a new form element to the given FormContainer and adds the given label to it.
+	 * @param {sap.ui.layout.form.FormContainer} The form container
+	 * @param {sap.ui.core.Label} optional (interface) The label of the element
+	 * @returns {sap.ui.layout.form.FormElement} The newly created FormElement
+	 * @private
+	 */
+	function _addFormElement(oThis, oFormContainer, oLabel) {
+
+		var oElement = _createFormElement(oThis, oLabel);
+		oFormContainer.addFormElement(oElement);
+		return oElement;
+
+	}
+
+	function _insertFormElement(oThis, oFormContainer, oLabel, iIndex) {
+
+		var oElement = _createFormElement(oThis, oLabel);
+		oFormContainer.insertFormElement(oElement, iIndex);
+		return oElement;
+
+	}
+
+	function _createFormElement(oThis, oLabel) {
+
+		var oElement = new FormElement();
+		_createElementLayoutData(oThis, oElement);
+		if (oLabel) {
+			oLabel.addStyleClass("sapUiFormLabel-CTX");
+			oElement.setLabel(oLabel);
+			if (!_getFieldLayoutData(oThis, oLabel)) {
+				_createFieldLayoutData(oThis, oLabel, oThis._iLabelWeight, false, true, oThis.getLabelMinWidth());
+			}
+		}
+		oElement.setVisible(false);
+		return oElement;
+
+	}
+
+	/*
+	 * Creates a new form container and adds the given title to it.
+	 * @param {sap.ui.core.Title || sap.ui.core.Toolbar} optional The title or toolbar of the container
+	 * @returns {sap.ui.layout.form.FormContainer} The newly created FormContainer
+	 * @private
+	 */
+	function _createFormContainer(oThis, oTitle) {
+
+		var oContainer = new FormContainer();
+		_createContainerLayoutData(oThis, oContainer);
+		if (oTitle) {
+			if (oTitle instanceof sap.ui.core.Title) {
+				oContainer.setTitle(oTitle);
+			} else if (oTitle.getMetadata().isInstanceOf("sap.ui.core.Toolbar")) {
+				oContainer.setToolbar(oTitle);
+			}
+		}
+		return oContainer;
+
+	}
+
+	/*
+	 * Applies the weight property for the fields in the responsive layout.
+	 * @param {sap.ui.layout.form.FormElement} oElement The FormElement where the weight is applied.
+	 * @private
+	 */
+	function _applyFieldWeight(oThis, oElement){
+
+		var iMaxWeight = oThis._iMaxWeight;
+		var aFields = oElement.getFields();
+		var oField;
+		var iLength = aFields.length;
+		var oLabel = oElement.getLabel();
+		var oLayoutData;
+		var i = 0;
+
+		if (oLabel && _getFieldLayoutData(oThis, oLabel)) {
+			iMaxWeight = iMaxWeight - _getFieldLayoutData(oThis, oLabel).getWeight();
+		}
+
+		// determine weights set from application
+		for (i = 0; i < aFields.length; i++) {
+			oField = aFields[i];
+			oLayoutData = _getFieldLayoutData(oThis, oField);
+			if (oLayoutData instanceof ResponsiveFlowLayoutData && !_isMyLayoutData(oThis, oLayoutData)) {
+				iMaxWeight = iMaxWeight - oLayoutData.getWeight();
+				iLength--;
+			}
+		}
+
+		var iWeight = Math.floor(iMaxWeight / iLength);
+		var iRest = iMaxWeight % iLength;
+
+		for (i = 0; i < aFields.length; i++) {
+			oField = aFields[i];
+			oLayoutData = _getFieldLayoutData(oThis, oField);
+			var iCurrentWeight = iWeight;
+
+			if (!oLayoutData) {
+				_createFieldLayoutData(oThis, oField, iCurrentWeight, false, i == 0);
+			} else if (_isMyLayoutData(oThis, oLayoutData) && oLayoutData instanceof ResponsiveFlowLayoutData) {
+				// devide rest to first fields (not only to last one) (fist because to ignore manual set weigths)
+				if (iRest > 0) {
+					iCurrentWeight++;
+					iRest--;
+				}
+				oLayoutData.setWeight(iCurrentWeight);
+			}
+		}
+
+	}
+
+	function _updateVisibility(oThis, oElement){
+
+		var aFields = oElement.getFields();
+		var bVisible = false;
+
+		for (var i = 0; i < aFields.length; i++) {
+			var oField = aFields[i];
+			if (!oField.getVisible || oField.getVisible()) {
+				// at least one Field is visible
+				bVisible = true;
+				break;
+			}
+		}
+
+		if (oElement.getVisible() != bVisible) {
+			// set visibility of FormElement
+			oElement.setVisible(bVisible);
+		}
+
+	}
+
+	/*
+	 * Applies the linebreaks of form containers according to the minWidth and maxContainerCol settings of the SimpleForm
+	 * @private
+	 */
+	SimpleForm.prototype._applyLinebreaks = function(){
+
+		var oForm = this.getAggregation("form"),
+		aContainers = oForm.getFormContainers();
+		// set line break on every container if Form is smaller than getMinWidth pixel
+		// and reset it if it's larger
+		var oDomRef = this.getDomRef();
+		var o$ = this.$();
+		for (var i = 1; i < aContainers.length; i++) {
+			var oContainer = aContainers[i],
+			oLayoutData = oContainer.getLayoutData();
+			if (!oDomRef || o$.outerWidth(true) > this.getMinWidth()) {
+				// if not already rendered use default values according to column number
+				if (i % this.getMaxContainerCols() == 0) {
+					oLayoutData.setLinebreak(true);
+				} else {
+					oLayoutData.setLinebreak(false);
+				}
+			} else {
+				oLayoutData.setLinebreak(true);
+			}
+		}
+		if (oDomRef && o$.css("visibility") == "hidden") {
+			var that = this;
+			setTimeout(function() {
+				if (that.getDomRef()) {
+					that.$().css("visibility", "");
+				}
+			},10);
+		}
+
+	};
+
+	/*
+	 * Applies size of the containers in GridLayout: if only one container is in the last line -> make it full size
+	 * adapt all containers because container can be inserted or added later on
+	 * @private
+	 */
+	function _applyContainerSize(oThis){
+
+		var oForm = oThis.getAggregation("form");
+		var aContainers = oForm.getFormContainers();
+		var iLength = aContainers.length;
+		for (var i = 0; i < iLength; i++) {
+			var oContainer = aContainers[i];
+			if ((i == iLength - 1) && (iLength % 2 > 0)) {
+				oContainer.getLayoutData().setHalfGrid(false);
+			} else if (!oContainer.getLayoutData().getHalfGrid()) {
+				oContainer.getLayoutData().setHalfGrid(true);
+			}
+		}
+	}
+
+	/*
+	 * Handles the resize event
+	 * @private
+	 */
+	SimpleForm.prototype._resize = function(){
+
+		this._bChangedByMe = true;
+		if (this._iCurrentWidth == this.$().outerWidth()) {
+			return;
+		}
+		this._iCurrentWidth = this.$().outerWidth();
+		this._applyLinebreaks();
+		this._bChangedByMe = false;
+
+	};
+
+	function _markFormElementForUpdate(aFormElements, oFormElement){
+
+		var bFound = false;
+		for ( var i = 0; i < aFormElements.length; i++) {
+			var oChangedFormElement = aFormElements[i];
+			if (oChangedFormElement == oFormElement) {
+				bFound = true;
+				break;
+			}
+		}
+		if (!bFound) {
+			aFormElements.push(oFormElement);
+		}
+
+	}
+
+	function _handleContentChange(oEvent) {
+		if (oEvent.getParameter("name") == "visible") {
+			var oFormElement = oEvent.oSource.getParent();
+			_updateVisibility(this, oFormElement);
+		}
+	}
+
+	function _getFormContent(oForm) {
+
+		var aElements = [];
+		var aFormContainers = oForm.getFormContainers();
+
+		for ( var i = 0; i < aFormContainers.length; i++) {
+			var oFormContainer = aFormContainers[i];
+			var oTitle = oFormContainer.getTitle();
+			if (oTitle) {
+				aElements.push(oTitle);
+			} else {
+				var oToolbar = oFormContainer.getToolbar();
+				if (oToolbar) {
+					aElements.push(oToolbar);
+				}
+			}
+
+			var aFormElements = oFormContainer.getFormElements();
+			for ( var j = 0; j < aFormElements.length; j++) {
+				var oFormElement = aFormElements[j];
+				var oLabel = oFormElement.getLabel();
+				if (oLabel) {
+					aElements.push(oLabel);
+				}
+				var aFields = oFormElement.getFields();
+				for (var k = 0; k < aFields.length; k++) {
+					var oField = aFields[k];
+					aElements.push(oField);
+				}
+			}
+		}
+
+		return aElements;
+
+	}
+
+	SimpleForm.prototype._formInvalidated = function(oOrigin){
+
+		if (!this._bChangedByMe) {
+			// check if content is still the same like in array
+			// maybe ca Control was destroyed or removed without using the SimpleForm API
+			// as invalidate is fired for every single object only one object can be changed
+			var aContent = _getFormContent(this.getAggregation("form"));
+			var i = 0;
+			var j = 0;
+			var bCreateNew = false;
+
+			if (!this._aElements || aContent.length < this._aElements.length) {
+				// at least one element must be removed -> create completely new,
+				// because for deleted controls it's hard to find out the old parent.
+				bCreateNew = true;
+			} else {
+				for (i = 0; i < aContent.length; i++) {
+					var oElement1 = aContent[i];
+					var oElement2 = this._aElements[j];
+					if (oElement1 === oElement2) {
+						j++;
+					} else {
+						// check if Element1 is new
+						var oElementNext = aContent[i + 1];
+						if (oElementNext === oElement2) {
+							this.insertContent(oElement1, i);
+							break;
+						}
+
+						// check if Element2 is removed
+						oElementNext = this._aElements[j + 1];
+						if (oElementNext === oElement1) {
+							// difficult to find out old Formelement or FormContainer -> create content completely new.
+							bCreateNew = true;
+							break;
+						}
+
+						break;
 					}
 				}
 			}
 
-		};
+			if (bCreateNew) {
+				this.removeAllContent();
+				for (i = 0; i < aContent.length; i++) {
+					var oElement = aContent[i];
+					this.addContent(oElement);
+				}
+			}
+		}
 
-	}());
+	};
 
 	return SimpleForm;
 
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/form/SimpleForm.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.AssociativeSplitter') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides control sap.ui.layout.AssociativeSplitter.
+jQuery.sap.declare('sap.ui.layout.AssociativeSplitter'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+sap.ui.define("sap/ui/layout/AssociativeSplitter",['./Splitter', './SplitterRenderer'],
+	function (Splitter, SplitterRenderer) {
+	"use strict";
+
+	/**
+	 * Constructor for a new AssociativeSplitter.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
+	 *
+	 * @class
+	 * AssociativeSplitter is a version of Splitter that uses an association in addition to the aggregation
+	 * @extends sap.ui.layout.Splitter
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @private
+	 * @since 1.38
+	 * @alias sap.ui.layout.AssociativeSplitter
+	 */
+	var AssociativeSplitter = Splitter.extend("sap.ui.layout.AssociativeSplitter", /** @lends sap.ui.layout.AssociativeSplitter.prototype */ {
+		metadata : {
+			associations : {
+				/**
+				 * The same as content, but provided in the form of an association
+				 */
+				associatedContentAreas: {type : "sap.ui.core.Control", multiple : true, singularName : "associatedContentArea"}
+			}
+		},
+		renderer: SplitterRenderer
+	});
+
+	AssociativeSplitter.prototype.init = function () {
+		Splitter.prototype.init.call(this);
+		// We need to have different step size than the existing in the Splitter
+		this._keyListeners = {
+			increase     : this._onKeyboardResize.bind(this, "inc", 1),
+			decrease     : this._onKeyboardResize.bind(this, "dec", 1),
+			increaseMore : this._onKeyboardResize.bind(this, "incMore", 2),
+			decreaseMore : this._onKeyboardResize.bind(this, "decMore", 2),
+			max          : this._onKeyboardResize.bind(this, "max", 1),
+			min          : this._onKeyboardResize.bind(this, "min", 1)
+		};
+		this._enableKeyboardListeners();
+	};
+
+	/**
+	 * Adds shift + arrows keyboard handling to the existing one
+	 * @returns {void}
+	 * @private
+	 */
+	AssociativeSplitter.prototype._enableKeyboardListeners = function () {
+		Splitter.prototype._enableKeyboardListeners.call(this);
+		this.onsaprightmodifiers = this._keyListeners.increase;
+		this.onsapleftmodifiers = this._keyListeners.decrease;
+		this.onsapupmodifiers = this._keyListeners.decrease;
+		this.onsapdownmodifiers = this._keyListeners.increase;
+		this.onsapright = this._keyListeners.increaseMore;
+		this.onsapdown = this._keyListeners.increaseMore;
+		this.onsapleft = this._keyListeners.decreaseMore;
+		this.onsapup = this._keyListeners.decreaseMore;
+		this.onsapend = this._keyListeners.max;
+		this.onsaphome = this._keyListeners.min;
+
+		this._keyboardEnabled = true;
+	};
+
+	AssociativeSplitter.prototype.addAssociatedContentArea = function (oContent) {
+		this._needsInvalidation = true;
+		_ensureLayoutData(oContent);
+		return this.addAssociation("associatedContentAreas", oContent);
+	};
+
+	AssociativeSplitter.prototype.indexOfAssociatedContentArea = function (area) {
+		var contentAreas = this._getContentAreas();
+		for (var i = 0; i < contentAreas.length; i++) {
+			if (area == contentAreas[i]) {
+				return i;
+			}
+		}
+		return -1;
+	};
+
+	//TODO: Review this with caution, and check whether there will be any side effects
+	AssociativeSplitter.prototype.insertAssociatedContentArea = function (oContent, iIndex) {
+		var id = oContent.getId();
+		this._needsInvalidation = true;
+		_ensureLayoutData(oContent);
+		var content = this.getAssociatedContentAreas();
+
+		//Remove duplicate IDs
+		for (var i = 0; i < content.length; i++) {
+			if (content[i] === id) {
+				content.splice(i,1);
+			}
+		}
+
+		content.splice(iIndex, 0, id);
+		this.setAssociation("associatedContentAreas", null);
+		var that = this;
+
+		content.forEach(function (id) {
+			that.addAssociation("associatedContentAreas", id);
+		});
+	};
+
+	AssociativeSplitter.prototype.removeAssociatedContentArea = function (area) {
+		this.removeAssociation("associatedContentAreas", area);
+	};
+
+	AssociativeSplitter.prototype._getContentAreas = function () {
+		var aAssociatedContentAreas = this.getAssociatedContentAreas() || [];
+		var aContentAreas = this.getContentAreas();
+
+		var aValidAssContentAreas = aAssociatedContentAreas.map(function (sId) {
+			return sap.ui.getCore().byId(sId);
+		}).filter(function (oContent) { return oContent; });
+
+		return aContentAreas.concat(aValidAssContentAreas);
+	};
+
+	/**
+	 * Starts the resize of splitter contents (when the bar is moved by mouse)
+	 *
+	 * @param {jQuery.Event} [oJEv] The jQuery event
+	 * @private
+	 */
+	AssociativeSplitter.prototype.onmousedown = function (oJEv) {
+		if (this._ignoreMouse) {
+			return;
+		}
+
+		if (jQuery(oJEv.target).hasClass("sapUiLoSplitterBarIcon")) {
+			oJEv.target = oJEv.target.parentElement;
+		}
+
+		var sId = this.getId();
+		if (!oJEv.target.id || oJEv.target.id.indexOf(sId + "-splitbar") !== 0) {
+			// The clicked element was not one of my splitter bars
+			return;
+		}
+
+		this._ignoreTouch = true;
+		this._onBarMoveStart(oJEv);
+		this._oLastDOMclicked = oJEv.target;
+	};
+
+	AssociativeSplitter.prototype.ondblclick = function (oEvent) {
+		// For some reason dblclick returns the whole Splitter not only the clicked splitbar
+		var sId = this.getId(),
+			iBar, oContentArea;
+		if (!(oEvent.target.contains(this._oLastDOMclicked) && (this._oLastDOMclicked.id.indexOf(sId + "-splitbar") > -1))) {
+			// The clicked element was not one of my splitter bars
+			return;
+		}
+
+		iBar = parseInt(this._oLastDOMclicked.id.substr((sId + "-splitbar-").length), 10);
+		oContentArea = this._getContentAreas()[iBar];
+		oContentArea._currentPosition = this.getCalculatedSizes()[iBar];
+		oContentArea._lastPosition = oContentArea._lastPosition || oContentArea._currentPosition;
+
+		if (oContentArea._currentPosition === oContentArea._lastPosition) {
+			this._resizeContents(iBar, (this.getCalculatedSizes()[iBar]) * -1, true);
+		} else {
+			this._resizeContents(iBar, oContentArea._lastPosition, true);
+			oContentArea._lastPosition = null;
+		}
+	};
+
+	/**
+	 * Starts the resize of splitter contents (when the bar is moved by touch)
+	 *
+	 * @param {jQuery.Event} [oJEv] The jQuery event
+	 * @private
+	 */
+	AssociativeSplitter.prototype.ontouchstart = function (oJEv) {
+		if (this._ignoreTouch) {
+			return;
+		}
+
+		if (jQuery(oJEv.target).hasClass("sapUiLoSplitterBarIcon")) {
+			oJEv.target = oJEv.target.parentElement;
+		}
+
+		var sId = this.getId();
+		if (!oJEv.target.id || oJEv.target.id.indexOf(sId + "-splitbar") !== 0) {
+			// The clicked element was not one of my splitter bars
+			return;
+		}
+
+		if (!oJEv.changedTouches || !oJEv.changedTouches[0]) {
+			// No touch in event
+			return;
+		}
+
+		this._ignoreMouse = true;
+		this._onBarMoveStart(oJEv.changedTouches[0], true);
+	};
+
+	AssociativeSplitter.prototype._onBarMoveStart = function (oJEv, bTouch) {
+		var sId = this.getId();
+
+		// Disable auto resize during bar move
+		this.disableAutoResize(/* temporarily: */ true);
+
+		var iPos = oJEv[this._moveCord];
+		var iSplitBar = parseInt(oJEv.target.id.substr((sId + "-splitbar-").length), 10);
+		var iSplitBarCircle = parseInt(oJEv.target.parentElement.id.substr((sId + "-splitbar-").length), 10);
+		var iBar = (iSplitBar + 1) ? iSplitBar : iSplitBarCircle;
+		var $Bar = jQuery(oJEv.target);
+		var mCalcSizes = this.getCalculatedSizes();
+		var iBarSize = this._bHorizontal ?  $Bar.innerWidth() : $Bar.innerHeight();
+
+		var aContentAreas = this._getContentAreas();
+		var oLd1   = aContentAreas[iBar].getLayoutData();
+		var oLd2   = aContentAreas[iBar + 1].getLayoutData();
+
+		if (!oLd1.getResizable() || !oLd2.getResizable()) {
+			// One of the contentAreas is not resizable, do not resize
+			// Also: disallow text-marking behavior when not moving bar
+			_preventTextSelection(bTouch);
+			return;
+		}
+
+		// Calculate relative starting position of the bar for virtual bar placement
+		var iRelStart = 0 - iBarSize;
+		for (var i = 0; i <= iBar; ++i) {
+			iRelStart += mCalcSizes[i] + iBarSize;
+		}
+
+		this._move = {
+			// Start coordinate
+			start : iPos,
+			// Relative starting position of the bar
+			relStart : iRelStart,
+			// The number of the bar that is moved
+			barNum : iBar,
+			// The splitter bar that is moved
+			bar : jQuery(oJEv.target),
+			// The content sizes for fast resize bound calculation
+			c1Size : mCalcSizes[iBar],
+			c1MinSize : oLd1 ? parseInt(oLd1.getMinSize(), 10) : 0,
+			c2Size : mCalcSizes[iBar + 1],
+			c2MinSize : oLd2 ? parseInt(oLd2.getMinSize(), 10) : 0
+		};
+
+		// Event handlers use bound handler methods - see init()
+		if (bTouch) {
+			// this._ignoreMouse = true; // Ignore mouse-events until touch is done
+			document.addEventListener("touchend",  this._boundBarMoveEnd);
+			document.addEventListener("touchmove", this._boundBarMove);
+		} else {
+			document.addEventListener("mouseup",   this._boundBarMoveEnd);
+			document.addEventListener("mousemove", this._boundBarMove);
+		}
+
+		this._$SplitterOverlay.css("display", "block"); // Needed because it is set to none in renderer
+		this._$SplitterOverlay.appendTo(this.getDomRef());
+		this._$SplitterOverlayBar.css(this._sizeDirNot, "");
+		this._move["bar"].css("visibility", "hidden");
+		this._onBarMove(oJEv);
+	};
+
+	// Overriding sap.ui.layout.Splitter's calculation functions in order to make it responsive
+
+	/**
+	 * Resizes the contents after a bar has been moved
+	 *
+	 * @param {Number} [iLeftContent] Number of the first (left) content that is resized
+	 * @param {Number} [iPixels] Number of pixels to increase the first and decrease the second content
+	 * @param {boolean} [bFinal] Whether this is the final position (sets the size in the layoutData of the
+	 * content areas)
+	 */
+	AssociativeSplitter.prototype._resizeContents = function (iLeftContent, iPixels, bFinal) {
+		var aContentAreas, oLd1, oLd2, sSize1,
+			sSize2, $Cnt1, $Cnt2, iNewSize1, iNewSize2,
+			iMinSize1, iMinSize2, sOrientation, iSplitterSize,
+			sFinalSize1, sFinalSize2, iDiff;
+
+		if (isNaN(iPixels)) {
+			jQuery.sap.log.warning("Splitter: Received invalid resizing values - resize aborted.");
+			return;
+		}
+
+		aContentAreas = this._getContentAreas();
+		oLd1 = aContentAreas[iLeftContent].getLayoutData();
+		oLd2 = aContentAreas[iLeftContent + 1].getLayoutData();
+
+		sSize1 = oLd1.getSize();
+		sSize2 = oLd2.getSize();
+
+		$Cnt1 = this.$("content-" + iLeftContent);
+		$Cnt2 = this.$("content-" + (iLeftContent + 1));
+
+		iNewSize1 = this._move.c1Size + iPixels;
+		iNewSize2 = this._move.c2Size - iPixels;
+		iMinSize1 = parseInt(oLd1.getMinSize(), 10);
+		iMinSize2 = parseInt(oLd2.getMinSize(), 10);
+
+		sOrientation = this.getOrientation();
+		iSplitterSize = sOrientation === "Horizontal" ? this.$().width() : this.$().height();
+
+		// Adhere to size constraints
+		if (iNewSize1 < iMinSize1) {
+			iDiff = iMinSize1 - iNewSize1;
+			iPixels += iDiff;
+			iNewSize1 = iMinSize1;
+			iNewSize2 -= iDiff;
+		} else if (iNewSize2 < iMinSize2) {
+			iDiff = iMinSize2 - iNewSize2;
+			iPixels -= iDiff;
+			iNewSize2 = iMinSize2;
+			iNewSize1 -= iDiff;
+		}
+
+		if (bFinal) {
+			// Resize finished, set layout data in content areas
+			if (sSize1 === "auto" && sSize2 !== "auto") {
+				// First pane has auto size - only change size of second pane
+				sFinalSize2 = this._pxToPercent(iNewSize2, iSplitterSize);
+				oLd2.setSize(sFinalSize2);
+			} else if (sSize1 !== "auto" && sSize2 === "auto") {
+				// Second pane has auto size - only change size of first pane
+				sFinalSize1 = this._pxToPercent(iNewSize1, iSplitterSize);
+				oLd1.setSize(sFinalSize1);
+			} else {
+				sFinalSize1 = this._pxToPercent(iNewSize1, iSplitterSize);
+				sFinalSize2 = this._pxToPercent(iNewSize2, iSplitterSize);
+
+
+				oLd1.setSize(sFinalSize1);
+				oLd2.setSize(sFinalSize2);
+			}
+		} else {
+			// Live-Resize, resize contents in Dom
+			sFinalSize1 = this._pxToPercent(iNewSize1, iSplitterSize);
+			sFinalSize2 = this._pxToPercent(iNewSize2, iSplitterSize);
+
+			$Cnt1.css(this._sizeType, sFinalSize1);
+			$Cnt2.css(this._sizeType, sFinalSize2);
+		}
+	};
+
+	AssociativeSplitter.prototype._pxToPercent = function (iPx, iFullSize) {
+		return (iPx * 100) / iFullSize + "%";
+	};
+
+	/**
+	 * Recalculates the content sizes in three steps:
+	 *  1. Searches for all absolute values ("px") and deducts them from the available space.
+	 *  2. Searches for all percent values and interprets them as % of the available space after step 1
+	 *  3. Divides the rest of the space uniformly between all contents with "auto" size values
+	 *
+	 * @private
+	 */
+	AssociativeSplitter.prototype._recalculateSizes = function () {
+		// TODO: (?) Use maxSize value from layoutData
+		var i, sSize, oLayoutData, iColSize, idx, iSize;
+
+		// Read all content sizes from the layout data
+		var aSizes = [];
+		var aContentAreas = this._getContentAreas();
+		var sOrientation = this.getOrientation();
+		var iAvailableSize = this._calculateAvailableContentSize(aSizes);
+		var aAutosizeIdx = [];
+		var aAutoMinsizeIdx = [];
+		var aPercentsizeIdx = [];
+
+		for (i = 0; i < aContentAreas.length; ++i) {
+			oLayoutData = aContentAreas[i].getLayoutData();
+			sSize = oLayoutData ? oLayoutData.getSize() : "auto";
+
+			aSizes.push(sSize);
+		}
+
+		this._calculatedSizes = [];
+
+		// Remove fixed sizes from available size
+		for (i = 0; i < aSizes.length; ++i) {
+			sSize = aSizes[i];
+
+			if (sSize.indexOf("px") > -1) {
+				// Pixel based Value - deduct it from available size
+				iSize = parseInt(sSize, 10);
+				iAvailableSize -= iSize;
+				this._calculatedSizes[i] = iSize;
+			} else if (sSize.indexOf("%") > -1) {
+				aPercentsizeIdx.push(i);
+			} else if (sSize === "auto") {
+				oLayoutData = aContentAreas[i].getLayoutData();
+				if (oLayoutData && parseInt(oLayoutData.getMinSize(), 10) !== 0) {
+					aAutoMinsizeIdx.push(i);
+				} else {
+					aAutosizeIdx.push(i);
+				}
+			} else {
+				jQuery.sap.log.error("Illegal size value: " + aSizes[i]);
+			}
+		}
+
+		var bWarnSize = false; // Warn about sizes being too big for the available space
+
+		// If more than the available size if assigned to fixed width content, the rest will get no
+		// space at all
+		if (iAvailableSize < 0) { bWarnSize = true; iAvailableSize = 0; }
+
+		// Now calculate % of the available space
+		var iRest = iAvailableSize;
+		iAvailableSize = sOrientation === "Horizontal" ? this.$().width() : this.$().height();
+
+		var iPercentSizes = aPercentsizeIdx.length;
+		for (i = 0; i < iPercentSizes; ++i) {
+			idx = aPercentsizeIdx[i];
+			if (iPercentSizes === 1 && aContentAreas.length === 1) {
+				iColSize = iAvailableSize;
+			} else {
+				// Percent based Value - deduct it from available size
+				iColSize = parseFloat(aSizes[idx]) / 100 * iAvailableSize;
+			}
+			this._calculatedSizes[idx] = iColSize;
+			iRest -= iColSize;
+		}
+		iAvailableSize = iRest;
+
+		if (iAvailableSize < 0) { bWarnSize = true; iAvailableSize = 0; }
+
+		// Calculate auto sizes
+		iColSize = Math.floor(iAvailableSize / (aAutoMinsizeIdx.length + aAutosizeIdx.length), 0);
+
+		// First calculate auto-sizes with a minSize constraint
+		var iAutoMinSizes = aAutoMinsizeIdx.length;
+		for (i = 0; i < iAutoMinSizes; ++i) {
+			idx = aAutoMinsizeIdx[i];
+			var iMinSize = parseInt(aContentAreas[idx].getLayoutData().getMinSize(), 10);
+			if (iMinSize > iColSize) {
+				this._calculatedSizes[idx] = iMinSize;
+				iAvailableSize -= iMinSize;
+			} else {
+				this._calculatedSizes[idx] = iColSize;
+				iAvailableSize -= iColSize;
+			}
+		}
+
+		if (iAvailableSize < 0) { bWarnSize = true; iAvailableSize = 0; }
+
+		// Now calculate "auto"-sizes
+		iRest = iAvailableSize;
+		var iAutoSizes = aAutosizeIdx.length;
+		iColSize = Math.floor(iAvailableSize / iAutoSizes, 0);
+		for (i = 0; i < iAutoSizes; ++i) {
+			idx = aAutosizeIdx[i];
+			this._calculatedSizes[idx] = iColSize;
+			iRest -= iColSize;
+		}
+
+		if (bWarnSize) {
+			// TODO: Decide if the warning should be kept - might spam the console but on the other
+			//       hand it might make analyzing of splitter bugs easier, since we can just ask
+			//       developers if there was a [Splitter] output on the console if the splitter looks
+			//       weird in their application.
+			jQuery.sap.log.info(
+				"[Splitter] The set sizes and minimal sizes of the splitter contents are bigger " +
+				"than the available space in the UI."
+			);
+		}
+		this._calculatedSizes = this._calculatedSizes;
+	};
+
+	AssociativeSplitter.prototype._ensureAllSplittersCollapsed = function (iBar) {
+		var aAreas = this._getContentAreas();
+		var bAllCollapsed = false;
+		for (var i = 0; i < aAreas.length; i++) {
+			var sSize = aAreas[i].getLayoutData().getSize().slice(0, -2);
+
+			if (sSize === "0" || sSize === "au") {
+				bAllCollapsed = true;
+				continue;
+			} else if (i === (aAreas.length - 1) && bAllCollapsed) {
+				this._getContentAreas()[iBar + 1].setLayoutData(new sap.ui.layout.SplitterLayoutData({ size: "100%" }));
+			}
+		}
+	};
+
+	function _ensureLayoutData(oContent) {
+		var oLd = oContent.getLayoutData();
+		// Make sure LayoutData is set on the content
+		// But this approach has the advantage that "compatible" LayoutData can be used.
+		if (oLd && (!oLd.getResizable || !oLd.getSize || !oLd.getMinSize)) {
+			jQuery.sap.log.warning(
+				"Content \"" + oContent.getId() + "\" for the Splitter contained wrong LayoutData. " +
+				"The LayoutData has been replaced with default values."
+			);
+			oLd = null;
+		}
+		if (!oLd) {
+			oContent.setLayoutData(new sap.ui.layout.SplitterLayoutData());
+		}
+	}
+
+	/**
+	 * Prevents the selection of text while the mouse is moving when pressed
+	 *
+	 * @param {boolean} [bTouch] If set to true, touch events instead of mouse events are captured
+	 */
+	function _preventTextSelection(bTouch) {
+		var fnPreventSelection = function (oEvent) {
+			oEvent.preventDefault();
+		};
+		var fnAllowSelection = null;
+		fnAllowSelection = function () {
+			document.removeEventListener("touchend",  fnAllowSelection);
+			document.removeEventListener("touchmove", fnPreventSelection);
+			document.removeEventListener("mouseup",   fnAllowSelection);
+			document.removeEventListener("mousemove", fnPreventSelection);
+		};
+
+		if (bTouch) {
+			this._ignoreMouse = true; // Ignore mouse-events until touch is done
+			document.addEventListener("touchend",  fnAllowSelection);
+			document.addEventListener("touchmove", fnPreventSelection);
+		} else {
+			document.addEventListener("mouseup",   fnAllowSelection);
+			document.addEventListener("mousemove", fnPreventSelection);
+		}
+	}
+
+	return AssociativeSplitter;
+
+}, /* bExport= */ false);
+}; // end of sap/ui/layout/AssociativeSplitter.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.PaneContainer') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides control sap.ui.layout.PaneContainer.
+jQuery.sap.declare('sap.ui.layout.PaneContainer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Element'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/PaneContainer",['jquery.sap.global', './library', 'sap/ui/core/Element', './Splitter', './AssociativeSplitter'],
+	function(jQuery, library, Element, Splitter, AssociativeSplitter) {
+	"use strict";
+
+	/**
+	 * Constructor for a new PaneContainer.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
+	 *
+	 * @class
+	 * PaneContainer is an abstraction of Splitter
+	 * Could be used as an aggregation of ResponsiveSplitter or other PaneContainers.
+	 * @extends sap.ui.core.Element
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @public
+	 * @since 1.38
+	 * @alias sap.ui.layout.PaneContainer
+	 */
+	var PaneContainer = Element.extend("sap.ui.layout.PaneContainer", { metadata : {
+		library : "sap.ui.layout",
+		properties : {
+			/**
+			 The orientation of the Splitter
+			 */
+			orientation : { type : "sap.ui.core.Orientation", group : "Behavior", defaultValue : sap.ui.core.Orientation.Horizontal }
+		},
+		defaultAggregation : "panes",
+		aggregations : {
+			/**
+			 The Pane that will be shown when there is no suitable pane for ResponsiveSplitter's current width.
+			 */
+			panes: { type: "sap.ui.core.Element", multiple: true, singularName: "pane" }
+		}
+	}});
+
+	PaneContainer.prototype.init = function () {
+		this._oSplitter = new AssociativeSplitter({
+			orientation: this.getOrientation(),
+			height: "100%"
+		});
+
+		this._oSplitter._bUseIconForSeparator = false;
+	};
+
+	/**
+	 * Setter for property orientation.
+	 * Default value is sap.ui.core.Orientation.Horizontal
+	 * @public
+	 * @param {sap.ui.core.Orientation} sOrientation The Orientation type.
+	 * @returns {sap.ui.layout.PaneContainer} this to allow method chaining.
+	 */
+	PaneContainer.prototype.setOrientation = function(sOrientation) {
+		this._oSplitter.setOrientation(sOrientation);
+		return this.setProperty("orientation", sOrientation, true);
+	};
+
+
+	PaneContainer.prototype._getPanesInInterval = function (iFrom) {
+		return this.getPanes().filter(function(oPane) {
+			return oPane instanceof sap.ui.layout.SplitPane && oPane._isInInterval(iFrom);
+		});
+	};
+
+	/**
+	 * Setter for property layoutData.
+	 * @public
+	 * @param {sap.ui.core.LayoutData} oLayoutData The LayoutData object.
+	 * @returns {sap.ui.layout.PaneContainer} this to allow method chaining.
+	 */
+	PaneContainer.prototype.setLayoutData = function(oLayoutData) {
+		return this._oSplitter.setLayoutData(oLayoutData);
+	};
+
+	return PaneContainer;
+
+}, /* bExport= */ true);
+}; // end of sap/ui/layout/PaneContainer.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.ResponsiveFlowLayout') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -11035,7 +12419,7 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayout",['jquery.sap.global', 'sap/ui
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -11537,7 +12921,7 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayout",['jquery.sap.global', 'sap/ui
 
 						// if the width/height changed so the sizes need to be
 						// recalculated
-						var oRowRect = $Row.rect();
+						var oRowRect = this._getElementRect($Row);
 						var oPrevRect = this._rows[i].oRect;
 
 						if (oRowRect && oPrevRect) {
@@ -11566,7 +12950,7 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayout",['jquery.sap.global', 'sap/ui
 						this.oRm.flush(this._oDomRef);
 
 						for (var i = 0; i < this._rows.length; i++) {
-							var oTmpRect = jQuery.sap.byId(sId + "-row" + i).rect();
+							var oTmpRect = this._getElementRect(jQuery.sap.byId(sId + "-row" + i));
 							this._rows[i].oRect = oTmpRect;
 						}
 					}
@@ -11736,6 +13120,24 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayout",['jquery.sap.global', 'sap/ui
 
 		};
 
+		/**
+		 * Returns a rectangle describing the current visual positioning of 1st DOM in the collection.
+		 * The difference with the function rect() in jQuery.sap.dom.js is that the height and width are cut to the
+		 * 1st digit after the decimal separator and this is consistent across all browsers.
+		 * @param oElement the jQuery collection to check
+		 * @returns {{top, left, width, height}} or null if no such element
+		 * @private
+		 */
+		ResponsiveFlowLayout.prototype._getElementRect = function (oElement) {
+			var oRect = oElement && oElement.rect();
+
+			if (oRect) {
+				oRect.height = oRect.height.toFixed(1);
+				oRect.width = oRect.width.toFixed(1);
+			}
+			return oRect;
+		};
+
 	}());
 
 	return ResponsiveFlowLayout;
@@ -11743,6 +13145,660 @@ sap.ui.define("sap/ui/layout/ResponsiveFlowLayout",['jquery.sap.global', 'sap/ui
 }, /* bExport= */ true);
 
 }; // end of sap/ui/layout/ResponsiveFlowLayout.js
+if ( !jQuery.sap.isDeclared('sap.ui.layout.ResponsiveSplitter') ) {
+/*!
+* UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+*/
+
+// Provides control sap.ui.layout.ResponsiveSplitter.
+jQuery.sap.declare('sap.ui.layout.ResponsiveSplitter'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Control'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.delegate.ItemNavigation'); // unlisted dependency retained
+sap.ui.define("sap/ui/layout/ResponsiveSplitter",["jquery.sap.global", "./library", "sap/ui/core/Control", "./ResponsiveSplitterUtilities", "./ResponsiveSplitterPage", "./PaneContainer", "./SplitPane", "sap/ui/core/delegate/ItemNavigation"], function (jQuery, library, Control, RSUtil, ResponsiveSplitterPage, PaneContainer, SplitPane, ItemNavigation) {
+	"use strict";
+
+	/**
+	 * Constructor for a new ResponsiveSplitter.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] Initial settings for the new control
+	 *
+	 * @class
+	 * ResponsiveSplitter is a control that enables responsiveness of normal Splitter.
+	 * ResponsiveSplitter consists of PaneContainers that further  agregate other PaneContainers and SplitPanes.
+	 * SplitPanes can be moved to the pagination when a minimum width of their parent is reached.
+	 * @extends sap.ui.core.Control
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @public
+	 * @since 1.38
+	 * @alias sap.ui.layout.ResponsiveSplitter
+	 */
+	var ResponsiveSplitter = Control.extend("sap.ui.layout.ResponsiveSplitter", /** @lends sap.ui.layout.ResponsiveSplitter.prototype */ {
+		metadata: {
+			library: "sap.ui.layout",
+			properties: {
+				/**
+				 * The width of the control
+				 */
+				width : {type : "sap.ui.core.CSSSize", group : "Appearance", defaultValue : '100%'},
+
+				/**
+				 * The height of the control
+				 */
+				height : {type : "sap.ui.core.CSSSize", group : "Appearance", defaultValue : '100%'}
+			},
+			defaultAggregation : "rootPaneContainer",
+			aggregations: {
+				/**
+				 * The root PaneContainer of the ResponsiveSplitter
+				 */
+				rootPaneContainer: { type: "sap.ui.layout.PaneContainer", multiple: false },
+				/**
+				 * Contains the internal pages that are used for pagination
+				 */
+				_pages: { type: "sap.ui.layout.ResponsiveSplitterPage", multiple : true, visibility: "hidden" }
+			},
+			associations: {
+				/**
+				 * The default pane that will remain always visible
+				 * If no defaultPane is specified, the ResponsiveSplitter sets the first SplitPane that is added to a PaneContainer in it as a default.
+				 */
+				defaultPane: { type: "sap.ui.layout.SplitPane", multiple: false }
+			},
+			events: {
+
+			}
+		}
+	});
+
+	var CONSTANTS = {
+		MAX_VISIBLE_BUTTONS: 7
+	};
+
+	ResponsiveSplitter.prototype.init = function () {
+		this._aPaneContainers = [];
+		this._aPanes = [];
+		this._oResourceBundle = sap.ui.getCore().getLibraryResourceBundle("sap.ui.layout");
+		this.addEventDelegate({
+			onAfterRendering: function () {
+				this._initItemNavigation();
+			}
+		}, this);
+	};
+
+	ResponsiveSplitter.prototype.onBeforeRendering = function () {
+		var oRootContainer = this.getRootPaneContainer();
+		if (oRootContainer) {
+			oRootContainer._oSplitter.addEventDelegate({
+				onAfterRendering: function () {
+					this._setSplitterBarsTooltips(oRootContainer._oSplitter);
+					this._updatePaginatorButtonsTooltips();
+				}
+			}, this);
+
+			this._createWidthIntervals();
+			this._createPages();
+			this._detachResizeHandler();
+		}
+	};
+
+	ResponsiveSplitter.prototype.onAfterRendering = function () {
+		this._parentResizeHandler = sap.ui.core.ResizeHandler.register(this, this._onParentResize.bind(this));
+		var oRootContainer = this.getRootPaneContainer();
+		if (oRootContainer) {
+			this._onParentResize();
+		}
+	};
+
+	/**
+	 * Detaches the resize handler on exit
+	 */
+	ResponsiveSplitter.prototype.exit = function () {
+		this._detachResizeHandler();
+	};
+
+	/**
+	 * Sets tooltips to the SplitterBars
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._setSplitterBarsTooltips = function (oContent, iParent) {
+		var	aSplitterBars = oContent.$().find(" > .sapUiLoSplitterBar"),
+			aContentAreas = oContent.$().find(" > .sapUiLoSplitterContent"),
+			sBaseTooltip = this._oResourceBundle.getText("RESPONSIVE_SPLITTER_RESIZE") + " ",
+			sTooltip = sBaseTooltip,
+			iCurrentPaneIndex, iNextPaneIndex, oAreaContent, sContentId;
+
+		for (var i = 0; i < aContentAreas.length; i++) {
+			sContentId = aContentAreas[i].childNodes[0].id;
+			oAreaContent = sap.ui.getCore().byId(sContentId);
+			iCurrentPaneIndex = i + 1;
+			iNextPaneIndex = i + 2;
+
+			if (iParent) {
+				sTooltip += this._oResourceBundle.getText("RESPONSIVE_SPLITTER_PANES", [iParent + "." + iCurrentPaneIndex, iParent + "." + iNextPaneIndex]);
+			} else {
+				sTooltip += this._oResourceBundle.getText("RESPONSIVE_SPLITTER_PANES", [iCurrentPaneIndex, iNextPaneIndex]);
+			}
+
+			if (aSplitterBars[i]) {
+				aSplitterBars[i].setAttribute("title", sTooltip);
+				sTooltip = sBaseTooltip;
+			}
+			if (oAreaContent instanceof sap.ui.layout.Splitter) {
+				this._setSplitterBarsTooltips(oAreaContent, iCurrentPaneIndex);
+			}
+		}
+	};
+
+	/**
+	 * Sets and updates the tooltips of the Paginator's buttons.E.g.
+	 * Go to split screen 1 and 2
+	 * Go to screen 3
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._updatePaginatorButtonsTooltips = function () {
+		var aVisibleButtons = Array.prototype.slice.call(this._getVisibleButtons()),
+			iHomePageCount = this.getRootPaneContainer()._oSplitter.getAssociatedContentAreas().length,
+			sHomeTooltip = this._oResourceBundle.getText("RESPONSIVE_SPLITTER_HOME") + " ",
+			sAnd = this._oResourceBundle.getText("RESPONSIVE_SPLITTER_AND"),
+			sTooltip = "",
+			that = this,
+			oHomeButton;
+
+		if (aVisibleButtons.length > 0) {
+			oHomeButton = aVisibleButtons.shift();
+			for (var i = 1; i <= iHomePageCount; i++) {
+				sHomeTooltip += i;
+
+				if (i < (iHomePageCount - 1)) {
+					sHomeTooltip += ", ";
+				} else if (i === iHomePageCount - 1){
+					sHomeTooltip += " " + sAnd + " ";
+				}
+			}
+			oHomeButton.setAttribute("title", sHomeTooltip);
+
+			[].forEach.call(aVisibleButtons, function(oButton) {
+				sTooltip = that._oResourceBundle.getText("RESPONSIVE_SPLITTER_GOTO") + " " + (iHomePageCount + 1);
+				iHomePageCount += 1;
+				oButton.setAttribute("title", sTooltip);
+			});
+		}
+	};
+
+	/**
+	 * Handles tab / space / enter of Paginator's button
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._handlePaginatorButtonTap = function (oEvent) {
+		var iOldFocusedIndex = this._oItemNavigation.getFocusedIndex();
+		if (jQuery(oEvent.target).hasClass("sapUiResponsiveSplitterPaginatorButton")) {
+			jQuery(oEvent.target).attr("tabindex", 0);
+			var iPageIndex = parseInt(jQuery(oEvent.target).attr("page-index"), 10);
+			this.getAggregation("_pages").forEach(function (page) {
+				page.setVisible(false);
+			});
+
+			if (iPageIndex !== 0) {
+				var aDemandPanes = this._currentInterval.aPages.filter(function(page) { return page.demandPane; });
+
+				iPageIndex = this._currentInterval.aPages.indexOf(aDemandPanes[iPageIndex - 1]);
+			}
+
+			this._activatePage(iPageIndex, parseInt(jQuery(oEvent.target).attr("page-index"), 10));
+		}
+
+		if (jQuery(oEvent.target).hasClass("sapUiResponsiveSplitterPaginatorNavButton")) {
+			if (jQuery(oEvent.target).hasClass("sapUiResponsiveSplitterPaginatorButtonForward")) {
+				this._handlePaginatorForward(oEvent);
+			} else {
+				this._handlePaginatorBack(oEvent);
+			}
+			this._setItemNavigation();
+			this._oItemNavigation.focusItem(iOldFocusedIndex);
+		}
+		this._setItemNavigation();
+	};
+
+	ResponsiveSplitter.prototype.ontap = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	ResponsiveSplitter.prototype.onsapenter = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	ResponsiveSplitter.prototype.onsapspace = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	ResponsiveSplitter.prototype.onsapright = function (oEvent) {
+		this._handleArrowNavigation(6, "Forward", oEvent);
+	};
+
+	ResponsiveSplitter.prototype.onsapleft = function (oEvent) {
+		this._handleArrowNavigation(0, "Back", oEvent);
+	};
+
+
+	/**
+	 * Creates an ItemNavigation
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._initItemNavigation = function () {
+		if (this._oItemNavigation) {
+			this._bPrevItemNavigation = true;
+			this._clearItemNavigation();
+		}
+		this._oItemNavigation = new ItemNavigation();
+		this._oItemNavigation.setCycling(false);
+		this.addDelegate(this._oItemNavigation);
+		this._setItemNavigation();
+
+		if (this._bPrevItemNavigation) {
+			this._oItemNavigation.focusItem(0);
+		}
+	};
+
+	/**
+	 * Enables ItemNavigation for Paginator
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._setItemNavigation = function () {
+		var aButtons = this._getVisibleButtons(),
+			aDomRefs = [];
+
+		this._oItemNavigation.setRootDomRef(this.$().find(".sapUiResponsiveSplitterPaginator")[0]);
+		for (var i = 0; i < aButtons.length; i++) {
+			if (aButtons[i]) {
+				aDomRefs.push(aButtons[i]);
+			}
+		}
+		this._oItemNavigation.setItemDomRefs(aDomRefs);
+	};
+
+	/**
+	 * Destroys the ItemNavigation
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._clearItemNavigation = function () {
+		this.removeDelegate(this._oItemNavigation);
+		this._oItemNavigation.destroy();
+		delete this._oItemNavigation;
+	};
+
+	/**
+	 * Handle for arrow keys
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._handleArrowNavigation = function (iButtonIndex, sDirection, oEvent) {
+		if (oEvent.target === this._getVisibleButtons()[iButtonIndex]) {
+			this["_handlePaginator" + sDirection](oEvent);
+			this._setItemNavigation();
+		} else {
+			return;
+		}
+	};
+
+	/**
+	 * Handles the resize event of the parent
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._onParentResize = function () {
+		var bIntervalHasChanged = this._intervalHasChanged(),
+			oRootContainer = this.getRootPaneContainer();
+
+		if (bIntervalHasChanged && oRootContainer) {
+			this._arrangeContent();
+			this._setPaginatorVisibility();
+		}
+	};
+
+	/**
+	 * Detaches the parent resize handler
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._detachResizeHandler = function () {
+		if (this._parentResizeHandler) {
+			sap.ui.core.ResizeHandler.deregister(this._parentResizeHandler);
+			this._parentResizeHandler = null;
+		}
+	};
+
+	/**
+	 * The WidthIntervals is a sorted array in ascdending order, containing all breakpoints for the splitter
+	 * The interval is defined as 2 sequent array elements.
+	 * This array includes Number.MIN_VALUE and Number.MAX_VALUE as -Infinity and +Infinity,
+	 * and covers the whole numeric axis
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._createWidthIntervals = function () {
+		var aBreakpoints = [];
+		this._aIntervals = [];
+
+		RSUtil.visitPanes(this.getRootPaneContainer(), function (oPane) {
+			var iRequiredWidth = oPane.getRequiredParentWidth();
+			if (jQuery.inArray(iRequiredWidth, aBreakpoints) == -1) {
+				aBreakpoints.push(iRequiredWidth);
+			}
+		});
+
+		aBreakpoints.push(Number.NEGATIVE_INFINITY); // -Infinity
+		aBreakpoints.push(Number.POSITIVE_INFINITY); // +Infinity
+
+		aBreakpoints.sort(function (a, b) {
+			return a - b;
+		});
+
+		for (var i = 0; i < aBreakpoints.length - 1; i++) {
+			var oInterval = new RSUtil.splitterInterval(aBreakpoints[i], aBreakpoints[i + 1], this.getRootPaneContainer());
+			this._aIntervals.push(oInterval);
+		}
+	};
+
+	/**
+	 * Initiates the internal pages aggregation
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._createPages = function () {
+		var iMaxPageCount = this._getMaxPageCount();
+		this.destroyAggregation("_pages", true);
+		for (var i = 0; i < iMaxPageCount; i++) {
+			var oPage = new ResponsiveSplitterPage();
+			this.addAggregation("_pages", oPage, true);
+		}
+	};
+
+	/**
+	 * Checks whether during the resizing the breakpoint interval has changed
+	 * @returns {boolean}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._intervalHasChanged = function () {
+		var width = this.getDomRef().clientWidth,
+			oInterval = null,
+			aIntervals = this._aIntervals;
+
+		for (var i = 0; i < aIntervals.length; i++) {
+			if (aIntervals[i].iFrom < width && width <= aIntervals[i].iTo) {
+				oInterval = aIntervals[i];
+				break;
+			}
+		}
+
+		if (this._currentInterval !== oInterval) {
+			this._currentInterval = oInterval;
+			return true;
+		}
+
+		return false;
+	};
+
+	/**
+	 * Sets the visibility of the paginator buttons
+	 * @param width
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._setPaginatorVisibility = function () {
+		var $Buttons = this.$().find(".sapUiResponsiveSplitterPaginatorButton"),
+			$NavButtons = this.$().find(".sapUiResponsiveSplitterPaginatorNavButton"),
+			$Paginator = this.$().find(".sapUiResponsiveSplitterPaginator"),
+			iPageCount = (this._getHiddenPanes().length + 1),
+			bShowNavButtons = iPageCount < CONSTANTS.MAX_VISIBLE_BUTTONS;
+
+		$Buttons.addClass("sapUiResponsiveSplitterHiddenElement");
+		if (iPageCount > 1) {
+			this.getDomRef().classList.add("sapUiRSVisiblePaginator");
+			$Buttons = $Buttons.slice(0, bShowNavButtons ? iPageCount : CONSTANTS.MAX_VISIBLE_BUTTONS);
+			$Buttons.removeClass("sapUiResponsiveSplitterHiddenElement");
+			$Buttons.removeClass("sapUiResponsiveSplitterHiddenPaginatorButton");
+			$NavButtons.toggleClass("sapUiResponsiveSplitterHiddenPaginatorButton", bShowNavButtons);
+			$Paginator.toggleClass("sapUiResponsiveSplitterWithNavButtons", !bShowNavButtons);
+		} else {
+			this.getDomRef().classList.remove("sapUiRSVisiblePaginator");
+		}
+	};
+
+	/**
+	 * Iterates all intervals, and returns the maximum page count found
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._getMaxPageCount = function () {
+		var iTempMax = 0;
+
+		this._aIntervals.forEach(function (oInterval) {
+			if (oInterval.iPagesCount > iTempMax) {
+				iTempMax = oInterval.iPagesCount;
+			}
+		});
+		return iTempMax;
+	};
+
+	/**
+	 * Clears the existing layout and activates the first page
+	 * Invokes _fillPageContent to build a new layout
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._arrangeContent = function () {
+		var aPages = this.getAggregation("_pages") || [];
+		this._clearContent();
+		aPages.forEach(function (oPage) {
+			oPage.setVisible(false);
+		});
+
+		this._fillPageContent(this.getRootPaneContainer());
+
+		this._activatePage(0);
+	};
+
+	/**
+	 * Sets the indexed page to visible and changes the selected button in the paginator
+	 * @param iPageIndex
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._activatePage = function (iPageIndex) {
+		var $PaginatorButtons = this.$().find(".sapUiResponsiveSplitterPaginatorButton"),
+			$OldSelectedButton = this.$().find(".sapUiResponsiveSplitterPaginatorSelectedButton"),
+			iOldActivePage = $PaginatorButtons.index($OldSelectedButton),
+			aPages = this.getAggregation("_pages") || [];
+
+		aPages[iOldActivePage] && aPages[iOldActivePage].setVisible(false);
+		aPages[iPageIndex] && aPages[iPageIndex].setVisible(true);
+		$OldSelectedButton.removeClass("sapUiResponsiveSplitterPaginatorSelectedButton");
+		$PaginatorButtons.eq(iPageIndex).addClass("sapUiResponsiveSplitterPaginatorSelectedButton");
+	};
+
+	/**
+	 * Goes through all SplitPanes and PaneContainers and defines which panes will be shown
+	 * The content of the demand Panes which are not on the main page gets moved into pages
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._fillPageContent = function (oSplitterElement) {
+		var bIsPaneContainer = oSplitterElement instanceof PaneContainer,
+			bIsSplitPane = oSplitterElement instanceof SplitPane,
+			oSplitterElementParent = oSplitterElement.getParent(),
+			bIsParentPaneContainer = oSplitterElementParent instanceof PaneContainer,
+			aPages = this.getAggregation("_pages"),
+			aHiddenPanes, bHasPanesInCurrentInterval, oInternalSplitter, bDemandPane,
+			iHiddenPanesCount, iMaxPageCount;
+
+		if (bIsPaneContainer && aPages) {
+			this._aPaneContainers.push(oSplitterElement);
+			bHasPanesInCurrentInterval = this._getAllPanesInInterval(oSplitterElement, this._currentInterval.iFrom).length > 0;
+			oInternalSplitter = oSplitterElement._oSplitter;
+
+			if (bIsParentPaneContainer && bHasPanesInCurrentInterval) {
+				oSplitterElementParent._oSplitter.addAssociatedContentArea(oInternalSplitter);
+			} else if (!bIsParentPaneContainer) {
+				aPages[0].setContent(oInternalSplitter);
+			}
+			oSplitterElement.getPanes().forEach(function(oPane) { this._fillPageContent(oPane); }, this);
+		} else if (bIsSplitPane && aPages) {
+			this._assignDefault(oSplitterElement);
+			this._aPanes.push(oSplitterElement);
+			bDemandPane = oSplitterElement.getDemandPane();
+			aHiddenPanes = this._getHiddenPanes();
+			iHiddenPanesCount = aHiddenPanes.length;
+			iMaxPageCount = this._getMaxPageCount();
+
+			if (oSplitterElement._isInInterval(this._currentInterval.iFrom)) {
+				oSplitterElementParent._oSplitter.addAssociatedContentArea(oSplitterElement.getContent());
+			} else if (bDemandPane && (iHiddenPanesCount < iMaxPageCount)) {
+				for (var i = 0; i < iHiddenPanesCount; i++) {
+					aPages[i + 1].setContent(aHiddenPanes[i].getContent());
+				}
+			} else if (bDemandPane && iHiddenPanesCount === iMaxPageCount) {
+				for (var i = 0; i < iHiddenPanesCount; i++) {
+					aPages[i].setContent(aHiddenPanes[i].getContent());
+				}
+			} else if (this._isDefault(oSplitterElement)) {
+				aPages[0].setContent(oSplitterElement.getContent());
+			}
+		}
+	};
+
+	ResponsiveSplitter.prototype._isDefault = function (oPane) {
+		return this.getDefaultPane() === oPane.getId();
+	};
+
+	ResponsiveSplitter.prototype._assignDefault = function (oPane) {
+		var oDefaultPane = this.getDefaultPane();
+		this.setDefaultPane(oDefaultPane || oPane);
+	};
+
+	/**
+	 * Returns an array of all nested panes which are suitable for the current interval
+	 * @returns {array}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._getAllPanesInInterval = function (oPaneContainer, iFrom) {
+		var aPanes = [];
+
+		function fnVisitAllContainers(oPaneContainer) {
+			oPaneContainer.getPanes().forEach(function(oPane) {
+				if (oPane instanceof PaneContainer) {
+					fnVisitAllContainers(oPane);
+				} else if (oPane._isInInterval(iFrom)) {
+					aPanes.push(oPane);
+				}
+			});
+			return aPanes;
+		}
+		return fnVisitAllContainers(oPaneContainer, iFrom);
+	};
+
+	/**
+	 * Returns an array of all hidden panes which are with demand set to true
+	 * @returns {array}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._getHiddenPanes = function () {
+		return this._aPanes.filter(function(oPane) {
+			return oPane.getDemandPane() && !oPane._isInInterval(this._currentInterval.iFrom);
+		}, this);
+	};
+
+	/**
+	 * Remove the internal AssociatedContentAreas of the AssociativeSplitters
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._clearContent = function () {
+		this._aPaneContainers.forEach(function(oPaneContainer) {
+			oPaneContainer._oSplitter.removeAllAssociatedContentArea();
+		});
+
+		this._aPaneContainers = [];
+		this._aPanes = [];
+	};
+
+	/**
+	 * Returns an array of all visible buttons from the Paginator
+	 * @returns {object}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._getVisibleButtons = function () {
+		return this.$().find(".sapUiResponsiveSplitterPaginatorButton:not(.sapUiResponsiveSplitterHiddenElement, .sapUiResponsiveSplitterHiddenPaginatorButton)");
+	};
+
+	/**
+	 * Handles tab / space / enter of Paginator's button
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._handlePaginatorButtonTap = function (oEvent) {
+		var oTarget = oEvent.target,
+			aTargetClassList = oEvent.target.classList,
+			iPageIndex;
+
+		if (aTargetClassList.contains("sapUiResponsiveSplitterPaginatorButton")) {
+			iPageIndex = oTarget.getAttribute("page-index");
+			this._activatePage(iPageIndex);
+		} else if (aTargetClassList.contains("sapUiResponsiveSplitterPaginatorNavButton")) {
+			if (aTargetClassList.contains("sapUiResponsiveSplitterPaginatorButtonForward")) {
+				this._handlePaginatorForward(oEvent);
+			} else {
+				this._handlePaginatorBack(oEvent);
+			}
+		}
+	};
+
+	/**
+	 * Handles when forward button in the paginator is pressed
+	 * @param oEvent
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._handlePaginatorForward = function (oEvent) {
+		var $VisibleButtons = this._getVisibleButtons(),
+			iHiddenPaneCount = this._getHiddenPanes().length,
+			$HiddenButtons = this.$().find(".sapUiResponsiveSplitterPaginatorButton.sapUiResponsiveSplitterHiddenElement"),
+			$HiddenRightButtons = $HiddenButtons.filter(function() {
+				return this.getAttribute("page-index") >= CONSTANTS.MAX_VISIBLE_BUTTONS &&
+				 this.getAttribute("page-index") <= iHiddenPaneCount;
+			});
+
+		if ($HiddenRightButtons.length > 0) {
+			$VisibleButtons.first().addClass("sapUiResponsiveSplitterHiddenElement");
+			$HiddenRightButtons.last().removeClass("sapUiResponsiveSplitterHiddenElement");
+		}
+	};
+
+	/**
+	 * Handles when back button in the paginator is pressed
+	 * @param oEvent
+	 * @returns {void}
+	 * @private
+	 */
+	ResponsiveSplitter.prototype._handlePaginatorBack = function (oEvent) {
+		var $VisibleButtons = this._getVisibleButtons(),
+			iMaxPageCount = this._getMaxPageCount() - CONSTANTS.MAX_VISIBLE_BUTTONS,
+			$HiddenButtons = this.$().find(".sapUiResponsiveSplitterPaginatorButton.sapUiResponsiveSplitterHiddenElement"),
+			$HiddenLeftButtons = $HiddenButtons.filter(function() { return this.getAttribute("page-index") < iMaxPageCount; });
+
+		if ($HiddenLeftButtons.length > 0) {
+			$VisibleButtons.last().addClass("sapUiResponsiveSplitterHiddenElement");
+			$HiddenLeftButtons.last().removeClass("sapUiResponsiveSplitterHiddenElement");
+		}
+	};
+
+	ResponsiveSplitter.prototype.ontap = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	ResponsiveSplitter.prototype.onsapenter = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	ResponsiveSplitter.prototype.onsapspace = ResponsiveSplitter.prototype._handlePaginatorButtonTap;
+
+	return ResponsiveSplitter;
+
+}, /* bExport= */ true);
+
+}; // end of sap/ui/layout/ResponsiveSplitter.js
 if ( !jQuery.sap.isDeclared('sap.ui.layout.form.ResponsiveLayout') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -11778,7 +13834,7 @@ sap.ui.define("sap/ui/layout/form/ResponsiveLayout",['jquery.sap.global', 'sap/u
 	 * @extends sap.ui.layout.form.FormLayout
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -11887,12 +13943,19 @@ sap.ui.define("sap/ui/layout/form/ResponsiveLayout",['jquery.sap.global', 'sap/u
 
 			var bExpandable = oContainer.getExpandable();
 			var sTooltip = oContainer.getTooltip_AsString();
+			var oToolbar = oContainer.getToolbar();
+			var oTitle = oContainer.getTitle();
 
 			oRm.write("<div");
 			oRm.writeControlData(oPanel);
 			oRm.addClass("sapUiRLContainer");
 			if (bExpandable && !oContainer.getExpanded()) {
 				oRm.addClass("sapUiRLContainerColl");
+			}
+			if (oToolbar) {
+				oRm.addClass("sapUiFormContainerToolbar");
+			} else if (oTitle) {
+				oRm.addClass("sapUiFormContainerTitle");
 			}
 
 			if (sTooltip) {
@@ -11905,8 +13968,10 @@ sap.ui.define("sap/ui/layout/form/ResponsiveLayout",['jquery.sap.global', 'sap/u
 			oRm.write(">");
 
 			// container header
-			if (oContainer.getTitle()) {
-				oLayout.getRenderer().renderTitle(oRm, oContainer.getTitle(), oContainer._oExpandButton, bExpandable, false, oContainer.getId());
+			if (oToolbar) {
+				oRm.renderControl(oToolbar);
+			} else if (oContainer.getTitle()) {
+				oLayout.getRenderer().renderTitle(oRm, oTitle, oContainer._oExpandButton, bExpandable, false, oContainer.getId());
 			}
 
 			if (oContent) {
@@ -11924,721 +13989,727 @@ sap.ui.define("sap/ui/layout/form/ResponsiveLayout",['jquery.sap.global', 'sap/u
 
 	});
 
-	(function() {
-		/* eslint-disable no-lonely-if */
+	/* eslint-disable no-lonely-if */
 
-		ResponsiveLayout.prototype.init = function(){
+	ResponsiveLayout.prototype.init = function(){
 
-			this.mContainers = {}; //association of container to panel and ResponsiveFlowLayout
-			this._defaultLayoutData = new ResponsiveFlowLayoutData({margin: false});
+		this.mContainers = {}; //association of container to panel and ResponsiveFlowLayout
+		this._defaultLayoutData = new ResponsiveFlowLayoutData({margin: false});
 
-		};
+	};
 
-		ResponsiveLayout.prototype.exit = function(){
+	ResponsiveLayout.prototype.exit = function(){
 
-			var that = this;
+		var that = this;
 
-			// clear panels
-			for ( var sContainerId in this.mContainers) {
-				_cleanContainer(that, sContainerId);
-			}
+		// clear panels
+		for ( var sContainerId in this.mContainers) {
+			_cleanContainer(that, sContainerId);
+		}
 
-			// clear ResponsiveFlowLayouts
+		// clear ResponsiveFlowLayouts
+		if (this._mainRFLayout) {
+			this._mainRFLayout.destroy();
+			delete this._mainRFLayout;
+		}
+
+		this._defaultLayoutData.destroy();
+		delete this._defaultLayoutData;
+
+	};
+
+	ResponsiveLayout.prototype.onBeforeRendering = function( oEvent ){
+
+		var oForm = this.getParent();
+		if (!oForm || !(oForm instanceof sap.ui.layout.form.Form)) {
+			// layout not assigned to form - nothing to do
+			return;
+		}
+
+		oForm._bNoInvalidate = true; // don't invalidate Form if only the Grids, Panels and LayoutData are created or changed)
+		var that = this;
+		_createPanels(that, oForm);
+		_createMainResponsiveFlowLayout(that, oForm);
+		oForm._bNoInvalidate = false;
+
+	};
+
+	/*
+	 * If onAfterRendering of a field is processed the width must be set to 100% (if no other width set)
+	 */
+	ResponsiveLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
+
+		FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
+
+		if (oControl.getWidth && ( !oControl.getWidth() || oControl.getWidth() == "auto" ) && oControl.getMetadata().getName() != "sap.ui.commons.Image") {
+			oControl.$().css("width", "100%");
+		}
+
+	};
+
+	ResponsiveLayout.prototype.toggleContainerExpanded = function(oContainer){
+
+		//adapt the corresponding panel
+		var sContainerId = oContainer.getId();
+		if (this.mContainers[sContainerId] && this.mContainers[sContainerId][0]) {
+			var oPanel = this.mContainers[sContainerId][0];
+			oPanel.refreshExpanded();
+		}
+
+	};
+
+	ResponsiveLayout.prototype.onLayoutDataChange = function(oEvent){
+
+		var oSource = oEvent.srcControl;
+		var oContainer;
+		var sContainerId;
+		var sElementId;
+
+		// if layoutData changed for a Container, Element, or Field call the
+		// onLayoutDataChange function of the parent ResponsiveFlowLayout
+
+		if (oSource instanceof sap.ui.layout.form.FormContainer) {
 			if (this._mainRFLayout) {
-				this._mainRFLayout.destroy();
-				delete this._mainRFLayout;
+				this._mainRFLayout.onLayoutDataChange(oEvent);
 			}
-
-			this._defaultLayoutData.destroy();
-			delete this._defaultLayoutData;
-
-		};
-
-		ResponsiveLayout.prototype.onBeforeRendering = function( oEvent ){
-
-			var oForm = this.getParent();
-			if (!oForm || !(oForm instanceof sap.ui.layout.form.Form)) {
-				// layout not assigned to form - nothing to do
-				return;
+		} else if (oSource instanceof sap.ui.layout.form.FormElement) {
+			sContainerId = oSource.getParent().getId();
+			if (this.mContainers[sContainerId] && this.mContainers[sContainerId][1]) {
+				this.mContainers[sContainerId][1].onLayoutDataChange(oEvent);
 			}
-
-			oForm._bNoInvalidate = true; // don't invalidate Form if only the Grids, Panels and LayoutData are created or changed)
-			var that = this;
-			_createPanels(that, oForm);
-			_createMainResponsiveFlowLayout(that, oForm);
-			oForm._bNoInvalidate = false;
-
-		};
-
-		/*
-		 * If onAfterRendering of a field is processed the width must be set to 100% (if no other width set)
-		 */
-		ResponsiveLayout.prototype.contentOnAfterRendering = function(oFormElement, oControl){
-
-			FormLayout.prototype.contentOnAfterRendering.apply(this, arguments);
-
-			if (oControl.getWidth && ( !oControl.getWidth() || oControl.getWidth() == "auto" ) && oControl.getMetadata().getName() != "sap.ui.commons.Image") {
-				oControl.$().css("width", "100%");
+		} else {
+			var oParent = oSource.getParent();
+			if (oParent instanceof sap.ui.layout.form.FormElement) {
+				oContainer = oParent.getParent();
+				sContainerId = oContainer.getId();
+				sElementId = oParent.getId();
+				if (this.mContainers[sContainerId] && this.mContainers[sContainerId][2] &&
+				    this.mContainers[sContainerId][2][sElementId]) {
+					this.mContainers[sContainerId][2][sElementId][0].onLayoutDataChange(oEvent);
+				}
 			}
+		}
 
-		};
+	};
 
-		ResponsiveLayout.prototype.toggleContainerExpanded = function(oContainer){
+	ResponsiveLayout.prototype.onsapup = function(oEvent){
+		this.onsapleft(oEvent);
+	};
 
-			//adapt the corresponding panel
+	ResponsiveLayout.prototype.onsapdown = function(oEvent){
+		this.onsapright(oEvent);
+	};
+
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists
+	 * If the <code>FormContainer</code> has a title or is expandable an internal panel is rendered.
+	 * In this case, the panel's DOM reference is returned, otherwise the DOM reference
+	 * of the <code>ResponsiveFlowLayout</code> rendering the container's content.
+	 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	ResponsiveLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
+
+		if (this.getDomRef()) {
 			var sContainerId = oContainer.getId();
-			if (this.mContainers[sContainerId] && this.mContainers[sContainerId][0]) {
-				var oPanel = this.mContainers[sContainerId][0];
-				oPanel.refreshExpanded();
-			}
-
-		};
-
-		ResponsiveLayout.prototype.onLayoutDataChange = function(oEvent){
-
-			var oSource = oEvent.srcControl;
-			var oContainer;
-			var sContainerId;
-			var sElementId;
-
-			// if layoutData changed for a Container, Element, or Field call the
-			// onLayoutDataChange function of the parent ResponsiveFlowLayout
-
-			if (oSource instanceof sap.ui.layout.form.FormContainer) {
-				if (this._mainRFLayout) {
-					this._mainRFLayout.onLayoutDataChange(oEvent);
-				}
-			} else if (oSource instanceof sap.ui.layout.form.FormElement) {
-				sContainerId = oSource.getParent().getId();
-				if (this.mContainers[sContainerId] && this.mContainers[sContainerId][1]) {
-					this.mContainers[sContainerId][1].onLayoutDataChange(oEvent);
-				}
-			} else {
-				var oParent = oSource.getParent();
-				if (oParent instanceof sap.ui.layout.form.FormElement) {
-					oContainer = oParent.getParent();
-					sContainerId = oContainer.getId();
-					sElementId = oParent.getId();
-					if (this.mContainers[sContainerId] && this.mContainers[sContainerId][2] &&
-					    this.mContainers[sContainerId][2][sElementId]) {
-						this.mContainers[sContainerId][2][sElementId][0].onLayoutDataChange(oEvent);
-					}
+			if (this.mContainers[sContainerId]) {
+				if (this.mContainers[sContainerId][0]) {
+					var oPanel = this.mContainers[sContainerId][0];
+					return oPanel.getDomRef();
+				}else if (this.mContainers[sContainerId][1]){
+					// no panel used -> return RFLayout
+					var oRFLayout = this.mContainers[sContainerId][1];
+					return oRFLayout.getDomRef();
 				}
 			}
+		}
 
-		};
+		return null;
 
-		ResponsiveLayout.prototype.onsapup = function(oEvent){
-			this.onsapleft(oEvent);
-		};
+	};
 
-		ResponsiveLayout.prototype.onsapdown = function(oEvent){
-			this.onsapright(oEvent);
-		};
+	/**
+	 * As Elements must not have a DOM reference it is not sure if one exists.
+	 * In this Layout each <code>FormElement</code> is represented by an own ResponsiveFlowLayout.
+	 * So the DOM of this <code>ResponsiveFlowLayout</code> is returned
+	 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
+	 * @return {Element} The Element's DOM representation or null
+	 * @private
+	 */
+	ResponsiveLayout.prototype.getElementRenderedDomRef = function(oElement) {
 
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists
-		 * If the <code>FormContainer</code> has a title or is expandable an internal panel is rendered.
-		 * In this case, the panel's DOM reference is returned, otherwise the DOM reference
-		 * of the <code>ResponsiveFlowLayout</code> rendering the container's content.
-		 * @param {sap.ui.layout.form.FormContainer} oContainer <code>FormContainer</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		ResponsiveLayout.prototype.getContainerRenderedDomRef = function(oContainer) {
-
-			if (this.getDomRef()) {
-				var sContainerId = oContainer.getId();
-				if (this.mContainers[sContainerId]) {
-					if (this.mContainers[sContainerId][0]) {
-						var oPanel = this.mContainers[sContainerId][0];
-						return oPanel.getDomRef();
-					}else if (this.mContainers[sContainerId][1]){
-						// no panel used -> return RFLayout
-						var oRFLayout = this.mContainers[sContainerId][1];
+		if (this.getDomRef()) {
+			var oContainer = oElement.getParent();
+			var sElementId = oElement.getId();
+			var sContainerId = oContainer.getId();
+			if (this.mContainers[sContainerId]) {
+				if (this.mContainers[sContainerId][2]){
+					var mRFLayouts = this.mContainers[sContainerId][2];
+					if (mRFLayouts[sElementId]) {
+						var oRFLayout = mRFLayouts[sElementId][0];
 						return oRFLayout.getDomRef();
 					}
 				}
 			}
-
-			return null;
-
-		};
-
-		/**
-		 * As Elements must not have a DOM reference it is not sure if one exists.
-		 * In this Layout each <code>FormElement</code> is represented by an own ResponsiveFlowLayout.
-		 * So the DOM of this <code>ResponsiveFlowLayout</code> is returned
-		 * @param {sap.ui.layout.form.FormElement} oElement <code>FormElement</code>
-		 * @return {Element} The Element's DOM representation or null
-		 * @private
-		 */
-		ResponsiveLayout.prototype.getElementRenderedDomRef = function(oElement) {
-
-			if (this.getDomRef()) {
-				var oContainer = oElement.getParent();
-				var sElementId = oElement.getId();
-				var sContainerId = oContainer.getId();
-				if (this.mContainers[sContainerId]) {
-					if (this.mContainers[sContainerId][2]){
-						var mRFLayouts = this.mContainers[sContainerId][2];
-						if (mRFLayouts[sElementId]) {
-							var oRFLayout = mRFLayouts[sElementId][0];
-							return oRFLayout.getDomRef();
-						}
-					}
-				}
-			}
-
-			return null;
-
-		};
-
-		function _createPanels( oLayout, oForm ) {
-
-			var aContainers = oForm.getFormContainers();
-			var oContainer;
-			var sContainerId;
-			var iLength = aContainers.length;
-			var iVisibleContainers = 0;
-			var oPanel;
-			var oRFLayout;
-			var i = 0;
-			for ( i = 0; i < iLength; i++) {
-				oContainer = aContainers[i];
-				oContainer._checkProperties();
-				if (oContainer.getVisible()) {
-					iVisibleContainers++;
-					sContainerId = oContainer.getId();
-					oPanel = undefined;
-					oRFLayout = undefined;
-					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][1]) {
-						// ResponsiveFlowLayout already created
-						oRFLayout = oLayout.mContainers[sContainerId][1];
-					} else {
-						oRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, undefined);
-					}
-
-					var oTitle = oContainer.getTitle();
-					if (oTitle || oContainer.getExpandable()) {
-						// only if container has a title a panel is used
-						if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
-							// Panel already created
-							oPanel = oLayout.mContainers[sContainerId][0];
-						} else {
-							oPanel = _createPanel(oLayout, oContainer, oRFLayout);
-							_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, true);
-						}
-						oRFLayout.removeStyleClass("sapUiRLContainer");
-					} else {
-						// panel not longer needed
-						if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
-							_deletePanel(oLayout.mContainers[sContainerId][0]);
-							_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, false);
-						}
-						oRFLayout.addStyleClass("sapUiRLContainer");
-					}
-
-					var mContent = _createContent(oLayout, oContainer, oRFLayout);
-
-					oLayout.mContainers[sContainerId] = [oPanel, oRFLayout, mContent];
-				}
-			}
-
-			var iObjectLength = _objectLength(oLayout.mContainers);
-			if (iVisibleContainers < iObjectLength) {
-				// delete old containers panels
-				for ( sContainerId in oLayout.mContainers) {
-					var bFound = false;
-					for ( i = 0; i < iLength; i++) {
-						oContainer = aContainers[i];
-						if (sContainerId == oContainer.getId() && oContainer.getVisible()) {
-							bFound = true;
-							break;
-						}
-					}
-					if (!bFound) {
-						_cleanContainer(oLayout, sContainerId);
-					}
-				}
-			}
-
 		}
 
-		function _createPanel( oLayout, oContainer, oRFLayout ) {
+		return null;
 
-			var sContainerId = oContainer.getId();
-			var oPanel = new sap.ui.layout.form.ResponsiveLayoutPanel(sContainerId + "--Panel", {
-				container: oContainer,
-				layout   : oLayout,
-				content : oRFLayout
-			});
+	};
 
-			return oPanel;
+	function _createPanels( oLayout, oForm ) {
 
-		}
+		var aContainers = oForm.getFormContainers();
+		var oContainer;
+		var sContainerId;
+		var iLength = aContainers.length;
+		var iVisibleContainers = 0;
+		var oPanel;
+		var oRFLayout;
+		var i = 0;
+		for ( i = 0; i < iLength; i++) {
+			oContainer = aContainers[i];
+			oContainer._checkProperties();
+			if (oContainer.getVisible()) {
+				iVisibleContainers++;
+				sContainerId = oContainer.getId();
+				oPanel = undefined;
+				oRFLayout = undefined;
+				if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][1]) {
+					// ResponsiveFlowLayout already created
+					oRFLayout = oLayout.mContainers[sContainerId][1];
+				} else {
+					oRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, undefined);
+				}
 
-		/*
-		 * clear variables before delete it
-		 */
-		function _deletePanel( oPanel ) {
+				var oTitle = oContainer.getTitle();
+				var oToolbar = oContainer.getToolbar();
+				if (oToolbar || oTitle || oContainer.getExpandable()) {
+					// only if container has a title a panel is used
+					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
+						// Panel already created
+						oPanel = oLayout.mContainers[sContainerId][0];
+					} else {
+						oPanel = _createPanel(oLayout, oContainer, oRFLayout);
+						_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, true);
+					}
+					oRFLayout.removeStyleClass("sapUiRLContainer");
+				} else {
+					// panel not longer needed
+					if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][0]) {
+						_deletePanel(oLayout.mContainers[sContainerId][0]);
+						_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, false);
+					}
+					oRFLayout.addStyleClass("sapUiRLContainer");
+				}
 
-			oPanel.setContent("");
-			oPanel.setLayout("");
-			oPanel.setContainer("");
-			oPanel.destroy();
+				var mContent = _createContent(oLayout, oContainer, oRFLayout);
 
-		}
-
-		function _createContent( oLayout, oContainer, oContainerLayout ) {
-
-			var sContainerId = oContainer.getId();
-			var aElements = oContainer.getFormElements();
-			var iLength = aElements.length;
-			var iVisibleElements = 0;
-			var mRFLayouts = {};
-			if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][2]) {
-				mRFLayouts = oLayout.mContainers[sContainerId][2];
+				oLayout.mContainers[sContainerId] = [oPanel, oRFLayout, mContent];
 			}
+		}
 
-			var oRFLayout;
-			var oFieldsRFLayout;
-			var iLastIndex = -1;
-			var oElement;
-			var sElementId;
-			var i = 0;
-			for (i = 0; i < iLength; i++) {
-				oElement = aElements[i];
-				if (oElement.getVisible()) {
-					sElementId = oElement.getId();
-					_checkElementMoved(oLayout, oContainer, oElement, mRFLayouts, oContainerLayout, i);
-					if (mRFLayouts[sElementId]) {
-						// ResponsiveFlowLayout already created
-						oRFLayout = mRFLayouts[sElementId][0];
-						iLastIndex = oContainerLayout.indexOfContent(oRFLayout);
-					} else {
-						oRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, oElement);
-						oRFLayout.addStyleClass("sapUiRLElement");
-						if (oElement.getLabel()) {
-							oRFLayout.addStyleClass("sapUiRLElementWithLabel");
-						}
-						mRFLayouts[sElementId] = [oRFLayout, undefined];
-						iLastIndex++;
-						oContainerLayout.insertContent(oRFLayout, iLastIndex);
+		var iObjectLength = _objectLength(oLayout.mContainers);
+		if (iVisibleContainers < iObjectLength) {
+			// delete old containers panels
+			for ( sContainerId in oLayout.mContainers) {
+				var bFound = false;
+				for ( i = 0; i < iLength; i++) {
+					oContainer = aContainers[i];
+					if (sContainerId == oContainer.getId() && oContainer.getVisible()) {
+						bFound = true;
+						break;
 					}
-
-					// if more fields after a label put the fields in an additional ResponsiveFlowLayout
-					var aFields = oElement.getFields();
-					if (oElement.getLabel() && aFields.length > 1) {
-						if (mRFLayouts[sElementId][1]) {
-							oFieldsRFLayout = mRFLayouts[sElementId][1];
-						} else {
-							oFieldsRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, oElement, true);
-							oFieldsRFLayout.addStyleClass("sapUiRLElementFields");
-							mRFLayouts[sElementId][1] = oFieldsRFLayout;
-						}
-						_updateLayoutDataOfContentResponsiveFlowLayout(oLayout, oFieldsRFLayout, aFields);
-					} else {
-						if (mRFLayouts[sElementId][1]) {
-							// ResponsiveFlowLayout for fields not longer needed
-							oFieldsRFLayout = mRFLayouts[sElementId][1];
-							_deleteResponsiveFlowLayout(oFieldsRFLayout);
-							mRFLayouts[sElementId][1] = undefined;
-						}
-					}
-					iVisibleElements++;
+				}
+				if (!bFound) {
+					_cleanContainer(oLayout, sContainerId);
 				}
 			}
+		}
 
-			var iObjectLength = _objectLength(mRFLayouts);
-			if (iVisibleElements < iObjectLength) {
-				// delete old elements RFLayouts
-				for ( sElementId in mRFLayouts) {
-					var bFound = false;
-					for ( i = 0; i < iLength; i++) {
-						oElement = aElements[i];
-						if (sElementId == oElement.getId() && oElement.getVisible()) {
-							bFound = true;
-							break;
-						}
-					}
-					if (!bFound) {
-						if (mRFLayouts[sElementId][1]) {
-							// ResponsiveFlowLayout for fields not longer needed
-							oFieldsRFLayout = mRFLayouts[sElementId][1];
-							_deleteResponsiveFlowLayout(oFieldsRFLayout);
-						}
-						oRFLayout = mRFLayouts[sElementId][0];
+	}
+
+	function _createPanel( oLayout, oContainer, oRFLayout ) {
+
+		var sContainerId = oContainer.getId();
+		var oPanel = new sap.ui.layout.form.ResponsiveLayoutPanel(sContainerId + "--Panel", {
+			container: oContainer,
+			layout   : oLayout,
+			content : oRFLayout
+		});
+
+		return oPanel;
+
+	}
+
+	/*
+	 * clear variables before delete it
+	 */
+	function _deletePanel( oPanel ) {
+
+		oPanel.setContent("");
+		oPanel.setLayout("");
+		oPanel.setContainer("");
+		oPanel.destroy();
+
+	}
+
+	function _createContent( oLayout, oContainer, oContainerLayout ) {
+
+		var sContainerId = oContainer.getId();
+		var aElements = oContainer.getFormElements();
+		var iLength = aElements.length;
+		var iVisibleElements = 0;
+		var mRFLayouts = {};
+		if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][2]) {
+			mRFLayouts = oLayout.mContainers[sContainerId][2];
+		}
+
+		var oRFLayout;
+		var oFieldsRFLayout;
+		var iLastIndex = -1;
+		var oElement;
+		var sElementId;
+		var i = 0;
+		for (i = 0; i < iLength; i++) {
+			oElement = aElements[i];
+			if (oElement.getVisible()) {
+				sElementId = oElement.getId();
+				_checkElementMoved(oLayout, oContainer, oElement, mRFLayouts, oContainerLayout, i);
+				if (mRFLayouts[sElementId]) {
+					// ResponsiveFlowLayout already created
+					oRFLayout = mRFLayouts[sElementId][0];
+					iLastIndex = oContainerLayout.indexOfContent(oRFLayout);
+					if (iLastIndex != iVisibleElements) {
+						// order has changed -> move it
 						oContainerLayout.removeContent(oRFLayout);
-						_deleteResponsiveFlowLayout(oRFLayout);
-						delete mRFLayouts[sElementId];
+						oContainerLayout.insertContent(oRFLayout, iVisibleElements);
+						iLastIndex == iVisibleElements;
 					}
-				}
-			}
-
-			return mRFLayouts;
-
-		}
-
-		function _createResponsiveFlowLayout( oLayout, oContainer, oElement, bElementContent ) {
-
-			var sId;
-			if (oElement && !bElementContent) {
-				sId = oElement.getId() + "--RFLayout";
-			} else if (oElement && bElementContent) {
-				sId = oElement.getId() + "--content--RFLayout";
-			} else if (oContainer) {
-				sId = oContainer.getId() + "--RFLayout";
-			} else {
-				return false;
-			}
-
-			var oRFLayout = new ResponsiveFlowLayout(sId);
-			oRFLayout.__myParentLayout = oLayout;
-			oRFLayout.__myParentContainerId = oContainer.getId();
-
-			if (oElement) {
-				oRFLayout.__myParentElementId = oElement.getId();
-				// assign Elements content -> overwrite getContent function of responsiveFlowLayout
-				// to not change parent assignment of controls
-				if (!bElementContent) {
-					oRFLayout.getContent = function(){
-						var oElement = sap.ui.getCore().byId(this.__myParentElementId);
-						if (oElement) {
-							var aContent = [];
-							var oLabel = oElement.getLabelControl();
-							var aFields = oElement.getFields();
-							if (!oLabel || aFields.length <= 1) {
-								aContent = aFields;
-								if (oLabel) {
-									aContent.unshift(oLabel);
-								}
-							} else {
-								// more than one field -> put in the content RFLayout
-								var oLayout = this.__myParentLayout;
-								var sContainerId = this.__myParentContainerId;
-								var sElementId = oElement.getId();
-								if (oLabel) {
-									aContent.push(oLabel);
-								}
-								if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][2] &&
-										oLayout.mContainers[sContainerId][2][sElementId] &&
-										oLayout.mContainers[sContainerId][2][sElementId][1]) {
-									aContent.push(oLayout.mContainers[sContainerId][2][sElementId][1]);
-								}
-							}
-
-							return aContent;
-						} else {
-							return false;
-						}
-					};
-
-					oRFLayout._addContentClass = function(oControl, iIndex) {
-
-						if (iIndex == 0) {
-							// check if it's the label of the FormElement
-							var oElement = sap.ui.getCore().byId(this.__myParentElementId);
-							if (oElement) {
-								var oLabel = oElement.getLabelControl();
-								if (oControl == oLabel) {
-									return "sapUiFormElementLbl";
-								}
-							}
-						}
-
-						return null;
-
-					};
 				} else {
-					oRFLayout.getContent = function(){
-						var oElement = sap.ui.getCore().byId(this.__myParentElementId);
-						if (oElement) {
-							return oElement.getFields();
-						} else {
-							return false;
-						}
-					};
+					oRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, oElement);
+					oRFLayout.addStyleClass("sapUiRLElement");
+					if (oElement.getLabel()) {
+						oRFLayout.addStyleClass("sapUiRLElementWithLabel");
+					}
+					mRFLayouts[sElementId] = [oRFLayout, undefined];
+					iLastIndex++;
+					oContainerLayout.insertContent(oRFLayout, iLastIndex);
 				}
-			}else if (oContainer) {
-				oRFLayout._getAccessibleRole = function() {
 
-					var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-					if (!oContainer.getTitle() && !oContainer.getExpandable()) {
-						return "form";
+				// if more fields after a label put the fields in an additional ResponsiveFlowLayout
+				var aFields = oElement.getFields();
+				if (oElement.getLabel() && aFields.length > 1) {
+					if (mRFLayouts[sElementId][1]) {
+						oFieldsRFLayout = mRFLayouts[sElementId][1];
+					} else {
+						oFieldsRFLayout = _createResponsiveFlowLayout(oLayout, oContainer, oElement, true);
+						oFieldsRFLayout.addStyleClass("sapUiRLElementFields");
+						mRFLayouts[sElementId][1] = oFieldsRFLayout;
 					}
-
-				};
-			}
-
-			if ((oElement && !bElementContent) || (!oElement && !oContainer.getTitle() && !oContainer.getExpandable())) {
-				// use LayoutData of container only if no panel is used
-				_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, false);
-			} else {
-				// create LayoutData to disable margins
-				oRFLayout.setLayoutData(new ResponsiveFlowLayoutData({margin: false}));
-			}
-
-			return oRFLayout;
-
-		}
-
-		function _changeGetLayoutDataOfResponsiveFlowLayout( oRFLayout, bOriginal ) {
-			// only ResponsiveFlowLayoutData are from interest
-			// if none maintained use default one to disable margins
-
-			if (bOriginal) {
-				if (oRFLayout.__originalGetLayoutData) {
-					oRFLayout.getLayoutData = oRFLayout.__originalGetLayoutData;
-					delete oRFLayout.__originalGetLayoutData;
-				}
-			} else if (!oRFLayout.__originalGetLayoutData) {
-				oRFLayout.__originalGetLayoutData = oRFLayout.getLayoutData;
-				oRFLayout.getLayoutData = function(){
-					var oLayout = this.__myParentLayout;
-					var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
-					var oElement = sap.ui.getCore().byId(this.__myParentElementId);
-
-					var oLD;
-					if (oElement) {
-						oLD = oLayout.getLayoutDataForElement(oElement, "sap.ui.layout.ResponsiveFlowLayoutData");
-					} else if (oContainer) {
-						oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.ResponsiveFlowLayoutData");
-					}
-
-					if (oLD) {
-						return oLD;
-					} else if (oElement) {
-					// for containers without panel the margins are needed.
-						return oLayout._defaultLayoutData;
-					}
-				};
-			}
-
-		}
-
-		/*
-		 * If a ResponsiveFlowLayout for the fields of an FormElement is used it must get the weight
-		 * of all fields to have the right weight relative to the label.
-		 */
-		function _updateLayoutDataOfContentResponsiveFlowLayout( oLayout, oRFLayout, aFields ) {
-
-			var oLD;
-			var iWeight = 0;
-			for ( var i = 0; i < aFields.length; i++) {
-				var oField = aFields[i];
-				oLD = oLayout.getLayoutDataForElement(oField, "sap.ui.layout.ResponsiveFlowLayoutData");
-				if (oLD) {
-					iWeight = iWeight + oLD.getWeight();
+					_updateLayoutDataOfContentResponsiveFlowLayout(oLayout, oFieldsRFLayout, aFields);
 				} else {
-					iWeight++;
-				}
-			}
-
-			oLD = oRFLayout.getLayoutData();
-			if (oLD) {
-				oLD.setWeight(iWeight);
-			} else {
-				oRFLayout.setLayoutData(
-						new ResponsiveFlowLayoutData({weight: iWeight})
-				);
-			}
-
-		}
-
-		/*
-		 * clear variables before delete it
-		 */
-		function _deleteResponsiveFlowLayout( oRFLayout ) {
-
-			if (oRFLayout.__myParentContainerId) {
-				oRFLayout.__myParentContainerId = undefined;
-			}
-			if (oRFLayout.__myParentElementId) {
-				oRFLayout.__myParentElementId = undefined;
-			}
-			oRFLayout.__myParentLayout = undefined;
-
-			oRFLayout.destroy();
-
-		}
-
-		function _cleanContainer( oLayout, sContainerId ) {
-
-			var aContainerContent = oLayout.mContainers[sContainerId];
-			var oRFLayout;
-
-			//delete Elements Content
-			var oElementRFLayouts = aContainerContent[2];
-			if (oElementRFLayouts) {
-				for ( var sElementId in oElementRFLayouts) {
-					if (oElementRFLayouts[sElementId][1]) {
+					if (mRFLayouts[sElementId][1]) {
 						// ResponsiveFlowLayout for fields not longer needed
-						_deleteResponsiveFlowLayout(oElementRFLayouts[sElementId][1]);
+						oFieldsRFLayout = mRFLayouts[sElementId][1];
+						_deleteResponsiveFlowLayout(oFieldsRFLayout);
+						mRFLayouts[sElementId][1] = undefined;
 					}
-					oRFLayout = oElementRFLayouts[sElementId][0];
+				}
+				iVisibleElements++;
+			}
+		}
+
+		var iObjectLength = _objectLength(mRFLayouts);
+		if (iVisibleElements < iObjectLength) {
+			// delete old elements RFLayouts
+			for ( sElementId in mRFLayouts) {
+				var bFound = false;
+				for ( i = 0; i < iLength; i++) {
+					oElement = aElements[i];
+					if (sElementId == oElement.getId() && oElement.getVisible()) {
+						bFound = true;
+						break;
+					}
+				}
+				if (!bFound) {
+					if (mRFLayouts[sElementId][1]) {
+						// ResponsiveFlowLayout for fields not longer needed
+						oFieldsRFLayout = mRFLayouts[sElementId][1];
+						_deleteResponsiveFlowLayout(oFieldsRFLayout);
+					}
+					oRFLayout = mRFLayouts[sElementId][0];
+					oContainerLayout.removeContent(oRFLayout);
 					_deleteResponsiveFlowLayout(oRFLayout);
-					delete oElementRFLayouts[sElementId];
+					delete mRFLayouts[sElementId];
 				}
 			}
-
-			//delete ResponsiveFlowLayout
-			oRFLayout = aContainerContent[1];
-			if (oRFLayout) {
-				oRFLayout.removeAllContent();
-				_deleteResponsiveFlowLayout(oRFLayout);
-			}
-
-			//delete panel
-			var oPanel = aContainerContent[0];
-			if (oPanel) {
-				_deletePanel(oPanel);
-			}
-
-			delete oLayout.mContainers[sContainerId];
-
 		}
 
-		function _checkElementMoved(oLayout, oContainer, oElement, mRFLayouts, oContainerLayout, iIndex){
+		return mRFLayouts;
 
-			// if a Element is just moved from one Container to an other this is not recognized
-			// so the ResponsiveFlowLayouts must be updated and the control object must be adjusted
-			var sElementId = oElement.getId();
-			var sId = sElementId + "--RFLayout";
-			var oRFLayout = sap.ui.getCore().byId(sId);
+	}
 
-			if (!mRFLayouts[sElementId] && oRFLayout) {
-				// Element not maintained in control object of container but already has a RFLayout
-				// find old container id
-				var sOldContainerId = oRFLayout.__myParentContainerId;
+	function _createResponsiveFlowLayout( oLayout, oContainer, oElement, bElementContent ) {
 
-				// move to new containers control object
-				mRFLayouts[sElementId] = oLayout.mContainers[sOldContainerId][2][sElementId];
-				oContainerLayout.insertContent(oRFLayout, iIndex);
-				oRFLayout.__myParentContainerId = oContainer.getId();
-				if (mRFLayouts[sElementId][1]) {
-					mRFLayouts[sElementId][1].__myParentContainerId = oContainer.getId();
-				}
-
-				// delete from old container in control object
-				delete oLayout.mContainers[sOldContainerId][2][sElementId];
-			}
-
+		var sId;
+		if (oElement && !bElementContent) {
+			sId = oElement.getId() + "--RFLayout";
+		} else if (oElement && bElementContent) {
+			sId = oElement.getId() + "--content--RFLayout";
+		} else if (oContainer) {
+			sId = oContainer.getId() + "--RFLayout";
+		} else {
+			return false;
 		}
 
-		function _createMainResponsiveFlowLayout( oLayout, oForm ) {
+		var oRFLayout = new ResponsiveFlowLayout(sId);
+		oRFLayout.__myParentLayout = oLayout;
+		oRFLayout.__myParentContainerId = oContainer.getId();
 
-			var aContainers = oForm.getFormContainers();
-			var aVisibleContainers = [];
-			var oContainer;
-			var iLength = 0;
-			var iContentLenght = 0;
-			var i = 0;
-			var j = 0;
-
-			// count only visible containers
-			for ( i = 0; i < aContainers.length; i++) {
-				oContainer = aContainers[i];
-				if (oContainer.getVisible()) {
-					iLength++;
-					aVisibleContainers.push(oContainer);
-				}
-			}
-
-			// special case: only one container -> do not render an outer ResponsiveFlowLayout
-			if (iLength > 1) {
-				if (!oLayout._mainRFLayout) {
-					oLayout._mainRFLayout = new ResponsiveFlowLayout(oForm.getId() + "--RFLayout").setParent(oLayout);
-				} else {
-					// update containers
-					var aLayoutContent = oLayout._mainRFLayout.getContent();
-					iContentLenght = aLayoutContent.length;
-					var bExchangeContent = false;
-					// check if content has changed
-					for ( i = 0; i < iContentLenght; i++) {
-						var oContentElement = aLayoutContent[i];
-						oContainer = undefined;
-						if (oContentElement.getContainer) {
-							// it's a panel
-							oContainer = sap.ui.getCore().byId(oContentElement.getContainer());
+		if (oElement) {
+			oRFLayout.__myParentElementId = oElement.getId();
+			// assign Elements content -> overwrite getContent function of responsiveFlowLayout
+			// to not change parent assignment of controls
+			if (!bElementContent) {
+				oRFLayout.getContent = function(){
+					var oElement = sap.ui.getCore().byId(this.__myParentElementId);
+					if (oElement) {
+						var aContent = [];
+						var oLabel = oElement.getLabelControl();
+						var aFields = oElement.getFields();
+						if (!oLabel || aFields.length <= 1) {
+							aContent = aFields;
+							if (oLabel) {
+								aContent.unshift(oLabel);
+							}
 						} else {
-							// it's a RFLayout
-							oContainer = sap.ui.getCore().byId(oContentElement.__myParentContainerId);
-						}
-						if (oContainer && oContainer.getVisible()) {
-							var oVisibleContainer = aVisibleContainers[j];
-							if (oContainer != oVisibleContainer) {
-								// order of containers has changed
-								bExchangeContent = true;
-								break;
+							// more than one field -> put in the content RFLayout
+							var oLayout = this.__myParentLayout;
+							var sContainerId = this.__myParentContainerId;
+							var sElementId = oElement.getId();
+							if (oLabel) {
+								aContent.push(oLabel);
 							}
+							if (oLayout.mContainers[sContainerId] && oLayout.mContainers[sContainerId][2] &&
+									oLayout.mContainers[sContainerId][2][sElementId] &&
+									oLayout.mContainers[sContainerId][2][sElementId][1]) {
+								aContent.push(oLayout.mContainers[sContainerId][2][sElementId][1]);
+							}
+						}
 
-							var aContainerContent = oLayout.mContainers[oContainer.getId()];
-							if (aContainerContent[0] && aContainerContent[0] != oContentElement) {
-								// container uses panel but panel not the same element in content
-								bExchangeContent = true;
-								break;
-							}
-							if (!aContainerContent[0] && aContainerContent[1] && aContainerContent[1] != oContentElement) {
-								// container uses no panel but RFLayout not the same element in content
-								bExchangeContent = true;
-								break;
-							}
-							j++;
-						} else {
-							// no container exits for content -> just remove this content
-							oLayout._mainRFLayout.removeContent(oContentElement);
-						}
+						return aContent;
+					} else {
+						return false;
 					}
-					if (bExchangeContent) {
-						// remove all content and add it new.
-						oLayout._mainRFLayout.removeAllContent();
-						iContentLenght = 0;
-					}
-				}
-				if (iContentLenght < iLength) {
-					// new containers added
-					var iStartIndex = 0;
-					if (iContentLenght > 0) {
-						iStartIndex = iContentLenght--;
-					}
-					for ( i = iStartIndex; i < iLength; i++) {
-						oContainer = aVisibleContainers[i];
-						var sContainerId = oContainer.getId();
-						if (oLayout.mContainers[sContainerId]) {
-							if (oLayout.mContainers[sContainerId][0]) {
-								// panel used
-								oLayout._mainRFLayout.addContent(oLayout.mContainers[sContainerId][0]);
-							} else if (oLayout.mContainers[sContainerId][1]) {
-								// no panel - used ResponsiveFlowLayot directly
-								oLayout._mainRFLayout.addContent(oLayout.mContainers[sContainerId][1]);
+				};
+
+				oRFLayout._addContentClass = function(oControl, iIndex) {
+
+					if (iIndex == 0) {
+						// check if it's the label of the FormElement
+						var oElement = sap.ui.getCore().byId(this.__myParentElementId);
+						if (oElement) {
+							var oLabel = oElement.getLabelControl();
+							if (oControl == oLabel) {
+								return "sapUiFormElementLbl";
 							}
 						}
 					}
-				}
-			}
 
-		}
+					return null;
 
-		function _objectLength(oObject){
-
-			var iLength = 0;
-
-			if (!Object.keys) {
-				jQuery.each(oObject, function(){
-					iLength++;
-				});
+				};
 			} else {
-				iLength = Object.keys(oObject).length;
+				oRFLayout.getContent = function(){
+					var oElement = sap.ui.getCore().byId(this.__myParentElementId);
+					if (oElement) {
+						return oElement.getFields();
+					} else {
+						return false;
+					}
+				};
 			}
+		}else if (oContainer) {
+			oRFLayout._getAccessibleRole = function() {
 
-			return iLength;
+				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+				var oLayout = this.__myParentLayout;
+				if (oLayout._mainRFLayout && !oContainer.getToolbar() && !oContainer.getTitle() && !oContainer.getExpandable()) {
+					return "form";
+				}
 
+			};
 		}
 
-	}());
+		if ((oElement && !bElementContent) || (!oElement && !oContainer.getToolbar() && !oContainer.getTitle() && !oContainer.getExpandable())) {
+			// use LayoutData of container only if no panel is used
+			_changeGetLayoutDataOfResponsiveFlowLayout(oRFLayout, false);
+		} else {
+			// create LayoutData to disable margins
+			oRFLayout.setLayoutData(new ResponsiveFlowLayoutData({margin: false}));
+		}
+
+		return oRFLayout;
+
+	}
+
+	function _changeGetLayoutDataOfResponsiveFlowLayout( oRFLayout, bOriginal ) {
+		// only ResponsiveFlowLayoutData are from interest
+		// if none maintained use default one to disable margins
+
+		if (bOriginal) {
+			if (oRFLayout.__originalGetLayoutData) {
+				oRFLayout.getLayoutData = oRFLayout.__originalGetLayoutData;
+				delete oRFLayout.__originalGetLayoutData;
+			}
+		} else if (!oRFLayout.__originalGetLayoutData) {
+			oRFLayout.__originalGetLayoutData = oRFLayout.getLayoutData;
+			oRFLayout.getLayoutData = function(){
+				var oLayout = this.__myParentLayout;
+				var oContainer = sap.ui.getCore().byId(this.__myParentContainerId);
+				var oElement = sap.ui.getCore().byId(this.__myParentElementId);
+
+				var oLD;
+				if (oElement) {
+					oLD = oLayout.getLayoutDataForElement(oElement, "sap.ui.layout.ResponsiveFlowLayoutData");
+				} else if (oContainer) {
+					oLD = oLayout.getLayoutDataForElement(oContainer, "sap.ui.layout.ResponsiveFlowLayoutData");
+				}
+
+				if (oLD) {
+					return oLD;
+				} else if (oElement) {
+					// for containers without panel the margins are needed.
+					return oLayout._defaultLayoutData;
+				}
+			};
+		}
+
+	}
+
+	/*
+	 * If a ResponsiveFlowLayout for the fields of an FormElement is used it must get the weight
+	 * of all fields to have the right weight relative to the label.
+	 */
+	function _updateLayoutDataOfContentResponsiveFlowLayout( oLayout, oRFLayout, aFields ) {
+
+		var oLD;
+		var iWeight = 0;
+		for ( var i = 0; i < aFields.length; i++) {
+			var oField = aFields[i];
+			oLD = oLayout.getLayoutDataForElement(oField, "sap.ui.layout.ResponsiveFlowLayoutData");
+			if (oLD) {
+				iWeight = iWeight + oLD.getWeight();
+			} else {
+				iWeight++;
+			}
+		}
+
+		oLD = oRFLayout.getLayoutData();
+		if (oLD) {
+			oLD.setWeight(iWeight);
+		} else {
+			oRFLayout.setLayoutData(
+					new ResponsiveFlowLayoutData({weight: iWeight})
+			);
+		}
+
+	}
+
+	/*
+	 * clear variables before delete it
+	 */
+	function _deleteResponsiveFlowLayout( oRFLayout ) {
+
+		if (oRFLayout.__myParentContainerId) {
+			oRFLayout.__myParentContainerId = undefined;
+		}
+		if (oRFLayout.__myParentElementId) {
+			oRFLayout.__myParentElementId = undefined;
+		}
+		oRFLayout.__myParentLayout = undefined;
+
+		oRFLayout.destroy();
+
+	}
+
+	function _cleanContainer( oLayout, sContainerId ) {
+
+		var aContainerContent = oLayout.mContainers[sContainerId];
+		var oRFLayout;
+
+		//delete Elements Content
+		var oElementRFLayouts = aContainerContent[2];
+		if (oElementRFLayouts) {
+			for ( var sElementId in oElementRFLayouts) {
+				if (oElementRFLayouts[sElementId][1]) {
+					// ResponsiveFlowLayout for fields not longer needed
+					_deleteResponsiveFlowLayout(oElementRFLayouts[sElementId][1]);
+				}
+				oRFLayout = oElementRFLayouts[sElementId][0];
+				_deleteResponsiveFlowLayout(oRFLayout);
+				delete oElementRFLayouts[sElementId];
+			}
+		}
+
+		//delete ResponsiveFlowLayout
+		oRFLayout = aContainerContent[1];
+		if (oRFLayout) {
+			oRFLayout.removeAllContent();
+			_deleteResponsiveFlowLayout(oRFLayout);
+		}
+
+		//delete panel
+		var oPanel = aContainerContent[0];
+		if (oPanel) {
+			_deletePanel(oPanel);
+		}
+
+		delete oLayout.mContainers[sContainerId];
+
+	}
+
+	function _checkElementMoved(oLayout, oContainer, oElement, mRFLayouts, oContainerLayout, iIndex){
+
+		// if a Element is just moved from one Container to an other this is not recognized
+		// so the ResponsiveFlowLayouts must be updated and the control object must be adjusted
+		var sElementId = oElement.getId();
+		var sId = sElementId + "--RFLayout";
+		var oRFLayout = sap.ui.getCore().byId(sId);
+
+		if (!mRFLayouts[sElementId] && oRFLayout) {
+			// Element not maintained in control object of container but already has a RFLayout
+			// find old container id
+			var sOldContainerId = oRFLayout.__myParentContainerId;
+
+			// move to new containers control object
+			mRFLayouts[sElementId] = oLayout.mContainers[sOldContainerId][2][sElementId];
+			oContainerLayout.insertContent(oRFLayout, iIndex);
+			oRFLayout.__myParentContainerId = oContainer.getId();
+			if (mRFLayouts[sElementId][1]) {
+				mRFLayouts[sElementId][1].__myParentContainerId = oContainer.getId();
+			}
+
+			// delete from old container in control object
+			delete oLayout.mContainers[sOldContainerId][2][sElementId];
+		}
+
+	}
+
+	function _createMainResponsiveFlowLayout( oLayout, oForm ) {
+
+		var aContainers = oForm.getFormContainers();
+		var aVisibleContainers = [];
+		var oContainer;
+		var iLength = 0;
+		var iContentLenght = 0;
+		var i = 0;
+		var j = 0;
+
+		// count only visible containers
+		for ( i = 0; i < aContainers.length; i++) {
+			oContainer = aContainers[i];
+			if (oContainer.getVisible()) {
+				iLength++;
+				aVisibleContainers.push(oContainer);
+			}
+		}
+
+		// special case: only one container -> do not render an outer ResponsiveFlowLayout
+		if (iLength > 1) {
+			if (!oLayout._mainRFLayout) {
+				oLayout._mainRFLayout = new ResponsiveFlowLayout(oForm.getId() + "--RFLayout").setParent(oLayout);
+			} else {
+				// update containers
+				var aLayoutContent = oLayout._mainRFLayout.getContent();
+				iContentLenght = aLayoutContent.length;
+				var bExchangeContent = false;
+				// check if content has changed
+				for ( i = 0; i < iContentLenght; i++) {
+					var oContentElement = aLayoutContent[i];
+					oContainer = undefined;
+					if (oContentElement.getContainer) {
+						// it's a panel
+						oContainer = sap.ui.getCore().byId(oContentElement.getContainer());
+					} else {
+						// it's a RFLayout
+						oContainer = sap.ui.getCore().byId(oContentElement.__myParentContainerId);
+					}
+					if (oContainer && oContainer.getVisible()) {
+						var oVisibleContainer = aVisibleContainers[j];
+						if (oContainer != oVisibleContainer) {
+							// order of containers has changed
+							bExchangeContent = true;
+							break;
+						}
+
+						var aContainerContent = oLayout.mContainers[oContainer.getId()];
+						if (aContainerContent[0] && aContainerContent[0] != oContentElement) {
+							// container uses panel but panel not the same element in content
+							bExchangeContent = true;
+							break;
+						}
+						if (!aContainerContent[0] && aContainerContent[1] && aContainerContent[1] != oContentElement) {
+							// container uses no panel but RFLayout not the same element in content
+							bExchangeContent = true;
+							break;
+						}
+						j++;
+					} else {
+						// no container exits for content -> just remove this content
+						oLayout._mainRFLayout.removeContent(oContentElement);
+					}
+				}
+				if (bExchangeContent) {
+					// remove all content and add it new.
+					oLayout._mainRFLayout.removeAllContent();
+					iContentLenght = 0;
+				}
+			}
+			if (iContentLenght < iLength) {
+				// new containers added
+				var iStartIndex = 0;
+				if (iContentLenght > 0) {
+					iStartIndex = iContentLenght--;
+				}
+				for ( i = iStartIndex; i < iLength; i++) {
+					oContainer = aVisibleContainers[i];
+					var sContainerId = oContainer.getId();
+					if (oLayout.mContainers[sContainerId]) {
+						if (oLayout.mContainers[sContainerId][0]) {
+							// panel used
+							oLayout._mainRFLayout.addContent(oLayout.mContainers[sContainerId][0]);
+						} else if (oLayout.mContainers[sContainerId][1]) {
+							// no panel - used ResponsiveFlowLayot directly
+							oLayout._mainRFLayout.addContent(oLayout.mContainers[sContainerId][1]);
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	function _objectLength(oObject){
+
+		var iLength = 0;
+
+		if (!Object.keys) {
+			jQuery.each(oObject, function(){
+				iLength++;
+			});
+		} else {
+			iLength = Object.keys(oObject).length;
+		}
+
+		return iLength;
+
+	}
 
 	return ResponsiveLayout;
 
 }, /* bExport= */ true);
+
 }; // end of sap/ui/layout/form/ResponsiveLayout.js

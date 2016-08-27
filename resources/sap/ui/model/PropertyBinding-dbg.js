@@ -192,6 +192,49 @@ sap.ui.define(['jquery.sap.global', './Binding', './SimpleType','./DataState'],
 		this.sMode = sBindingMode;
 	};
 
+	/**
+	 * Resumes the binding update. Change events will be fired again.
+	 *
+	 * When the binding is resumed and the control value was changed in the meantime, the control value will be set to the
+	 * current value from the model and a change event will be fired.
+	 * @public
+	 */
+	PropertyBinding.prototype.resume = function() {
+		this.bSuspended = false;
+		this.checkUpdate(true);
+	};
+
+	/**
+	 * Checks whether an update of the data state of this binding is required.
+	 *
+	 * @param {map} mPaths A Map of paths to check if update needed
+	 * @private
+	 */
+	PropertyBinding.prototype.checkDataState = function(mPaths) {
+		var sResolvedPath = this.oModel ? this.oModel.resolve(this.sPath, this.oContext) : null;
+		var that = this;
+		if (!mPaths || sResolvedPath && sResolvedPath in mPaths) {
+			var oDataState = this.getDataState();
+			if (sResolvedPath) {
+				oDataState.setModelMessages(this.oModel.getMessagesByPath(sResolvedPath));
+			}
+			if (oDataState && oDataState.changed()) {
+				if (this.mEventRegistry["DataStateChange"]) {
+					this.fireEvent("DataStateChange", { dataState: oDataState });
+				}
+				if (this.mEventRegistry["AggregatedDataStateChange"]) {
+					if (!this._sDataStateTimout) {
+						this._sDataStateTimout = setTimeout(function() {
+							that.fireEvent("AggregatedDataStateChange", { dataState: oDataState });
+							oDataState.changed(false);
+							that._sDataStateTimout = null;
+						}, 0);
+					}
+				}
+			}
+		}
+	};
+
 	return PropertyBinding;
 
 });

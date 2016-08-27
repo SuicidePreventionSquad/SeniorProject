@@ -6,6 +6,7 @@
 @SapDialogMarginHeight: 7%;
 @SapBarHeight: 3rem;
 @SapBarCompactHeight: 2.5rem;
+@SapDialogPadding: 1rem;
 
 .sapMDialog,
 .sapMMessageDialog .sapMDialogScrollCont,
@@ -26,20 +27,29 @@
 	-webkit-transform: translate(-50%, -50%) scale(0.9);
 	transform: translate(-50%, -50%) scale(0.9);
 
-  &:not(.sapMDialogHighPixelDensity) {
-	//prevent blurring when the device pixel ration is 1 (not high density screens)
-	//this is done with style and not with media query for wider support
-	-webkit-filter: blur(0);
-	-moz-filter: blur(0);
-	-ms-filter: blur(0);
-	filter: blur(0);
-  }
+	&:not(.sapMDialogHighPixelDensity) {
+		//prevent blurring when the device pixel ration is 1 (not high density screens)
+		//this is done with style and not with media query for wider support
+		-webkit-filter: blur(0);
+		-moz-filter: blur(0);
+		-ms-filter: blur(0);
+		filter: blur(0);
+	}
+}
+
+html[data-sap-ui-browser^="ie9"] .sapMDialog {
+  	&:not(.sapMDialogHighPixelDensity) {
+		filter: none;
+	}
 }
 
 //the rtl will change the transform-translate from (-50% -50%) to (50% -50%)
 [dir="rtl"] .sapMDialog {
 	left: 50%; //this will be changed 'right: 50%' from the rtl mode
-	right: auto !important; //this will be reverted 'left: auto' by the rtl mode
+}
+
+[dir="rtl"] .sapMDialog.sapMDialogTouched {
+	left: auto;
 }
 
 // set max height and max width ========================================================================================
@@ -124,7 +134,7 @@
 	min-height: 0 !important; //this is for preventing the dialog to hold it's width in small screens
 }
 
-.sap-phone .sapMDialog {
+html.sap-phone .sapMDialog {
 	min-width: 18rem;
 	overflow: hidden;
 
@@ -151,8 +161,8 @@
 	}
 }
 
-.sap-tablet .sapMDialog,
-.sap-desktop .sapMDialog {
+html.sap-tablet .sapMDialog,
+html.sap-desktop .sapMDialog {
 	min-width: 25rem;
 }
 
@@ -168,7 +178,7 @@
 
 .sapMDialogScroll {
 	display: inline-block; /*this is for horizontal scrolling enablement */
-	min-height: 100%;
+	height: 100%;
 	width: 100%;
 	vertical-align: middle;
 }
@@ -212,7 +222,15 @@
 }
 
 .sapUiPopupWithPadding .sapMDialogScrollCont {
-	padding: 1rem;
+	padding: @SapDialogPadding;
+}
+
+.sapUiPopupWithPadding .sapMDialogScrollCont.sapMDialogStretchContent {
+  	height: calc(~"100% - 2 * " @SapDialogPadding);
+}
+
+.sapMDialogScrollCont.sapMDialogStretchContent {
+  	height: 100%;
 }
 
 /* messagedialog always has content padding */
@@ -221,16 +239,15 @@
 	padding: 1rem;
 }
 
-.sapMDialogScrollCont {
-	height: 100%;
-}
-
 .sapMDialogWithScrollCont .sapMDialogScroll {
 	/*
       This property together with the position: absolute in sapMDialogScrollCont fixes the browser bug stated here:
       http://stackoverflow.com/questions/8468066/child-inside-parent-with-min-height-100-not-inheriting-height
   */
 	position: relative;
+}
+.sapUiPopupWithPadding.sapMDialogWithScrollCont .sapMDialogScrollCont {
+  	height: 100%;
 }
 
 .sapMDialogWithScrollCont .sapMDialogScrollCont {
@@ -246,9 +263,9 @@
 
 .sapMDialogOpen {
 	opacity: 1;
-	transform: translate3d(-50%, -50%, 0) scale(1);
-	-ms-transform: translate3d(-50%, -50%, 0) scale(1);
-	-webkit-transform: translate3d(-50%, -50%, 0) scale(1);
+	transform: translate(-50%, -50%) scale(1);
+	-ms-transform: translate(-50%, -50%) scale(1);
+	-webkit-transform: translate(-50%, -50%) scale(1);
 }
 
 .sapMDialogBlockLayerAnimation {
@@ -311,13 +328,14 @@
 }
 
 .sapMDialog > footer {
-  #dialogWithManyButtons-footer-overflowButton-inner {
-	padding-left: 0;
-  }
 
-  #dialogWithManyButtons-footer-overflowButton-img {
-	position: static;
-  }
+	#dialogWithManyButtons-footer-overflowButton-inner {
+		padding-left: 0;
+	}
+
+	#dialogWithManyButtons-footer-overflowButton-img {
+		position: static;
+	}
 }
 
 /* Compact size */
@@ -415,12 +433,12 @@
 }
 
 .sapMDialogResizeHandler {
-	bottom: -0.5rem;
+	bottom: 0;
 	cursor: se-resize;
-	height: 1rem;
+	height: .5rem;
 	position: absolute;
-	right: -0.5rem;
-	width: 1rem;
+	right: 0rem;
+	width: .5rem;
 	z-index: 2;
 
 	&:before {

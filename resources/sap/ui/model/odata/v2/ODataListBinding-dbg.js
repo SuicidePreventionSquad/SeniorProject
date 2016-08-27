@@ -19,7 +19,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 	 * @param {sap.ui.model.Context} oContext
 	 * @param {array} [aSorters] initial sort order (can be either a sorter or an array of sorters)
 	 * @param {array} [aFilters] predefined filter/s (can be either a filter or an array of filters)
-	 * @param {object} [mParameters] a map which contains additional parameters option for the binding
+	 * @param {map} [mParameters] a map which contains additional parameters for the binding.
+	 * @param {string} [mParameters.expand] Standing for OData <code>$expand</code> query option which should be included in the request
+	 * @param {string} [mParameters.select] Standing for OData <code>$select</code> query option parameter which should be included in the request
+	 * @param {map} [mParameters.custom] an optional map of custom query parameters. Custom parameters must not start with <code>$</code>.
 	 * @param {sap.ui.model.odata.CountMode} [mParameters.countMode] defines the count mode of this binding
 	 * @param {sap.ui.model.odata.OperationMode} [mParameters.operationMode] defines the operation mode of this binding
 	 * @param {boolean} [mParameters.faultTolerant] turns on the fault tolerance mode, data is not reset if a backend request returns an error
@@ -61,7 +64,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 			this.bLengthFinal = false;
 			this.iLastEndIndex = 0;
 			this.aLastContexts = null;
-			this.oLastContextData = null;
+			this.aLastContextData = null;
 			this.bInitial = true;
 			this.mRequestHandles = {};
 
@@ -181,7 +184,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 
 		var bLoadContexts = true,
 		aContexts = this._getContexts(iStartIndex, iLength),
-		oContextData = {},
+		aContextData = [],
 		oSection;
 
 		if (this.bClientOperation) {
@@ -215,25 +218,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 			// Do not create context data and diff in case of refresh, only if real data has been received
 			// The current behaviour is wrong and makes diff detection useless for OData in case of refresh
 			for (var i = 0; i < aContexts.length; i++) {
-				oContextData[aContexts[i].getPath()] = aContexts[i].getObject();
+				aContextData.push(this.getContextData(aContexts[i]));
 			}
-
 			if (this.bUseExtendedChangeDetection) {
 				//Check diff
 				if (this.aLastContexts && iStartIndex < this.iLastEndIndex) {
-					var that = this;
-					var aDiff = jQuery.sap.arrayDiff(this.aLastContexts, aContexts, function(oOldContext, oNewContext) {
-						return jQuery.sap.equal(
-								oOldContext && that.oLastContextData && that.oLastContextData[oOldContext.getPath()],
-								oNewContext && oContextData && oContextData[oNewContext.getPath()]
-						);
-					}, true);
-					aContexts.diff = aDiff;
+					aContexts.diff = jQuery.sap.arraySymbolDiff(this.aLastContextData, aContextData);
 				}
 			}
 			this.iLastEndIndex = iStartIndex + iLength;
 			this.aLastContexts = aContexts.slice(0);
-			this.oLastContextData = jQuery.sap.extend(true, {}, oContextData);
+			this.aLastContextData = aContextData.slice(0);
 		}
 
 		return aContexts;
@@ -242,6 +237,27 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 	ODataListBinding.prototype.getCurrentContexts = function() {
 		return this.aLastContexts || [];
 	};
+
+	/**
+	 * Returns the context data as required for change detection/diff. This may not contain
+	 * all of the data, but just the key property
+	 *
+	 * @private
+	 */
+	ODataListBinding.prototype.getContextData = function(oContext) {
+		// if no updates need to be detected and no custom key method was defined,
+		// just return the context path as unique key
+		if (!this.bDetectUpdates && !this.fnGetEntryKey) {
+			return oContext.getPath();
+		}
+
+		if (!this.bDetectUpdates) {
+			return this.fnGetEntryKey(oContext);
+		} else {
+			return JSON.stringify(oContext.getObject());
+		}
+	};
+
 
 	/**
 	 * Return contexts for the list
@@ -394,14 +410,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 						this.bClientOperation = true;
 						this.applyFilter();
 						this.applySort();
-						this._fireChange();
+						this._fireChange({ reason: ChangeReason.Context });
 					} else if (!this.oModel.resolve(this.sPath, this.oContext) || oRef === null){
 						// if path does not resolve, or data is known to be null (e.g. expanded list)
 						this.aAllKeys = null;
 						this.aKeys = [];
 						this.iLength = 0;
 						this.bLengthFinal = true;
-						this._fireChange();
+						this._fireChange({ reason: ChangeReason.Context });
 					} else {
 						this._refresh();
 					}
@@ -464,9 +480,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 			// update iLength (only when the inline count was requested and is available)
 			if (bInlineCountRequested && oData.__count) {
 				that.iLength = parseInt(oData.__count, 10);
-				if (that.sCountMode != CountMode.InlineRepeat) {
-					that.bLengthFinal = true;
-				}
+				that.bLengthFinal = true;
 
 				// in the OpertionMode.Auto, we check if the count is LE than the given threshold (which also was requested!)
 				if (that.sOperationMode == OperationMode.Auto) {
@@ -596,7 +610,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 					that.bNeedsUpdate = true;
 					that.checkUpdate();
 					that.oModel.fireRequestCompleted({url: sUrl, method: "GET", async: true, success: true});
-					that.fireDataReceived();
+					that.fireDataReceived({data: {}});
 				}, 0);
 			} else {
 				// Execute the request and use the metadata if available
@@ -610,10 +624,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 
 	};
 
-	/**
-	 * @see sap.ui.model.ListBinding.prototype.isLengthFinal
-	 *
-	 */
 	ODataListBinding.prototype.isLengthFinal = function() {
 		return this.bLengthFinal;
 	};
@@ -797,10 +807,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 		if (this.oModel.oMetadata && this.oModel.oMetadata.isLoaded() && this.bInitial) {
 			this.bInitial = false;
 			this._initSortersFilters();
-			if (this.bDataAvailable) {
-				this._fireChange({reason: ChangeReason.Change});
-			} else {
-				this._fireRefresh({reason: ChangeReason.Refresh});
+			if (!this.bSuspended) {
+				if (this.bDataAvailable) {
+					this._fireChange({reason: ChangeReason.Change});
+				} else {
+					this._fireRefresh({reason: ChangeReason.Refresh});
+				}
 			}
 		}
 		return this;
@@ -818,7 +830,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 	ODataListBinding.prototype.checkUpdate = function(bForceUpdate, mChangedEntities) {
 		var bChangeReason = this.sChangeReason ? this.sChangeReason : ChangeReason.Change,
 				bChangeDetected = false,
-				oLastData, oCurrentData,
+				oCurrentData,
 				that = this,
 				oRef,
 				bRefChanged;
@@ -863,11 +875,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 				if (this.aLastContexts.length !== aContexts.length) {
 					bChangeDetected = true;
 				} else {
-					jQuery.each(this.aLastContexts, function(iIndex, oContext) {
-						oLastData = that.oLastContextData[oContext.getPath()];
-						oCurrentData = aContexts[iIndex].getObject();
+					jQuery.each(this.aLastContextData, function(iIndex, oLastData) {
+						oCurrentData = that.getContextData(aContexts[iIndex]);
 						// Compare whether last data is completely contained in current data
-						if (!jQuery.sap.equal(oLastData, oCurrentData, true)) {
+						if (oLastData !== oCurrentData) {
 							bChangeDetected = true;
 							return false;
 						}
@@ -992,9 +1003,15 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 
 		if (!this.bInitial) {
 			if (this.bClientOperation) {
+				this.addSortComparators(aSorters, this.oEntityType);
 				// apply clientside sorters only if data is available
 				if (this.aAllKeys) {
-					this.applySort();
+					// If no sorters are defined, restore initial sort order by calling applyFilter
+					if (aSorters.length == 0) {
+						this.applyFilter();
+					} else {
+						this.applySort();
+					}
 					this._fireChange({reason: ChangeReason.Sort});
 				} else {
 					this.sChangeReason = ChangeReason.Sort;
@@ -1016,6 +1033,28 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 		} else {
 			return this;
 		}
+	};
+
+	/**
+	 * Sets the comparator for each sorter in the sorters array according to the
+	 * Edm type of the sort property
+	 * @private
+	 */
+	ODataListBinding.prototype.addSortComparators = function(aSorters, oEntityType) {
+		var oPropertyMetadata, sType;
+
+		if (!oEntityType) {
+			jQuery.sap.log.warning("Cannot determine sort comparators, as entitytype of the collection is unkown!");
+			return;
+		}
+		jQuery.each(aSorters, function(i, oSorter) {
+			if (!oSorter.fnCompare) {
+				oPropertyMetadata = this.oModel.oMetadata._getPropertyMetadata(oEntityType, oSorter.sPath);
+				sType = oPropertyMetadata && oPropertyMetadata.type;
+				jQuery.sap.assert(oPropertyMetadata, "PropertyType for property " + oSorter.sPath + " of EntityType " + oEntityType.name + " not found!");
+				oSorter.fnCompare = ODataUtils.getComparator(sType);
+			}
+		}.bind(this));
 	};
 
 	ODataListBinding.prototype.applySort = function() {
@@ -1167,9 +1206,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/FilterType', 'sap/ui/model/Lis
 
 	ODataListBinding.prototype.resume = function() {
 		this.bIgnoreSuspend = false;
-		ListBinding.prototype.resume.apply(this, arguments);
+		this.bSuspended = false;
 		if (this.bPendingRefresh) {
 			this._refresh();
+		} else {
+			this.checkUpdate();
 		}
 	};
 

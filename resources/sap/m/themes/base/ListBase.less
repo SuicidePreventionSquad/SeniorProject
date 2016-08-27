@@ -4,7 +4,6 @@
 .sapMList {
 	position: relative;	/* This should not break the list but help swipe list content position calculation */
 	box-sizing: border-box;
-	overflow: hidden;
 }
 
 .sapMListUl {
@@ -36,6 +35,10 @@
 	-webkit-box-align: center;
 	-ms-flex-align: center;
 	align-items: center;
+}
+
+.sapMListDummyArea {
+	position: fixed; /* keep it in the visible viewport, so that IE does not scroll on focus */
 }
 
 /* swipe animations */
@@ -121,6 +124,10 @@
 	display: block;
 	text-align: center;
 	overflow: hidden;
+}
+
+.sapMGrowingListDescription{
+	display: none;
 }
 
 .sapMGrowingListBusyIndicatorVisible .sapMGrowingListTriggerText,

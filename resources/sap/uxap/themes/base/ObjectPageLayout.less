@@ -17,6 +17,14 @@ body > .sapUxAPObjectPageLayout,
 	z-index: 2;
 }
 
+.sapUxAPObjectPageHeaderTitle.sapUxAPObjectPageHeaderTitleBusy {
+	z-index: 0;
+}
+
+.sapUxAPObjectPageSubSectionPromoted:not(:first-of-type) {
+	padding-top: 0.25rem;
+}
+
 .sapUxAPObjectPageWrapper {
 	position: absolute;
 	top: 0;
@@ -25,8 +33,6 @@ body > .sapUxAPObjectPageLayout,
 	right: 0;
 	min-height: 100%;
 	overflow: hidden;
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 }
 
@@ -61,7 +67,6 @@ body > .sapUxAPObjectPageLayout,
 }
 
 .sapUxAPObjectPageScrollV > div, .sapUxAPObjectPageScrollH > div {
-	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
 	-webkit-background-clip: padding-box;
 	background-clip: padding-box;
@@ -101,4 +106,19 @@ body > .sapUxAPObjectPageLayout,
 	left: 0;
 	right: auto;
 	z-index: 3000;
+}
+
+/* Only on Windows 8 with IE 11 there's some weird incompatibility between the usage of the transform property
+ in the sapMShell and the one in the objectPageWrapper.
+ Also the z-index causes the scroll bars of the table to show in the headerTitle.
+ For more information see internal incident 1670194272. */
+html[data-sap-ui-browser^="ie"][data-sap-ui-os^="win8"] .sapMShell {
+
+	.sapUxAPObjectPageWrapperTransform {
+		transform: none;
+	}
+
+	.sapUxAPObjectPageHeaderTitle {
+		z-index: 3;
+	}
 }

@@ -20,14 +20,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType',
 	 * @namespace
 	 * @name sap.ui.commons
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @public
 	 */
 
 	// delegate further initialization of this library to the Core
 	sap.ui.getCore().initLibrary({
 		name : "sap.ui.commons",
-		version: "1.34.8",
+		version: "1.38.7",
 		dependencies : ["sap.ui.core","sap.ui.layout","sap.ui.unified"],
 		types: [
 			"sap.ui.commons.ButtonStyle",
@@ -57,7 +57,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType',
 			"sap.ui.commons.layout.HAlign",
 			"sap.ui.commons.layout.Padding",
 			"sap.ui.commons.layout.Separation",
-			"sap.ui.commons.layout.VAlign"
+			"sap.ui.commons.layout.VAlign",
+			"sap.ui.commons.ColorPickerMode"
 		],
 		interfaces: [
 			"sap.ui.commons.FormattedTextViewControl",
@@ -191,6 +192,30 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType',
 		 * @public
 		 */
 		Default : "Default"
+
+	};
+
+
+	/**
+	 * different styles for a ColorPicker.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.ui.commons.ColorPickerMode = {
+
+			/**
+			 * Color picker works with HSV values.
+			 * @public
+			 */
+			HSV : "HSV",
+
+			/**
+			 * Color picker works with HSL values.
+			 * @public
+			 */
+			HSL : "HSL"
 
 	};
 
@@ -1177,11 +1202,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType',
 			createLabel: function(sText){
 				return new sap.ui.commons.Label({text: sText});
 			},
-			createButton: function(sId, fPressFunction, oThis){
+			createButton: function(sId, fPressFunction){
 				var oButton = new sap.ui.commons.Button(sId,{
 					lite: true
 					});
-				oButton.attachEvent('press', fPressFunction, oThis); // attach event this way to have the right this-reference in handler
+				oButton.attachEvent('press', fPressFunction, this); // attach event this way to have the right this-reference in handler
 				return oButton;
 			},
 			setButtonContent: function(oButton, sText, sTooltip, sIcon, sIconHovered){
@@ -1191,6 +1216,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/DataType',
 				oButton.setIconHovered(sIconHovered);
 			},
 			addFormClass: function(){ return null; },
+			setToolbar: function(oToolbar){ return oToolbar; },
 			bArrowKeySupport: true, /* enables the keyboard support for arrow keys */
 			bFinal: false /* to allow mobile to overwrite  */
 		};

@@ -20,7 +20,7 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	 * @class
 	 * FacetFilterList represents a list of values for the FacetFilter control.
 	 * @extends sap.m.List
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -37,9 +37,9 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 			 */
 			title : {type : "string", group : "Appearance", defaultValue : null},
 			/**
-             * If set to <code>true</code>, the item text wraps when it is too long.
-             */
-             wordWrap: {type : "boolean", group : "Appearance", defaultValue : false},
+			 * If set to <code>true</code>, the item text wraps when it is too long.
+			 */
+			 wordWrap: {type : "boolean", group : "Appearance", defaultValue : false},
 
 			/**
 			 * Specifies whether multiple or single selection is used.
@@ -53,9 +53,9 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 			 */
 			active : {type : "boolean", group : "Behavior", defaultValue : true},
 
-            /**
-             * If set to <code>true</code>, enables case-insensitive search for OData.
-             */
+			/**
+			 * If set to <code>true</code>, enables case-insensitive search for OData.
+			 */
 			enableCaseInsensitiveSearch: {type : "boolean", group : "Behavior", defaultValue : false, deprecated: false},
 
 			/**
@@ -168,7 +168,7 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 		var searchVal = this._getSearchValue();
 		if (searchVal != null) {
 			this._search(searchVal, true);
-
+			this._updateSelectAllCheckBox();
 		}
 	};
 
@@ -422,18 +422,18 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 
 	FacetFilterList.prototype._fireListCloseEvent = function() {
 
-	              var aSelectedItems = this.getSelectedItems();
-	       var oSelectedKeys = this.getSelectedKeys();
+				  var aSelectedItems = this.getSelectedItems();
+		   var oSelectedKeys = this.getSelectedKeys();
 
-	       var bAllSelected = aSelectedItems.length === 0;
+		   var bAllSelected = aSelectedItems.length === 0;
 
-	       this._firstTime = true;
+		   this._firstTime = true;
 
-	       this.fireListClose({
-	              selectedItems : aSelectedItems,
-	              selectedKeys : oSelectedKeys,
-	              allSelected : bAllSelected
-	       });
+		   this.fireListClose({
+				  selectedItems : aSelectedItems,
+				  selectedKeys : oSelectedKeys,
+				  allSelected : bAllSelected
+		   });
 
 	};
 
@@ -484,6 +484,11 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 		var bindingInfoaFilters;
 		var numberOfsPath = 0;
 
+		//Checks whether given model is one of the OData Model(s)
+		function isODataModel(oModel) {
+			return oModel instanceof sap.ui.model.odata.ODataModel || oModel instanceof sap.ui.model.odata.v2.ODataModel;
+		}
+
 		if (force || (sSearchVal !== this._searchValue)) {
 			this._searchValue = sSearchVal;
 			var oBinding = this.getBinding("items");
@@ -504,7 +509,7 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 					var path = this.getBindingInfo("items").template.getBindingInfo("text").parts[0].path;
 					if (path) {
 						var oUserFilter = new sap.ui.model.Filter(path, sap.ui.model.FilterOperator.Contains, sSearchVal);
-						if (oBinding.getModel() instanceof sap.ui.model.odata.ODataModel && this.getEnableCaseInsensitiveSearch()){
+						if (this.getEnableCaseInsensitiveSearch() && isODataModel(oBinding.getModel())){
 							 //notice the single quotes wrapping the value from the UI control!
 							var sEncodedString = "'" + String(sSearchVal).replace(/'/g, "''") + "'";
 							sEncodedString = sEncodedString.toLowerCase();
@@ -548,22 +553,23 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	/**
 	 * Updates the select all checkbox according to the state of selections in the list and the list active state(this has no effect for lists not in MultiSelect mode).
 	 *
-	 * @param bItemSelected
 	 *          The selection state of the item currently being selected or deselected
 	 * @private
 	 */
-	FacetFilterList.prototype._updateSelectAllCheckBox = function(bItemSelected) {
+	FacetFilterList.prototype._updateSelectAllCheckBox = function() {
+		var iItemsCount = this.getItems().length,
+			oCheckbox, bAtLeastOneItemIsSelected, bSelectAllSelected;
+
+		function isSelected(oItem) {
+			return oItem.getSelected();
+		}
 
 		if (this.getMultiSelect()) {
-			var oCheckbox = sap.ui.getCore().byId(this.getAssociation("allcheckbox"));
+			oCheckbox = sap.ui.getCore().byId(this.getAssociation("allcheckbox"));
+			bAtLeastOneItemIsSelected = iItemsCount > 0 && iItemsCount === this.getItems().filter(isSelected).length;
+			bSelectAllSelected = this.getActive() && bAtLeastOneItemIsSelected;
 
-			  if (bItemSelected) {
-				oCheckbox && oCheckbox.setSelected(false);
-			} else {
-
-				// Checkbox may not be defined if an item is selected and the list is not displayed
-				oCheckbox && oCheckbox.setSelected(Object.getOwnPropertyNames(this._oSelectedKeys).length === 0 && this.getActive());
-			}
+			oCheckbox && oCheckbox.setSelected(bSelectAllSelected);
 		}
 	};
 
@@ -574,7 +580,6 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	 * @param sText
 	 */
 	FacetFilterList.prototype._addSelectedKey = function(sKey, sText){
-
 		if (!sKey && !sText) {
 			jQuery.sap.log.error("Both sKey and sText are not defined. At least one must be defined.");
 			return;
@@ -612,6 +617,15 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	};
 
 	/**
+	 * Sets the search value to a given string.
+	 * @param {string} sValue The value to be set
+	 * @private
+	 */
+	FacetFilterList.prototype._setSearchValue = function(sValue) {
+		this._searchValue = sValue;
+	};
+
+	/**
 	 * Determines the selected state of the given item.
 	 * The item's text value will be used as the lookup key if the item does not have a key set.
 	 * This is done for convenience to allow applications to only set the item text and have it used also as the key.
@@ -636,6 +650,25 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	};
 
 	/**
+	 * Handles the selection of all items at once.
+	 * @param {boolean} bSelected All selected or not
+	 * @private
+	 */
+	FacetFilterList.prototype._handleSelectAll = function(bSelected) {
+		this.getItems().forEach(function (oItem) {
+			if (bSelected) {
+				this._addSelectedKey(oItem.getKey(), oItem.getText());
+			} else {
+				this._removeSelectedKey(oItem.getKey(), oItem.getText());
+			}
+			oItem.setSelected(bSelected, true);
+		}, this);
+
+		this.setActive(this.getActive() || bSelected);
+		jQuery.sap.delayedCall(0, this, this._updateSelectAllCheckBox);
+	};
+
+	/**
 	 * This method overrides runs when setSelected is called from ListItemBase.
 	 * Here we update the selected keys cache based on whether the item is being selected or not.
 	 * We also update the select all checkbox state and list active state based on the selected state of all items taken as a whole.
@@ -644,7 +677,6 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	 * @param {boolean} bSelect <code>true</code> if selected
 	 */
 	FacetFilterList.prototype.onItemSelectedChange = function(oItem, bSelect) {
-
 		if (bSelect) {
 			this._addSelectedKey(oItem.getKey(), oItem.getText());
 		} else {
@@ -652,9 +684,13 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 		}
 		sap.m.ListBase.prototype.onItemSelectedChange.apply(this, arguments);
 
-		this._updateSelectAllCheckBox(bSelect);
+
 		this.setActive(this.getActive() || bSelect);
 		!this.getDomRef() && this.getParent() && this.getParent().getDomRef() && this.getParent().invalidate();
+
+		// Postpone the _updateSelectAllCheckBox, as the oItem(type ListItemBase) has not yet set it's 'selected' property
+		// See ListItemBase.prototype.setSelected
+		jQuery.sap.delayedCall(0, this, this._updateSelectAllCheckBox);
 	};
 
 
@@ -675,6 +711,7 @@ sap.ui.define(['jquery.sap.global', './List', './library'],
 	  this._selectItemsByKeys();
 	  }
 	};
+
 
 	return FacetFilterList;
 

@@ -11,7 +11,7 @@ sap.ui.define(['sap/ui/base/Object', './PageAccessibleLandmarkInfo', 'sap/ui/cor
 
 	var mContexts = {
 		footer : {
-			contextClass : "sapMFooter-CTX",
+			contextClass : "sapMFooter-CTX sapContrast sapContrastPlus",
 			tag : "Footer",
 			internalAriaLabel: "BAR_ARIA_DESCRIPTION_FOOTER"
 		},
@@ -160,11 +160,16 @@ sap.ui.define(['sap/ui/base/Object', './PageAccessibleLandmarkInfo', 'sap/ui/cor
 		 * @private
 		 */
 		_writeLandmarkInfo: function (oRm, oControl) {
+			var role;
+
 			if (oControl._bHasLandmarkInfo) {
 				PageAccessibleLandmarkInfo._writeLandmarkInfo(oRm, oControl.getParent(), oControl._sLandmarkContext);
 			} else {
+				// BCP: 1670153972
+				// Bar in Dialog has to have 'role' attr set to 'heading'
+				role = sap.m.Dialog && oControl.getParent() instanceof sap.m.Dialog ? "heading" : "toolbar";
 				oRm.writeAccessibilityState(oControl, {
-					role: "toolbar"
+					role: role
 				});
 			}
 		},

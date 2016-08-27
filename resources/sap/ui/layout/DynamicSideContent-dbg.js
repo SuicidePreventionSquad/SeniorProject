@@ -28,7 +28,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/ResizeHa
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -69,7 +69,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/ResizeHa
 				/**
 				 * If set to TRUE, then not the media Query (device screen size) but the size of the container, surrounding the control, defines the current range.
 				 */
-				containerQuery : {type : "boolean", group : "Behavior", defaultValue : false}
+				containerQuery : {type : "boolean", group : "Behavior", defaultValue : false},
+
+				/**
+				 * Determines whether the side content is on the left or on the right side of the main content.
+				 * @since 1.36
+				 */
+				sideContentPosition : {type : "sap.ui.layout.SideContentPosition", group : "Appearance", defaultValue : sap.ui.layout.SideContentPosition.End}
 			},
 			defaultAggregation : "mainContent",
 			events : {
@@ -403,7 +409,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/ResizeHa
 		/**
 		 * Gets the current breakpoint, related to the width, which is passed to the method.
 		 * @private
-		 * @param {integer} iWidth The parent container width
+		 * @param {int} iWidth The parent container width
 		 * @returns {String} Breakpoint corresponding to the width passed
 		 */
 		DynamicSideContent.prototype._getBreakPointFromWidth = function (iWidth) {
@@ -423,7 +429,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/ResizeHa
 		/**
 		 * Sets the current breakpoint, related to the width, which is passed to the method.
 		 * @private
-		 * @param {integer} iWidth is the parent container width
+		 * @param {int} iWidth is the parent container width
 		 */
 		DynamicSideContent.prototype._setBreakpointFromWidth = function (iWidth) {
 			this._currentBreakpoint = this._getBreakPointFromWidth(iWidth);
@@ -612,8 +618,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Control', 'sap/ui/core/ResizeHa
 
 		/**
 		 * Sets the main and side content span size.
-		 * @param {integer} iScSpan Side content span size
-		 * @param {integer} iMcSpan Main content span size
+		 * @param {int} iScSpan Side content span size
+		 * @param {int} iMcSpan Main content span size
 		 * @private
 		 */
 		DynamicSideContent.prototype._setSpanSize = function (iScSpan, iMcSpan) {

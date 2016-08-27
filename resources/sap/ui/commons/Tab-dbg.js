@@ -22,10 +22,11 @@ sap.ui.define(['jquery.sap.global', './Panel', './library'],
 	 * @extends sap.ui.commons.Panel
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
+	 * @deprecated Since version 1.38. Instead, use the <code>sap.m.TabContainer</code> control.
 	 * @alias sap.ui.commons.Tab
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */

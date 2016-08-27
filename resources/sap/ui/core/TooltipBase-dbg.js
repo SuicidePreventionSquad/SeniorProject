@@ -10,6 +10,8 @@ sap.ui.define(['jquery.sap.global', './Control', './Popup', './library'],
 	"use strict";
 
 
+	// shortcut for enum(s)
+	var OpenState = library.OpenState;
 
 	/**
 	 * Constructor for a new TooltipBase.
@@ -20,7 +22,7 @@ sap.ui.define(['jquery.sap.global', './Control', './Popup', './library'],
 	 * @class
 	 * Abstract class that can be extended in order to implement any extended tooltip. For example, RichTooltip Control is based on it. It provides the opening/closing behavior and the main "text" property.
 	 * @extends sap.ui.core.Control
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -186,7 +188,6 @@ sap.ui.define(['jquery.sap.global', './Control', './Popup', './library'],
 	* @private
 	 */
 	TooltipBase.prototype.onmouseover = function(oEvent) {
-
 		// The Element or Control that initiated the event.
 		var oEventSource = jQuery(oEvent.target).control(0);
 		//jQuery.sap.log.debug("MOUSE OVER    " +  oEventSource + "  " + jQuery(oEvent.currentTarget).control(0));
@@ -305,6 +306,11 @@ sap.ui.define(['jquery.sap.global', './Control', './Popup', './library'],
 	 * @private
 	 */
 	TooltipBase.prototype.openPopup = function(oSC) {
+		// Popup should be not open if visible is set to false
+		if (!this.getVisible()) {
+			return;
+		}
+
 		if (oSC.getTooltip() != null) {
 
 			// Clear Delayed Call if exist
@@ -381,7 +387,7 @@ sap.ui.define(['jquery.sap.global', './Control', './Popup', './library'],
 
 		var oPopup = this._getPopup();
 		var eState = oPopup.getOpenState();
-		if (eState === sap.ui.core.OpenState.OPEN || eState === sap.ui.core.OpenState.OPENING) {
+		if (eState === OpenState.OPEN || eState === OpenState.OPENING) {
 			//jQuery.sap.log.debug(oPopup.getOpenState());
 			return;
 		}

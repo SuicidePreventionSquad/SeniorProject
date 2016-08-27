@@ -23,7 +23,7 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './SearchField', './
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -216,6 +216,14 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './SearchField', './
 				}
 			}
 		});
+
+
+		this._oTable.getInfoToolbar().addEventDelegate({
+			onAfterRendering: function () {
+				that._oTable.getInfoToolbar().$().attr('aria-live', 'polite');
+			}
+		});
+
 		this._table = this._oTable; // for downward compatibility
 
 		// store a reference to the busyIndicator to display when data is currently loaded by a service
@@ -415,6 +423,19 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './SearchField', './
 	TableSelectDialog.prototype.setGrowingThreshold = function (iValue) {
 		this._oTable.setGrowingThreshold(iValue);
 		this.setProperty("growingThreshold", iValue, true);
+
+		return this;
+	};
+
+	/**
+	 * Sets the busyIndicatorDelay value to the internal table
+	 * @public
+	 * @param {int} iValue Value for the busyIndicatorDelay.
+	 * @returns {sap.m.TableSelectDialog} this pointer for chaining
+	 */
+	TableSelectDialog.prototype.setBusyIndicatorDelay = function (iValue) {
+		this._oTable.setBusyIndicatorDelay(iValue);
+		this.setProperty("busyIndicatorDelay", iValue, true);
 
 		return this;
 	};
@@ -710,7 +731,7 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './SearchField', './
 	};
 
 	TableSelectDialog.prototype.getBindingContext = function (sModelName) {
-		return this._oTable.getBindingContext(sModelName);
+		return this._oTable && this._oTable.getBindingContext(sModelName);
 	};
 
 	/**

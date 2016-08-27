@@ -157,10 +157,6 @@ html[dir=rtl] .sapMILI-CTX .sapMInputBasePlaceholder {
 	text-align: right;
 }
 
-.sapMILI-CTX :not(.sapMInputVH) .sapMInputBaseInner:not(.sapMInputBaseStateInner) {
-	border: none;
-}
-
 .sapMLIBActive .sapMInputBaseInner {
 	color: @sapHCStandardFG;
 	background: transparent;
@@ -226,8 +222,8 @@ html[dir=rtl] .sapMILI-CTX .sapMInputBasePlaceholder {
 		padding: 0;
 	}
 
-	.sapMInputBaseInner {
-		border-color: @sapHCStandardFG;
+	.sapMInputBaseInner:not(.sapMInputBaseStateInner) {
+		border-color: transparent;
 	}
 
 	.sapMInputBaseInner {

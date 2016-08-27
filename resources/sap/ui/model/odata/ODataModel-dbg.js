@@ -47,14 +47,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/Model', './ODataUtils', './Cou
 	 * Model implementation for oData format
 	 * Binding to V4 metadata annotations is experimental!
 	 *
-	 * @extends sap.ui.model.Model
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
 	 * @alias sap.ui.model.odata.ODataModel
+	 * @extends sap.ui.model.Model
 	 */
 	var ODataModel = Model.extend("sap.ui.model.odata.ODataModel", /** @lends sap.ui.model.odata.ODataModel.prototype */ {
 
@@ -339,12 +339,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/Model', './ODataUtils', './Cou
 			}
 		};
 
-		if (this.bLoadMetadataAsync && this.sAnnotationURI && this.bLoadAnnotationsJoined) {
+		if (this.sAnnotationURI && this.bLoadAnnotationsJoined) {
 			// In case of joined loading, wait for the annotations before firing the event
 			// This is also tested in the fireMetadataLoaded-method and no event is fired in case
 			// of joined loading.
-			if (this.oAnnotations && this.oAnnotations.bInitialized) {
-				doFire();
+			if (this.oAnnotations && (this.oAnnotations.bInitialized || this.oAnnotations.isFailed())) {
+				doFire(!this.bLoadMetadataAsync);
 			} else {
 				this.oAnnotations.attachEventOnce("loaded", function() {
 					doFire(true);
@@ -367,7 +367,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/Model', './ODataUtils', './Cou
 	 * @protected
 	 */
 	ODataModel.prototype.fireAnnotationsLoaded = function(mArguments) {
-		this.fireEvent("annotationsLoaded", mArguments);
+		if (!this.bLoadMetadataAsync) {
+			setTimeout(this.fireEvent.bind(this, "annotationsLoaded", mArguments), 0);
+		} else {
+			this.fireEvent("annotationsLoaded", mArguments);
+		}
 		return this;
 	};
 
@@ -420,7 +424,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/Model', './ODataUtils', './Cou
 	 * @protected
 	 */
 	ODataModel.prototype.fireAnnotationsFailed = function(mArguments) {
-		this.fireEvent("annotationsFailed", mArguments);
+		if (!this.bLoadMetadataAsync) {
+			setTimeout(this.fireEvent.bind(this, "annotationsFailed", mArguments), 0);
+		} else {
+			this.fireEvent("annotationsFailed", mArguments);
+		}
 		jQuery.sap.log.debug("ODataModel fired annotationsfailed");
 		return this;
 	};
@@ -3403,9 +3411,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/model/Model', './ODataUtils', './Cou
 
 
 	/**
-	 * Returns an instance of an OData meta model which offers a unified access to both OData v2
-	 * meta data and v4 annotations. It uses the existing {@link sap.ui.model.odata.ODataMetadata}
-	 * as a foundation and merges v4 annotations from the existing
+	 * Returns an instance of an OData meta model which offers a unified access to both OData V2
+	 * meta data and V4 annotations. It uses the existing {@link sap.ui.model.odata.ODataMetadata}
+	 * as a foundation and merges V4 annotations from the existing
 	 * {@link sap.ui.model.odata.ODataAnnotations} directly into the corresponding model element.
 	 *
 	 * <b>BEWARE:</b> Access to this OData meta model will fail before the promise returned by

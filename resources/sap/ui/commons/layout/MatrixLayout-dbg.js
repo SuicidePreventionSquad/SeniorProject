@@ -41,10 +41,11 @@ sap.ui.define(['jquery.sap.global', './MatrixLayoutCell', './MatrixLayoutRow', '
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
+	 * @deprecated Since version 1.38. Instead, use the <code>sap.ui.layout.Grid</code> control.
 	 * @alias sap.ui.commons.layout.MatrixLayout
 	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
 	 */

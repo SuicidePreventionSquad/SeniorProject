@@ -18,7 +18,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @since 1.34
 	 *
 	 * @public
@@ -30,6 +30,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 
 			library : "sap.m",
 			properties : {
+				/**
+				 * The mode of the GenericTile.
+				 */
+				"mode" : {type: "sap.m.GenericTileMode", group : "Appearance", defaultValue : library.GenericTileMode.ContentMode},
 				/**
 				 * The header of the tile.
 				 */
@@ -43,13 +47,14 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 				 */
 				"failedText" : {type : "string", group : "Appearance", defaultValue : null},
 				/**
-				 * The size of the tile. If not set, then the default size is applied based on the device tile.
+				 * The size of the tile. If not set, then the default size is applied based on the device.
+				 * @deprecated Since version 1.38.0. The GenericTile control has now a fixed size, depending on the used media (desktop, tablet or phone).
 				 */
 				"size" : {type : "sap.m.Size", group : "Misc", defaultValue : sap.m.Size.Auto},
 				/**
 				 * The frame type: 1x1 or 2x1.
 				 */
-				"frameType" : {type : "sap.m.FrameType", group : "Misc", defaultValue : sap.m.FrameType.OneByOne},
+				"frameType" : {type : "sap.m.FrameType", group : "Misc", defaultValue : library.FrameType.OneByOne},
 				/**
 				 * The URI of the background image.
 				 */
@@ -74,6 +79,8 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 				"tileContent" : {type : "sap.m.TileContent", multiple : true},
 				/**
 				 * An icon or image to be displayed in the control.
+				 * This aggregation is deprecated since version 1.36.0, to display an icon or image use sap.m.TileContent control instead.
+				 * @deprecated Since version 1.36.0. This aggregation is deprecated, use sap.m.TileContent control to display an icon instead.
 				 */
 				"icon" : {type : "sap.ui.core.Control", multiple : false},
 				/**
@@ -96,9 +103,6 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 
 	/* --- Lifecycle Handling --- */
 
-	/**
-	 * Init function for the control
-	 */
 	GenericTile.prototype.init = function() {
 		this._rb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
@@ -129,10 +133,13 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 		this._oBusy.setBusyIndicatorDelay(0);
 	};
 
-	/**
-	 * Handler for beforerendering
-	 */
 	GenericTile.prototype.onBeforeRendering = function() {
+		var bSubheader = this.getSubheader() ? true : false;
+		if (this.getMode() === library.GenericTileMode.HeaderMode) {
+			this._applyHeaderMode(bSubheader);
+		} else {
+			this._applyContentMode(bSubheader);
+		}
 		var iTiles = this.getTileContent().length;
 
 		for (var i = 0; i < iTiles; i++) {
@@ -140,24 +147,14 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 		}
 
 		this._generateFailedText();
+		this.$().unbind("mouseenter", this._updateAriaAndTitle);
 	};
 
-	/**
-	 * Handler for afterrendering
-	 */
 	GenericTile.prototype.onAfterRendering = function() {
-		this._checkFooter(this.getState());
-
-		if (this.getState() == sap.m.LoadState.Disabled) {
-			this._oBusy.$().bind("tap", jQuery.proxy(this._handleOverlayClick, this));
-		} else {
-			this._oBusy.$().unbind("tap", this._handleOverlayClick);
-		}
+		// attaches handler this._updateAriaAndTitle to the event mouseenter and removes attributes ARIA-label and title of all content elements
+		this.$().bind("mouseenter", this._updateAriaAndTitle.bind(this));
 	};
 
-	/**
-	 * Exit function for the control
-	 */
 	GenericTile.prototype.exit = function() {
 		this._oWarningIcon.destroy();
 		if (this._oImage) {
@@ -167,6 +164,38 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	};
 
 	/* --- Event Handling --- */
+	/**
+	 * Handler for touchstart event
+	 */
+	GenericTile.prototype.ontouchstart = function() {
+		if (this.$("hover-overlay").length > 0) {
+			this.$("hover-overlay").addClass("sapMGTPressActive");
+		}
+		if (sap.ui.Device.browser.internet_explorer && this.getState() !== sap.m.LoadState.Disabled) {
+			this.$().focus();
+		}
+	};
+
+	/**
+	 * Handler for touchcancel event
+	 */
+	GenericTile.prototype.ontouchcancel = function() {
+		if (this.$("hover-overlay").length > 0) {
+			this.$("hover-overlay").removeClass("sapMGTPressActive");
+		}
+	};
+
+	/**
+	 * Handler for touchend event
+	 */
+	GenericTile.prototype.ontouchend = function() {
+		if (this.$("hover-overlay").length > 0) {
+			this.$("hover-overlay").removeClass("sapMGTPressActive");
+		}
+		if (sap.ui.Device.browser.internet_explorer && this.getState() !== sap.m.LoadState.Disabled) {
+			this.$().focus();
+		}
+	};
 
 	/**
 	 * Handler for tap event
@@ -174,10 +203,13 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	 * @param {sap.ui.base.Event} oEvent which was fired
 	 */
 	GenericTile.prototype.ontap = function(oEvent) {
-		if (sap.ui.Device.browser.internet_explorer) {
-			this.$().focus();
+		if (this.getState() !== sap.m.LoadState.Disabled) {
+			if (sap.ui.Device.browser.internet_explorer) {
+				this.$().focus();
+			}
+			this.firePress();
+			oEvent.preventDefault();
 		}
-		this.firePress();
 	};
 
 	/**
@@ -186,7 +218,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	 * @param {sap.ui.base.Event} oEvent which was fired
 	 */
 	GenericTile.prototype.onkeydown = function(oEvent) {
-		if (oEvent.which === jQuery.sap.KeyCodes.SPACE) {
+		if (jQuery.sap.PseudoEvents.sapselect.fnCheck(oEvent) && this.getState() !== sap.m.LoadState.Disabled) {
+			if (this.$("hover-overlay").length > 0) {
+				this.$("hover-overlay").addClass("sapMGTPressActive");
+			}
 			oEvent.preventDefault();
 		}
 	};
@@ -197,138 +232,26 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	 * @param {sap.ui.base.Event} oEvent which was fired
 	 */
 	GenericTile.prototype.onkeyup = function(oEvent) {
-		if (oEvent.which === jQuery.sap.KeyCodes.ENTER || oEvent.which === jQuery.sap.KeyCodes.SPACE) {
+		if (jQuery.sap.PseudoEvents.sapselect.fnCheck(oEvent) && this.getState() !== sap.m.LoadState.Disabled) {
+			if (this.$("hover-overlay").length > 0) {
+				this.$("hover-overlay").removeClass("sapMGTPressActive");
+			}
 			this.firePress();
 			oEvent.preventDefault();
 		}
 	};
 
-	/**
-	 * Handler for overlayclick
-	 *
-	 * @param {sap.ui.base.Event} oEvent which was fired
-	 */
-	GenericTile.prototype._handleOverlayClick = function(oEvent) {
-		oEvent.stopPropagation();
-	};
-
-	/**
-	 * Handler for touchstart
-	 *
-	 * @param {sap.ui.base.Event} oEvent which was fired
-	 */
-	GenericTile.prototype.ontouchstart = function (oEvent) {
-		if (this.getState() !== sap.m.LoadState.Disabled) {
-			if (this.getBackgroundImage()) {
-				this.addStyleClass("sapMGTBackgroundHvrOutln");
-			} else {
-				this.addStyleClass("sapMGTHvrOutln");
-			}
-		}
-	};
-
-	/**
-	 * Handler for touchcancel
-	 *
-	 * @param {sap.ui.base.Event} oEvent which was fired
-	 */
-	GenericTile.prototype.ontouchcancel = function(oEvent) {
-		if (this.getBackgroundImage()) {
-			this.removeStyleClass("sapMGTBackgroundHvrOutln");
-		} else {
-			this.removeStyleClass("sapMGTHvrOutln");
-		}
-	};
-
-	/**
-	 * Handler for touchend
-	 *
-	 * @param {sap.ui.base.Event} oEvent which was fired
-	 */
-	GenericTile.prototype.ontouchend = function(oEvent) {
-		if (this.getBackgroundImage()) {
-			this.removeStyleClass("sapMGTBackgroundHvrOutln");
-		} else {
-			this.removeStyleClass("sapMGTHvrOutln");
-		}
-	};
-
-	/**
-	 * Attaches an event handler to the event with the given identifier for the current control
-	 *
-	 * @param {string} eventId The identifier of the event to listen for
-	 * @param {object} [data] An object that will be passed to the handler along with the event object when the event is fired
-	 * @param {function} functionToCall The handler function to call when the event occurs.
-	 * This function will be called in the context of the oListener instance (if present) or on the event provider instance.
-	 * The event object (sap.ui.base.Event) is provided as first argument of the handler.
-	 * Handlers must not change the content of the event. The second argument is the specified oData instance (if present).
-	 * @param {object} [listener] The object that wants to be notified when the event occurs (this context within the handler function).
-	 * If it is not specified, the handler function is called in the context of the event provider.
-	 * @returns {sap.m.GenericTile} this to allow method chaining
-	 */
-	GenericTile.prototype.attachEvent = function(eventId, data, functionToCall, listener) {
-		Control.prototype.attachEvent.call(this, eventId, data, functionToCall, listener);
-
-		if (this.hasListeners("press") && this.getState() != sap.m.LoadState.Disabled) {
-			this.$().attr("tabindex", 0).addClass("sapMPointer");
-		}
-
-		return this;
-	};
-
-	/**
-	 * Removes a previously attached event handler from the event with the given identifier for the current control.
-	 * The passed parameters must match those used for registration with #attachEvent beforehand.
-	 *
-	 * @param {string} eventId The identifier of the event to detach from
-	 * @param {function} functionToCall The handler function to detach from the event
-	 * @param {object} [listener] The object that wanted to be notified when the event occurred
-	 * @returns {sap.m.GenericTile} this to allow method chaining
-	 */
-	GenericTile.prototype.detachEvent = function(eventId, functionToCall, listener) {
-		Control.prototype.detachEvent.call(this, eventId, functionToCall, listener);
-
-		if (!this.hasListeners("press")) {
-			this.$().removeAttr("tabindex").removeClass("sapMPointer");
-		}
-		return this;
-	};
-
 	/* --- Getters and Setters --- */
 
-	/**
-	 * Returns the header
-	 *
-	 * @returns {String} The header text
-	 */
 	GenericTile.prototype.getHeader = function() {
 		return this._oTitle.getText();
 	};
 
-	/**
-	 * Sets the header
-	 *
-	 * @param {String} title to set as header
-	 * @returns {sap.m.GenericTile} this to allow method chaining
-	 */
 	GenericTile.prototype.setHeader = function(title) {
-		// If present, Devanagari characters require additional vertical space to be displayed.
-		// Therefore, only one line containing such characters can be displayed in header of GenericTile.
-		if (/.*[\u0900-\u097F]+.*/.test(title)) {
-			this._oTitle.setMaxLines(1);
-		} else {
-			this._oTitle.setMaxLines(2);
-		}
 		this._oTitle.setText(title);
 		return this;
 	};
 
-	/**
-	 * Sets the header image
-	 *
-	 * @param {sap.ui.core.URI} uri which will be set as header image
-	 * @returns {sap.m.GenericTile} this to allow method chaining
-	 */
 	GenericTile.prototype.setHeaderImage = function(uri) {
 		var bValueChanged = !jQuery.sap.equal(this.getHeaderImage(), uri);
 
@@ -351,79 +274,99 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 	};
 
 	/**
-	 * Sets the state
+	 * Sets the HeaderMode for GenericTile
 	 *
-	 * @param {sap.m.LoadState} state to set
-	 * @returns {sap.m.GenericTile} this to allow method chaining
+	 * @param {boolean} bSubheader which indicates the existance of subheader
 	 */
-	GenericTile.prototype.setState = function(state) {
-		if (this.getState() != state) {
-			this._checkFooter(state);
-			return this.setProperty("state", state);
+	GenericTile.prototype._applyHeaderMode = function(bSubheader) {
+		// Devanagari characters require additional vertical space to be displayed.
+		// Therefore, only the half number of lines containing such characters can be displayed in header of GenericTile.
+		if (/.*[\u0900-\u097F]+.*/.test(this._oTitle.getText())) {
+			this._oTitle.setMaxLines(2);
+			return;
+		}
+		// when subheader is available, the header can have maximal 4 lines and the subheader can have 1 line
+		// when subheader is unavailable, the header can have maximal 5 lines
+		if (bSubheader) {
+			this._oTitle.setMaxLines(4);
 		} else {
-			return this;
+			this._oTitle.setMaxLines(5);
 		}
 	};
 
 	/**
-	 * Returns the alternative text for the header
+	 * Sets the ContentMode for GenericTile
 	 *
-	 * @returns {String} The alternative text for the header
+	 * @param {boolean} bSubheader which indicates the existance of subheader
 	 */
-	GenericTile.prototype.getHeaderAltText = function() {
-		var sAltText = "";
+	GenericTile.prototype._applyContentMode = function (bSubheader) {
+		if (/.*[\u0900-\u097F]+.*/.test(this._oTitle.getText())) {
+			this._oTitle.setMaxLines(1);
+			return;
+		}
+		// when subheader is available, the header can have maximal 2 lines and the subheader can have 1 line
+		// when subheader is unavailable, the header can have maximal 3 lines
+		if (bSubheader) {
+			this._oTitle.setMaxLines(2);
+		} else {
+			this._oTitle.setMaxLines(3);
+		}
+	};
+	/**
+	 * Returns a text for the tooltip and ARIA label of the header
+	 *
+	 * @private
+	 * @returns {String} The tooltip and ARIA label text
+	 */
+	GenericTile.prototype._getHeaderAriaAndTooltipText = function() {
+		var sText = "";
 		var bIsFirst = true;
 		if (this.getHeader()) {
-			sAltText += this.getHeader();
+			sText += this.getHeader();
 			bIsFirst = false;
 		}
 
 		if (this.getSubheader()) {
-			sAltText += (bIsFirst ? "" : "\n") + this.getSubheader();
+			sText += (bIsFirst ? "" : "\n") + this.getSubheader();
 			bIsFirst = false;
 		}
 
 		if (this.getImageDescription()) {
-			sAltText += (bIsFirst ? "" : "\n") + this.getImageDescription();
+			sText += (bIsFirst ? "" : "\n") + this.getImageDescription();
 		}
-		return sAltText;
+		return sText;
 	};
 
 	/**
-	 * Returns the alternative text for the body
+	 * Returns a text for the tooltip and ARIA label of the content
 	 *
-	 * @returns {String} The alternative text for the body
+	 * @private
+	 * @returns {String} The tooltip and ARIA label text
 	 */
-	GenericTile.prototype.getBodyAltText = function() {
-		var sAltText = "";
+	GenericTile.prototype._getContentAriaAndTooltipText = function() {
+		var sText = "";
 		var bIsFirst = true;
 		var aTiles = this.getTileContent();
-		var iFt = this._calculateFrameType(this.getFrameType());
-		var iTotalFt = 0;
 
 		for (var i = 0; i < aTiles.length; i++) {
-			if (iFt > iTotalFt) {
-				if (aTiles[i].getAltText) {
-					sAltText += (bIsFirst ? "" : "\n") + aTiles[i].getAltText();
-					bIsFirst = false;
-				} else if (aTiles[i].getTooltip_AsString()) {
-					sAltText += (bIsFirst ? "" : "\n") + aTiles[i].getTooltip_AsString();
-					bIsFirst = false;
-				}
-			} else {
-				break;
+			if (jQuery.isFunction(aTiles[i]._getAriaAndTooltipText)) {
+				sText += (bIsFirst ? "" : "\n") + aTiles[i]._getAriaAndTooltipText();
+			} else if (aTiles[i].getTooltip_AsString()) {
+				sText += (bIsFirst ? "" : "\n") + aTiles[i].getTooltip_AsString();
 			}
-			iTotalFt += this._calculateFrameType(aTiles[i].getFrameType());
+			bIsFirst = false;
 		}
-		return sAltText;
+		return sText;
 	};
 
 	/**
-	 * Returns the alternative text as combination of header and body
+	 * Returns a text for the tooltip and ARIA label as combination of header and content texts
 	 *
-	 * @returns {String} The alternative text
+	 * @private
+	 * @returns {String} The tooltip and ARIA label text
 	 */
-	GenericTile.prototype.getAltText = function() {
+	GenericTile.prototype._getAriaAndTooltipText = function() {
+		var sTooltip;
 		switch (this.getState()) {
 			case sap.m.LoadState.Disabled :
 				return "";
@@ -432,46 +375,71 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 			case sap.m.LoadState.Failed :
 				return this._oFailedText.getText();
 			default :
-				return this.getHeaderAltText() + "\n" + this.getBodyAltText();
+				sTooltip = (this.getTooltip_AsString() && !this._isTooltipSuppressed()) ? this.getTooltip_AsString() : (this._getHeaderAriaAndTooltipText() + "\n" + this._getContentAriaAndTooltipText());
+				if (jQuery.trim(sTooltip).length === 0) { // If the string is empty or just whitespace, IE renders an empty tooltip (e.g. "" + "\n" + "")
+					return "";
+				} else {
+					return sTooltip;
+				}
 		}
+	};
+
+	/**
+	 * Returns text for ARIA label.
+	 * If the the application provides a specific tooltip, the ARIA label is equal to the tooltip text.
+	 * If the application doesn't provide a tooltip or the provided tooltip contains only white spaces,
+	 * the function returns a default text created by the control.
+	 *
+	 * @private
+	 * @returns {String} Text for ARIA label.
+	 */
+	GenericTile.prototype._getAriaText = function() {
+		var sAriaText = this.getTooltip_Text();
+		if (!sAriaText || this._isTooltipSuppressed()) {
+			sAriaText = this._getAriaAndTooltipText(); // ARIA label set by the control
+		}
+		return sAriaText; // ARIA label set by the app, equal to tooltip
+	};
+
+	/**
+	 * Returns text for tooltip or null.
+	 * If the the application provides a specific tooltip, the returned string is equal to the tooltip text.
+	 * If the tooltip provided by the application is a string of only white spaces, the function returns null.
+	 * In other cases, the function returns a default text created by the control.
+	 *
+	 * @returns {String} Text for tooltip or null.
+	 * @private
+	 */
+	GenericTile.prototype._getTooltipText = function() {
+		var sTooltip = this.getTooltip_Text(); // checks (typeof sTooltip === "string" || sTooltip instanceof String || sTooltip instanceof sap.ui.core.TooltipBase), returns text, null or undefined
+		if (!sTooltip) {
+			sTooltip = this._getAriaText(); // tooltip set by the control, equal to ARIA label
+		} else if (this._isTooltipSuppressed() === true) {
+			sTooltip = null; // tooltip suppressed by the app
+		}
+		return sTooltip; // tooltip set by the app
 	};
 
 	/* --- Helpers --- */
 
 	/**
-	 * Shows or hides the footer
+	 * Shows or hides the footer of the TileContent control during rendering time
 	 *
 	 * @private
-	 * @param {sap.m.LoadState} state used to control the footer visibility
+	 * @param {sap.m.TileContent} tileContent TileContent control of which the footer visibility is set
+	 * @param {sap.m.GenericTile} control current GenericTile instance
 	 */
-	GenericTile.prototype._checkFooter = function(state) {
-		var oFooter = this.$().find(".sapMTileCntFtrTxt");
-
-		if (state == sap.m.LoadState.Failed && oFooter.is(":visible")) {
-			oFooter.hide();
-		} else if (oFooter.is(":hidden")) {
-			oFooter.show();
-		}
-	};
-
-	/**
-	 * Calculates the relevant frame type numeric value based on given tile
-	 *
-	 * @private
-	 * @param {sap.m.FrameType} frameType used for calculation
-	 * @returns {Integer} Calculated value for tile
-	 */
-	GenericTile.prototype._calculateFrameType = function(frameType) {
-		if (frameType == sap.m.FrameType.TwoByOne) { //Here == is used since the type was moved to new library but not renamed.
-			return 2;
+	GenericTile.prototype._checkFooter = function(tileContent, control) {
+		if (control.getProperty("state") === sap.m.LoadState.Failed) {
+			tileContent.setRenderFooter(false);
 		} else {
-			return 1;
+			tileContent.setRenderFooter(true);
 		}
 	};
 
 	/**
 	 * Generates text for failed state.
-	 * To avoid multiple calls e.g. in every getAltText call, this is done in onBeforeRendering.
+	 * To avoid multiple calls e.g. in every _getAriaAndTooltipText call, this is done in onBeforeRendering.
 	 *
 	 * @private
 	 */
@@ -482,14 +450,37 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/m/T
 		this._oFailedText.setTooltip(sFailedMsg);
 	};
 
-	GenericTile.prototype.getTooltip_AsString = function() {
-		var sTooltip = this.getTooltip();
-		var sAltText = "";
-		if (typeof sTooltip === "string" || sTooltip instanceof String) {
-			return sTooltip;
+	/**
+	 * Returns true if the application suppressed the tooltip rendering, otherwise false.
+	 *
+	 * @private
+	 * @returns {boolean} true if the application suppressed the tooltip rendering, otherwise false.
+	 */
+	GenericTile.prototype._isTooltipSuppressed = function() {
+		var sTooltip = this.getTooltip_Text();
+		if (sTooltip && sTooltip.length > 0 && jQuery.trim(sTooltip).length === 0) {
+			return true;
+		} else {
+			return false;
 		}
-		sAltText = this.getAltText();
-		return sAltText ? sAltText : "";
+	};
+
+	/**
+	 * Updates the attributes ARIA-label and title of the GenericTile. The updated attribute title is used for tooltip as well.
+	 * The attributes ARIA-label and title of the descendants will be removed.
+	 *
+	 * @private
+	 */
+	GenericTile.prototype._updateAriaAndTitle = function () {
+		var sAriaAndTitleText = this._getAriaAndTooltipText();
+		var sTooltipText = this._getTooltipText();
+		var sAriaText = this._getAriaText();
+		var $Tile = this.$();
+
+		if ($Tile.attr("title") !== sAriaAndTitleText) {
+			$Tile.attr("aria-label", sAriaText).attr("title", sTooltipText);
+		}
+		$Tile.find('*').removeAttr("aria-label").removeAttr("title");
 	};
 
 	return GenericTile;

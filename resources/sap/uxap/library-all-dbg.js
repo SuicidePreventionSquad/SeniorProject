@@ -23,7 +23,7 @@ sap.ui.define("sap/uxap/BlockBaseMetadata",["jquery.sap.global", "sap/ui/core/El
 	 *
 	 * @class
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @since 1.26
 	 * @alias sap.uxap.BlockBaseMetadata
 	 */
@@ -258,7 +258,7 @@ sap.ui.define("sap/uxap/HierarchicalSelectRenderer",["sap/m/SelectRenderer", "sa
 	 */
 	var HierarchicalSelectRenderer = Renderer.extend(SelectRenderer);
 
-	HierarchicalSelectRenderer.addStyleClass = function (oRm) {
+	HierarchicalSelectRenderer.addClass = function (oRm) {
 		oRm.addClass("sapUxAPHierarchicalSelect");
 	};
 
@@ -353,6 +353,7 @@ sap.ui.define("sap/uxap/ObjectPageSectionRenderer",function () {
 		if (oControl.getShowTitle() && oControl._getInternalTitleVisible()) {
 			oRm.write("<div");
 			oRm.writeAttribute("role", "heading");
+			oRm.writeAttribute("aria-level", "3");
 			oRm.writeAttributeEscaped("id", oControl.getId() + "-header");
 			oRm.addClass("sapUxAPObjectPageSectionHeader");
 			oRm.writeClasses();
@@ -376,6 +377,10 @@ sap.ui.define("sap/uxap/ObjectPageSectionRenderer",function () {
 		oRm.write("<div");
 		oRm.addClass("sapUxAPObjectPageSectionContainer");
 		oRm.writeClasses();
+		if (oControl._isHidden){
+			oRm.addStyle("display", "none");
+		}
+		oRm.writeStyles();
 		oRm.write(">");
 
 		oControl.getSubSections().forEach(oRm.renderControl);
@@ -408,7 +413,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSectionRenderer",function () {
 	var ObjectPageSubSectionRenderer = {};
 
 	ObjectPageSubSectionRenderer.render = function (oRm, oControl) {
-		var aActions, bHasTitle, bHasTitleLine, bHasActions;
+		var aActions, bHasTitle, bHasTitleLine, bHasActions, bUseTitleOnTheLeft;
 
 		if (!oControl.getVisible() || !oControl._getInternalVisible()) {
 			return;
@@ -430,6 +435,11 @@ sap.ui.define("sap/uxap/ObjectPageSubSectionRenderer",function () {
 		if (bHasTitleLine) {
 			oRm.write("<div");
 			oRm.addClass("sapUxAPObjectPageSubSectionHeader");
+
+			bUseTitleOnTheLeft = oControl._getUseTitleOnTheLeft();
+			if (bUseTitleOnTheLeft && oControl._onDesktopMediaRange()) {
+				oRm.addClass("titleOnLeftLayout");
+			}
 			oRm.writeAttributeEscaped("id", oControl.getId() + "-header");
 			oRm.writeClasses();
 			oRm.write(">");
@@ -437,6 +447,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSectionRenderer",function () {
 			oRm.write("<div");
 			if (bHasTitle) {
 				oRm.writeAttribute("role", "heading");
+				oRm.writeAttribute("aria-level", "4");
 			}
 			oRm.addClass('sapUxAPObjectPageSubSectionHeaderTitle');
 			if (oControl.getTitleUppercase()) {
@@ -472,6 +483,10 @@ sap.ui.define("sap/uxap/ObjectPageSubSectionRenderer",function () {
 		oRm.addClass("sapUxAPBlockContainer");
 		oRm.addClass("sapUiResponsiveMargin");
 		oRm.writeClasses();
+		if (oControl._isHidden){
+			oRm.addStyle("display", "none");
+		}
+		oRm.writeStyles();
 		oRm.write(">");
 
 		oRm.renderControl(oControl._getGrid());
@@ -636,8 +651,9 @@ sap.ui.define("sap/uxap/component/ObjectPageComponentContainer",['sap/ui/core/Co
 
 		/**
 		 * The objectPageComponentContainer initialize and render an objectPageLayout
+		 * @alias sap.uxap.component.ObjectPageComponentContainer
 		 */
-		var ObjectPageComponentContainer = ComponentContainer.extend("sap.uxap.component.ObjectPageComponentContainer", {
+		var ObjectPageComponentContainer = ComponentContainer.extend("sap.uxap.component.ObjectPageComponentContainer", /** @lends sap.uxap.component.ObjectPageComponentContainer.prototype */ {
 			metadata: {
 				properties: {
 					"jsonConfigurationURL": {type: "string", group: "Behavior"},
@@ -761,7 +777,23 @@ sap.ui.define("sap/uxap/library",["jquery.sap.global", "sap/ui/core/Core", "sap/
 			"sap.uxap.ModelMapping",
 			"sap.uxap.ObjectPageHeaderLayoutData"
 		],
-		version: "1.34.8"
+		version: "1.38.7",
+		extensions: {
+			flChangeHandlers: {
+				"sap.uxap.ObjectPageLayout": {
+					"moveElements": "default"
+				},
+				"sap.uxap.ObjectPageSection": {
+					"hideControl": "default",
+					"unhideControl": "default",
+					"stashControl": "default",
+					"unstashControl": "default"
+				},
+	             "sap.ui.core._StashedControl" : {
+                     "unstashControl": "default"
+	            }
+			}
+		}
 	});
 
 	/**
@@ -1015,64 +1047,6 @@ sap.ui.define("sap/uxap/library",["jquery.sap.global", "sap/ui/core/Core", "sap/
 }, /* bExport= */ true);
 
 }; // end of sap/uxap/library.js
-if ( !jQuery.sap.isDeclared('sap.uxap.AnchorBarRenderer') ) {
-/*!
- * UI development toolkit for HTML5 (OpenUI5)
- * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
- * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
- */
-
-jQuery.sap.declare('sap.uxap.AnchorBarRenderer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
-jQuery.sap.require('sap.m.ToolbarRenderer'); // unlisted dependency retained
-jQuery.sap.require('sap.ui.core.Renderer'); // unlisted dependency retained
-jQuery.sap.require('sap.m.BarInPageEnabler'); // unlisted dependency retained
-sap.ui.define("sap/uxap/AnchorBarRenderer",["sap/m/ToolbarRenderer", "sap/ui/core/Renderer", "sap/m/BarInPageEnabler", "./library"],
-	function (ToolbarRenderer, Renderer, BarInPageEnabler, library) {
-		"use strict";
-
-		/**
-		 * @class ObjectPageRenderer renderer.
-		 * @static
-		 */
-		var AnchorBarRenderer = Renderer.extend(ToolbarRenderer);
-		AnchorBarRenderer.renderBarContent = function (rm, oToolbar) {
-			if (oToolbar._bHasButtonsBar) {
-
-				rm.renderControl(oToolbar._getScrollArrowLeft());
-
-				rm.write("<div");
-				rm.writeAttributeEscaped("id", oToolbar.getId() + "-scrollContainer");
-				// ARIA attributes
-				rm.writeAttributeEscaped("aria-label", library.i18nModel.getResourceBundle().getText("ANCHOR_BAR_LABEL"));
-				//
-				rm.addClass("sapUxAPAnchorBarScrollContainer");
-				rm.writeClasses();
-				rm.write(">");
-
-				rm.write("<div");
-				rm.writeAttributeEscaped("id", oToolbar.getId() + "-scroll");
-				rm.write(">");
-
-				ToolbarRenderer.renderBarContent.apply(this, arguments);
-
-				rm.write("</div>");
-
-				rm.write("</div>");
-
-				rm.renderControl(oToolbar._getScrollArrowRight());
-			}
-
-			BarInPageEnabler.addChildClassTo(oToolbar._oSelect, oToolbar);
-			rm.renderControl(oToolbar._oSelect);
-
-		};
-
-
-		return AnchorBarRenderer;
-
-	}, /* bExport= */ true);
-
-}; // end of sap/uxap/AnchorBarRenderer.js
 if ( !jQuery.sap.isDeclared('sap.uxap.BreadCrumbs') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -1650,6 +1624,12 @@ sap.ui.define("sap/uxap/HierarchicalSelect",["jquery.sap.global", "sap/m/Select"
 
 	HierarchicalSelect.POPOVER_MIN_WIDTH_REM = 11;
 
+	HierarchicalSelect.prototype.onAfterRendering = function (){
+		Select.prototype.onAfterRendering.apply(this, arguments);
+			/*  incident 1680116122. Redundant tab comes from the select, and it's undesired */
+			this.$().attr("tabindex", "-1");
+	};
+
 	HierarchicalSelect.prototype.onAfterRenderingPicker = function () {
 
 		Select.prototype.onAfterRenderingPicker.call(this);
@@ -1745,21 +1725,15 @@ sap.ui.define("sap/uxap/HierarchicalSelect",["jquery.sap.global", "sap/m/Select"
 	 * in order to ensure that min-width is not smaller than sap.uxap.HierarchicalSelect.POPOVER_MIN_WIDTH_REM
 	 */
 	HierarchicalSelect.prototype._onAfterRenderingPopover = function () {
+		var oPopover = this.getPicker(),
+			oPopoverDomRef = oPopover.getDomRef("cont"),
+			sMinWidth = oPopoverDomRef.style.minWidth;
 
-		Select.prototype._onAfterRenderingPopover.call(this);
-
-		// ensure popover min-width is not smaller than sap.uxap.HierarchicalSelect.POPOVER_MIN_WIDTH_REM
-		if (Device.system.tablet || Device.system.desktop) {
-
-			var oPopover = this.getPicker(),
-				sMinWidth = oPopover.getDomRef().style.minWidth;
-
-			if (jQuery.sap.endsWith(sMinWidth, "rem")) {
-				sMinWidth = sMinWidth.substring(0, sMinWidth.length - 3);
-				var iMinWidth = parseFloat(sMinWidth);
-				if (iMinWidth < HierarchicalSelect.POPOVER_MIN_WIDTH_REM) {
-					oPopover._setMinWidth(HierarchicalSelect.POPOVER_MIN_WIDTH_REM + "rem");
-				}
+		if (jQuery.sap.endsWith(sMinWidth, "rem")) {
+			sMinWidth = sMinWidth.substring(0, sMinWidth.length - 3);
+			var iMinWidth = parseFloat(sMinWidth);
+			if (iMinWidth < HierarchicalSelect.POPOVER_MIN_WIDTH_REM && oPopoverDomRef) {
+				oPopoverDomRef.style.minWidth = HierarchicalSelect.POPOVER_MIN_WIDTH_REM + "rem";
 			}
 		}
 	};
@@ -1888,9 +1862,20 @@ sap.ui.define("sap/uxap/ObjectPageHeaderActionButton",["sap/m/Button", "./librar
 					group: "Behavior",
 					defaultValue: library.Importance.High
 				}
+
 			}
 		}
 	});
+
+	ObjectPageHeaderActionButton.prototype.init = function () {
+		this._bInternalVisible = this.getVisible();
+	};
+
+	ObjectPageHeaderActionButton.prototype.onAfterRendering = function () {
+		if (!this._getInternalVisible()) {
+			this.$().hide();
+		}
+	};
 
 	ObjectPageHeaderActionButton.prototype.applySettings = function (mSettings, oScope) {
 
@@ -1915,6 +1900,20 @@ sap.ui.define("sap/uxap/ObjectPageHeaderActionButton",["sap/m/Button", "./librar
 		this.toggleStyleClass("sapUxAPObjectPageHeaderActionButtonHideIcon", bValue);
 
 		return this.setProperty("hideIcon", bValue, bInvalidate);
+	};
+
+	ObjectPageHeaderActionButton.prototype._setInternalVisible = function (bValue, bInvalidate) {
+		this.$().toggle(bValue);
+		if (bValue != this._bInternalVisible) {
+			this._bInternalVisible = bValue;
+			if (bInvalidate) {
+				this.invalidate();
+			}
+		}
+	};
+
+	ObjectPageHeaderActionButton.prototype._getInternalVisible = function () {
+		return this._bInternalVisible;
 	};
 
 	return ObjectPageHeaderActionButton;
@@ -1990,10 +1989,24 @@ sap.ui.define("sap/uxap/ObjectPageHeaderContent",["sap/ui/core/Control", "./libr
 
 
 		ObjectPageHeaderContent.prototype.onBeforeRendering = function () {
-			var oParent = this.getParent();
+			var oParent = this.getParent(),
+				oEditHeaderButton = this.getAggregation("_editHeaderButton");
+
+			if (oEditHeaderButton) {
+				return;
+			}
 
 			if (oParent && (oParent instanceof library.ObjectPageLayout) && oParent.getShowEditHeaderButton()) {
-				this._getInternalBtnAggregation("_editHeaderButton", "EDIT_HEADER", "-editHeaderBtn", "Transparent").attachPress(this._handleEditHeaderButtonPress, this);
+				oEditHeaderButton = this._getInternalBtnAggregation("_editHeaderButton", "EDIT_HEADER", "-editHeaderBtn", "Transparent");
+				oEditHeaderButton.attachPress(this._handleEditHeaderButtonPress, this);
+			}
+		};
+
+		ObjectPageHeaderContent.prototype.exit = function () {
+			var oEditHeaderButton = this.getAggregation("_editHeaderButton");
+
+			if (oEditHeaderButton) {
+				oEditHeaderButton.detachPress(this._handleEditHeaderButtonPress, this);
 			}
 		};
 
@@ -2123,6 +2136,81 @@ sap.ui.define("sap/uxap/ObjectPageHeaderLayoutData",["sap/ui/core/LayoutData", "
 });
 
 }; // end of sap/uxap/ObjectPageHeaderLayoutData.js
+if ( !jQuery.sap.isDeclared('sap.uxap.ObjectPageLazyLoader') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+// Provides control sap.uxap.ObjectPageLazyLoader.
+jQuery.sap.declare('sap.uxap.ObjectPageLazyLoader'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('sap.ui.core.Element'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.StashedControlSupport'); // unlisted dependency retained
+sap.ui.define("sap/uxap/ObjectPageLazyLoader",[
+	'./library',
+	'sap/ui/core/Element',
+	'sap/ui/core/StashedControlSupport'
+], function (library, Element, StashedControlSupport) {
+	"use strict";
+
+	/**
+	 * Constructor for a new ObjectPageLazyLoader.
+	 *
+	 * @param {string} [sId] ID for the new control, generated automatically if no ID is given
+	 * @param {object} [mSettings] initial settings for the new control
+	 *
+	 * @class
+	 * ObjectPageLazyLoader is a helper element that enables a "stashed"-based lazy loading approach for the content of
+	 * the sap.uxap.ObjectPageSubSection control. ObjectPageLazyLoader is intended to be used in a declarative way only
+	 * (e.g. in a view) with the "stashed" property set to "true", and is recommended to be used only once per
+	 * subsection as its sole content.
+	 *
+	 * ObjectPageLazyLoader utilizes UI5's stashing mechanism and is a lightweight alternative to the native block-based
+	 * Lazy Loading of the Object Page. Wrapping the content of a subsection in an ObjectPageLazyLoader with "stashed=true"
+	 * will make the said content unstash automatically as the user scrolls.
+	 *
+	 * Note: Subsections are required to have an ID when used with ObjectPageLazyLoader.
+	 *
+	 * @extends sap.ui.core.Control
+	 *
+	 * @author SAP SE
+	 * @version 1.38.7
+	 *
+	 * @constructor
+	 * @public
+	 * @since 1.38
+	 * @alias sap.uxap.ObjectPageLazyLoader
+	 * @ui5-metamodel This control/element also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	var LazyLoader = Element.extend("sap.uxap.ObjectPageLazyLoader", /** @lends sap.uxap.ObjectPageLazyLoader.prototype */ {
+		metadata: {
+			library: "sap.uxap",
+			aggregations: {
+
+				/**
+				 * Controls to be displayed after this element is unstashed
+				 */
+				content: {type: "sap.ui.core.Control", multiple: true, singularName: "content"}
+			},
+			defaultAggregation: "content"
+		}
+	});
+
+	StashedControlSupport.mixInto(LazyLoader);
+
+	LazyLoader.prototype.setParent = function (oParent) {
+		if (!(oParent === null || oParent instanceof sap.uxap.ObjectPageSubSection)) {
+			jQuery.sap.assert(false, "setParent(): oParent must be an instance of sap.uxap.ObjectPageSubSection or null");
+		}
+
+		return Element.prototype.setParent.apply(this, arguments);
+	};
+
+	return LazyLoader;
+}, true);
+
+}; // end of sap/uxap/ObjectPageLazyLoader.js
 if ( !jQuery.sap.isDeclared('sap.uxap.ObjectPageSectionBase') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -2224,6 +2312,16 @@ sap.ui.define("sap/uxap/ObjectPageSectionBase",["jquery.sap.global", "sap/ui/cor
 		}
 	};
 
+	ObjectPageSectionBase.prototype.setCustomAnchorBarButton = function (oButton) {
+		var vResult = this.setAggregation("customAnchorBarButton", oButton, true);
+
+		if (this._getObjectPageLayout()){
+			this._getObjectPageLayout()._updateNavigation();
+		}
+
+		return vResult;
+	};
+
 	/**
 	 * set the internal visibility of the sectionBase. This is set by the ux rules (for example don't display a section that has no subSections)
 	 * @param bValue
@@ -2308,9 +2406,12 @@ sap.ui.define("sap/uxap/ObjectPageSectionBase",["jquery.sap.global", "sap/ui/cor
 
 	// Generate proxies for aggregation mutators
 	["addAggregation", "insertAggregation", "removeAllAggregation", "removeAggregation", "destroyAggregation"].forEach(function (sMethod) {
-		ObjectPageSectionBase.prototype[sMethod] = function () {
+		ObjectPageSectionBase.prototype[sMethod] = function (sAggregationName, oObject, bSuppressInvalidate) {
 			var vResult = Control.prototype[sMethod].apply(this, arguments);
-			this._notifyObjectPageLayout();
+
+			if (bSuppressInvalidate !== true){
+				this._notifyObjectPageLayout();
+			}
 			return vResult;
 		};
 	});
@@ -2376,7 +2477,12 @@ sap.ui.define("sap/uxap/ObjectPageSectionBase",["jquery.sap.global", "sap/ui/cor
 	 */
 	ObjectPageSectionBase.prototype._applyImportanceRules = function (sCurrentLowestImportanceLevelToShow) {
 		this._sCurrentLowestImportanceLevelToShow = sCurrentLowestImportanceLevelToShow;
-		this._updateShowHideState(this._shouldBeHidden());
+
+		if (this.getDomRef()) {
+			this._updateShowHideState(this._shouldBeHidden());
+		} else {
+			this._isHidden = this._shouldBeHidden();
+		}
 	};
 
 	/*******************************************************************************
@@ -2642,31 +2748,6 @@ sap.ui.define("sap/uxap/AnchorBar",[
 	});
 
 
-	/**
-	 * Scrolls to the given Section
-	 *
-	 * @name sap.uxap.AnchorBar#scrollToSection
-	 * @function
-	 * @param {string} sId
-	 *         The Section ID to scroll to
-	 * @param {int} iDuration
-	 *         Scroll duration (in ms). Default value is 0
-	 * @type sap.uxap.ObjectPageLayout
-	 * @public
-	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
-	 */
-
-
-	/**
-	 * Returns a sap.ui.core.delegate.ScrollEnablement object used to handle scrolling
-	 *
-	 * @name sap.uxap.AnchorBar#getScrollDelegate
-	 * @function
-	 * @type object
-	 * @public
-	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
-	 */
-
 	AnchorBar.prototype.init = function () {
 		if (Toolbar.prototype.init) {
 			Toolbar.prototype.init.call(this);
@@ -2717,6 +2798,7 @@ sap.ui.define("sap/uxap/AnchorBar",[
 	 ******************************************************************************/
 	AnchorBar.SCROLL_STEP = 250;// how many pixels to scroll with every overflow arrow click
 	AnchorBar.SCROLL_DURATION = 500; // ms
+	AnchorBar.DOM_CALC_DELAY = 200; // ms
 
 	AnchorBar.prototype.setSelectedButton = function (oButton) {
 
@@ -2727,7 +2809,7 @@ sap.ui.define("sap/uxap/AnchorBar",[
 		if (oButton) {
 
 			if (oButton.getId() === this.getSelectedButton()) {
-				return;
+				return this;
 			}
 
 			var oSelectedSectionId = oButton.data("sectionId");
@@ -2902,6 +2984,7 @@ sap.ui.define("sap/uxap/AnchorBar",[
 				jQuery.sap.log.error("sapUxApAnchorBar :: missing parent first level for item " + oButton.getText());
 			} else {
 				this.removeContent(oButton);
+				oButton.destroy();
 			}
 		} else {
 			oPopoverState.oLastFirstLevelButton = oButton;
@@ -3014,7 +3097,7 @@ sap.ui.define("sap/uxap/AnchorBar",[
 			// we set *direct* scrolling by which we instruct the page to *skip* processing of intermediate sections (sections between current and requested)
 			this.getParent().setDirectScrollingToSection(sNextSelectedSection);
 			// finally request the page to scroll to the requested section
-			this.getParent().scrollToSection(oRequestedSection.getId());
+			this.getParent().scrollToSection(oRequestedSection.getId(), null, 0, true);
 		}
 
 		if (oRequestedSection instanceof library.ObjectPageSubSection &&
@@ -3256,11 +3339,12 @@ sap.ui.define("sap/uxap/AnchorBar",[
 	};
 
 	/**
-	 * Scroll to a specific Section
+	 * Scroll to a specific Section.
 	 *
-	 * @param sId       id of the section to scroll to
-	 * @param duration  Scroll duration. Default value is 0
-	 *
+	 * @param {string} sId The Section ID to scroll to
+	 * @param {int} duration Scroll duration (in ms). Default value is 0
+	 * @public
+	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	AnchorBar.prototype.scrollToSection = function (sId, duration) {
 
@@ -3306,8 +3390,13 @@ sap.ui.define("sap/uxap/AnchorBar",[
 		}
 	};
 
+	// use type 'object' because Metamodel doesn't know ScrollEnablement
 	/**
-	 * Returns the sap.ui.core.ScrollEnablement delegate which is used with this control.
+	 * Returns a sap.ui.core.delegate.ScrollEnablement object used to handle scrolling.
+	 *
+	 * @type object
+	 * @public
+	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	AnchorBar.prototype.getScrollDelegate = function () {
 		return this._oScroller;
@@ -3550,7 +3639,9 @@ sap.ui.define("sap/uxap/AnchorBar",[
 
 		//initial state
 		if (this._bHasButtonsBar) {
-			this._adjustSize();
+			jQuery.sap.delayedCall(AnchorBar.DOM_CALC_DELAY, this, function () {
+				this._adjustSize();
+			});
 		}
 	};
 
@@ -3617,8 +3708,22 @@ sap.ui.define("sap/uxap/AnchorBar",[
 			 // Reverse all positions as the scroll 0 is at the far end (first item = maxPosition, last item = 0)
 			oSectionInfo.scrollLeft = this._iMaxPosition - oSectionInfo.scrollLeft - oSectionInfo.width;
 		}
+	};
 
+	AnchorBar.prototype._destroyPopoverContent = function () {
+		var aPopovers = this.getAggregation("_popovers");
+		if (Array.isArray(aPopovers)) {
+			aPopovers.forEach(function (popover) {
+				popover.destroyContent();
+			});
+		}
+	};
 
+	AnchorBar.prototype._resetControl = function () {
+		this._destroyPopoverContent();
+		this.getContent().forEach(this._detachPopoverHandler, this);
+		this.destroyContent();
+		return this;
 	};
 
 	/**
@@ -3637,12 +3742,85 @@ sap.ui.define("sap/uxap/AnchorBar",[
 		}
 	};
 
-
 	return AnchorBar;
-
 });
 
 }; // end of sap/uxap/AnchorBar.js
+if ( !jQuery.sap.isDeclared('sap.uxap.AnchorBarRenderer') ) {
+/*!
+ * UI development toolkit for HTML5 (OpenUI5)
+ * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
+ * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
+ */
+
+jQuery.sap.declare('sap.uxap.AnchorBarRenderer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
+jQuery.sap.require('sap.m.ToolbarRenderer'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Renderer'); // unlisted dependency retained
+jQuery.sap.require('sap.m.BarInPageEnabler'); // unlisted dependency retained
+sap.ui.define("sap/uxap/AnchorBarRenderer",["sap/m/ToolbarRenderer", "sap/ui/core/Renderer", "sap/m/BarInPageEnabler", "./AnchorBar", "./library"],
+	function (ToolbarRenderer, Renderer, BarInPageEnabler, AnchorBar, library) {
+		"use strict";
+
+		/**
+		 * @class ObjectPageRenderer renderer.
+		 * @static
+		 */
+		var AnchorBarRenderer = Renderer.extend(ToolbarRenderer);
+		AnchorBarRenderer.renderBarContent = function (rm, oToolbar) {
+			if (oToolbar._bHasButtonsBar) {
+
+				rm.renderControl(oToolbar._getScrollArrowLeft());
+
+				rm.write("<div");
+				rm.writeAttributeEscaped("id", oToolbar.getId() + "-scrollContainer");
+				// ARIA attributes
+				rm.writeAttributeEscaped("aria-label", library.i18nModel.getResourceBundle().getText("ANCHOR_BAR_LABEL"));
+				//
+				rm.addClass("sapUxAPAnchorBarScrollContainer");
+				rm.writeClasses();
+				rm.write(">");
+
+				rm.write("<div");
+				rm.writeAttributeEscaped("id", oToolbar.getId() + "-scroll");
+				rm.write(">");
+
+				AnchorBarRenderer.renderBarItems(rm, oToolbar);
+
+				rm.write("</div>");
+
+				rm.write("</div>");
+
+				rm.renderControl(oToolbar._getScrollArrowRight());
+			}
+
+			BarInPageEnabler.addChildClassTo(oToolbar._oSelect, oToolbar);
+			rm.renderControl(oToolbar._oSelect);
+		};
+
+		AnchorBarRenderer.renderBarItems = function (rm, oToolbar) {
+
+			var sSelectedItemId = oToolbar.getSelectedButton();
+			oToolbar.getContent().forEach(function(oControl) {
+				BarInPageEnabler.addChildClassTo(oControl, oToolbar);
+				if (oControl.getId() === sSelectedItemId) {
+					oControl.addStyleClass("sapUxAPAnchorBarButtonSelected");
+				}
+				rm.renderControl(oControl);
+			});
+		};
+
+		AnchorBarRenderer.decorateRootElement = function (rm, oToolbar) {
+			ToolbarRenderer.decorateRootElement.apply(this, arguments);
+			if (oToolbar._sHierarchicalSelectMode === AnchorBar._hierarchicalSelectModes.Icon) {
+				rm.addClass("sapUxAPAnchorBarOverflow");
+			}
+		};
+
+		return AnchorBarRenderer;
+
+	}, /* bExport= */ true);
+
+}; // end of sap/uxap/AnchorBarRenderer.js
 if ( !jQuery.sap.isDeclared('sap.uxap.BlockBase') ) {
 /*!
  * UI development toolkit for HTML5 (OpenUI5)
@@ -3798,6 +3976,7 @@ sap.ui.define("sap/uxap/BlockBase",[
 		};
 
 		BlockBase.prototype.onBeforeRendering = function () {
+			this._applyMapping();
 			if (!this.getMode() || this.getMode() === "") {
 				if (this.getMetadata().getView("defaultXML")) {
 					this.setMode("defaultXML");
@@ -3840,19 +4019,6 @@ sap.ui.define("sap/uxap/BlockBase",[
 		 * model mapping management
 		 * *******************************************/
 
-
-		/**
-		 * This triggers rerendering of itself and its children.<br/> As <code>sap.ui.base.ManagedObject</code> "bubbles up" the
-		 * invalidate, changes to child-<code>Elements</code> will also result in rerendering of the whole sub tree.
-		 * @protected
-		 * @name sap.ui.base.ManagedObject#invalidate
-		 * @function
-		 * @param {*} oOrigin the name of the origin
-		 */
-		BlockBase.prototype.invalidate = function (oOrigin) {
-			this._applyMapping();
-			Control.prototype.invalidate.call(this, oOrigin);
-		};
 
 		/**
 		 * Intercept direct setModel calls.
@@ -4060,8 +4226,8 @@ sap.ui.define("sap/uxap/BlockBase",[
 		 * @returns {sap.ui.core.mvc.View} view
 		 * @protected
 		 */
-		BlockBase.prototype.createView = function (mParameter) {
-			return sap.ui.xmlview(mParameter);
+		BlockBase.prototype.createView = function (mParameter, sMode) {
+			return sap.ui.xmlview(this.getId() + "-" + sMode, mParameter);
 		};
 
 		/**
@@ -4111,7 +4277,7 @@ sap.ui.define("sap/uxap/BlockBase",[
 
 			//check if the new view is not the current one (we may want to have the same view for several modes)
 			if (!oView || mParameter.viewName != oView.getViewName()) {
-				oView = this.createView(mParameter);
+				oView = this.createView(mParameter, sMode);
 
 				//link to the controller defined in the Block
 				if (oView) {
@@ -4135,11 +4301,14 @@ sap.ui.define("sap/uxap/BlockBase",[
 			return oView;
 		};
 
+		// This offset is needed so the breakpoints of the simpleForm match those of the GridLayout (offset = left-padding of grid + margins of grid-cells [that create the horizontal spacing between the cells])
+		BlockBase.FORM_ADUSTMENT_OFFSET = 32;
+
 		BlockBase._FORM_ADJUSTMENT_CONST = {
 			breakpoints: {
-				XL: Device.media._predefinedRangeSets.StdExt.points[2],
-				L: Device.media._predefinedRangeSets.StdExt.points[1],
-				M: Device.media._predefinedRangeSets.StdExt.points[0]
+				XL: Device.media._predefinedRangeSets.StdExt.points[2] - BlockBase.FORM_ADUSTMENT_OFFSET,
+				L: Device.media._predefinedRangeSets.StdExt.points[1] - BlockBase.FORM_ADUSTMENT_OFFSET,
+				M: Device.media._predefinedRangeSets.StdExt.points[0] - BlockBase.FORM_ADUSTMENT_OFFSET
 			},
 			labelSpan: {
 				/* values specified by design requirement */
@@ -4260,21 +4429,21 @@ sap.ui.define("sap/uxap/BlockBase",[
 
 		BlockBase.prototype._applyFormAdjustmentFields = function (oFormAdjustmentFields, oFormLayout) {
 
-			//oFormLayout.setColumnsXL(oFormAdjustmentFields.columns.XL);
+			oFormLayout.setColumnsXL(oFormAdjustmentFields.columns.XL);
 			oFormLayout.setColumnsL(oFormAdjustmentFields.columns.L);
 			oFormLayout.setColumnsM(oFormAdjustmentFields.columns.M);
 
-			//oFormLayout.setLabelSpanXL(oFormAdjustmentFields.labelSpan.XL);
+			oFormLayout.setLabelSpanXL(oFormAdjustmentFields.labelSpan.XL);
 			oFormLayout.setLabelSpanL(oFormAdjustmentFields.labelSpan.L);
 			oFormLayout.setLabelSpanM(oFormAdjustmentFields.labelSpan.M);
 			oFormLayout.setLabelSpanS(oFormAdjustmentFields.labelSpan.S);
 
-			//oFormLayout.setEmptySpanXL(oFormAdjustmentFields.emptySpan.XL);
+			oFormLayout.setEmptySpanXL(oFormAdjustmentFields.emptySpan.XL);
 			oFormLayout.setEmptySpanL(oFormAdjustmentFields.emptySpan.L);
 			oFormLayout.setEmptySpanM(oFormAdjustmentFields.emptySpan.M);
 			oFormLayout.setEmptySpanS(oFormAdjustmentFields.emptySpan.S);
 
-			//oFormLayout.setBreakpointXL(oFormAdjustmentFields.breakpoint.XL);
+			oFormLayout.setBreakpointXL(oFormAdjustmentFields.breakpoints.XL);
 			oFormLayout.setBreakpointL(oFormAdjustmentFields.breakpoints.L);
 			oFormLayout.setBreakpointM(oFormAdjustmentFields.breakpoints.M);
 		};
@@ -4348,6 +4517,15 @@ sap.ui.define("sap/uxap/BlockBase",[
 			}
 		};
 
+		BlockBase.prototype._allowPropagationToLoadedViews = function (bAllow) {
+
+			if (!this._bConnected) {
+				return; /* only loaded views should be affected */
+			}
+
+			this.mSkipPropagation._views = !bAllow; /* skip if now allowed */
+		};
+
 		/**
 		 * Override of the default model lifecycle method to disable the automatic binding resolution for lazyloading.
 		 * @override
@@ -4396,29 +4574,30 @@ jQuery.sap.declare('sap.uxap.ObjectPageHeader'); // unresolved dependency added 
 jQuery.sap.require('sap.ui.core.Control'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.core.IconPool'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.core.CustomData'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.Icon'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.Device'); // unlisted dependency retained
+jQuery.sap.require('sap.m.Breadcrumbs'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.core.ResizeHandler'); // unlisted dependency retained
 jQuery.sap.require('sap.m.Text'); // unlisted dependency retained
 jQuery.sap.require('sap.m.Button'); // unlisted dependency retained
 jQuery.sap.require('sap.m.ActionSheet'); // unlisted dependency retained
 jQuery.sap.require('sap.m.Image'); // unlisted dependency retained
-jQuery.sap.require('sap.ui.core.Icon'); // unlisted dependency retained
 sap.ui.define("sap/uxap/ObjectPageHeader",[
 	"sap/ui/core/Control",
 	"sap/ui/core/IconPool",
 	"sap/ui/core/CustomData",
+	"sap/ui/core/Icon",
 	"sap/ui/Device",
-	"./BreadCrumbs",
+	"sap/m/Breadcrumbs",
 	"./ObjectPageHeaderActionButton",
 	"sap/ui/core/ResizeHandler",
 	"sap/m/Text",
 	"sap/m/Button",
 	"sap/m/ActionSheet",
 	"sap/m/Image",
-	"sap/ui/core/Icon",
 	"./library"
-], function (Control, IconPool, CustomData, Device, BreadCrumbs, ObjectPageHeaderActionButton,
-			 ResizeHandler, Text, Button, ActionSheet, Image, Icon, library) {
+], function (Control, IconPool, CustomData, Icon, Device, Breadcrumbs, ObjectPageHeaderActionButton,
+			 ResizeHandler, Text, Button, ActionSheet, Image, library) {
 	"use strict";
 
 	/**
@@ -4480,22 +4659,22 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 				},
 
 				/**
-				 * Determines whether the icon should always be visible or if it should be visible only when scrolling.
+				 * Determines whether the icon should always be visible or visible only when the header is snapped.
 				 */
 				isObjectIconAlwaysVisible: {type: "boolean", defaultValue: false},
 
 				/**
-				 * Determines whether the title should always be visible or if it should be visible only when scrolling.
+				 * Determines whether the title should always be visible or visible only when the header is snapped.
 				 */
 				isObjectTitleAlwaysVisible: {type: "boolean", defaultValue: true},
 
 				/**
-				 * Determines whether the subtitle should always be visible or if it should be visible only when scrolling.
+				 * Determines whether the subtitle should always be visible or visible only when the header is snapped.
 				 */
 				isObjectSubtitleAlwaysVisible: {type: "boolean", defaultValue: true},
 
 				/**
-				 * Determines whether the action buttons should always be visible or if they should be visible only when scrolling.
+				 * Determines whether the action buttons should always be visible or visible only when the header is snapped.
 				 */
 				isActionAreaAlwaysVisible: {type: "boolean", defaultValue: true},
 
@@ -4552,7 +4731,7 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 				 *
 				 * Internal aggregation for the BreadCrumbs in the header.
 				 */
-				_breadCrumbs: {type: "sap.uxap.BreadCrumbs", multiple: false, visibility: "hidden"},
+				_breadCrumbs: {type: "sap.m.Breadcrumbs", multiple: false, visibility: "hidden"},
 
 				/**
 				 *
@@ -4586,10 +4765,11 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 				_overflowActionSheet: {type: "sap.m.ActionSheet", multiple: false, visibility: "hidden"},
 				_changesIconCont: {type: "sap.m.Button", multiple: false, visibility: "hidden"},
 				_changesIcon: {type: "sap.m.Button", multiple: false, visibility: "hidden"},
+				_sideContentBtn: {type: "sap.m.Button", multiple: false, visibility: "hidden"},
 
 				/**
 				 *
-				 * An instance of sap.uxap.AnchorBar to be embedded in the header
+				 * An instance of sap.m.Bar to be embedded in the header
 				 */
 				navigationBar: {type: "sap.m.Bar", multiple: false},
 
@@ -4599,7 +4779,14 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 				 * You can use ObjectPageHeaderActionButton controls to achieve a different visual representation of the action buttons in the action bar and the action sheet (overflow menu).
 				 * You can use ObjectPageHeaderLayoutData to display a visual separator.
 				 */
-				actions: {type: "sap.ui.core.Control", multiple: true, singularName: "action"}
+				actions: {type: "sap.ui.core.Control", multiple: true, singularName: "action"},
+
+				/**
+				 *
+				 * A button that is used for opening the side content of the page or some additional content.
+				 * @since 1.38.0
+				 */
+				sideContentButton: {type: "sap.m.Button", multiple: false}
 			},
 			events: {
 
@@ -4704,16 +4891,19 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 
 			if (sObjectImageURI.indexOf("sap-icon://") == 0) {
 				oObjectImage = new Icon();
+				oObjectImage.addStyleClass("sapUxAPObjectPageHeaderObjectImageIcon");
 			} else {
 				oObjectImage = new Image({
 					densityAware: oParent.getObjectImageDensityAware(),
 					alt: oParent.getObjectImageAlt(),
 					decorative: false
 				});
+
+				oObjectImage.addStyleClass("sapUxAPObjectPageHeaderObjectImage");
 			}
 
 			oObjectImage.setSrc(sObjectImageURI);
-			oObjectImage.addStyleClass("sapUxAPObjectPageHeaderObjectImage");
+
 			if (oParent.getObjectImageAlt()) {
 				oObjectImage.setTooltip(oParent.getObjectImageAlt());
 			}
@@ -4723,19 +4913,15 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 			return new ActionSheet({placement: sap.m.PlacementType.Bottom});
 		},
 		"_lockIconCont": function (oParent) {
-			return this._getButton(oParent, "sap-icon://locked", "lock-cont", oParent.oLibraryResourceBundleOP.getText("TOOLTIP_OP_LOCK_MARK_VALUE"));
+			return this._getButton(oParent, "sap-icon://locked", "lock-cont");
 		},
 		"_breadCrumbs": function (oParent) {
-			return new BreadCrumbs({
-				links: oParent.getAggregation("breadCrumbLinks"),
-				currentLocation: new Text({
-					text: oParent.getProperty("objectTitle")
-				}),
-				showCurrentLocation: false
+			return new Breadcrumbs({
+				links: oParent.getAggregation("breadCrumbLinks")
 			});
 		},
 		"_lockIcon": function (oParent) {
-			return this._getButton(oParent, "sap-icon://locked", "lock");
+			return this._getButton(oParent, "sap-icon://locked", "lock", oParent.oLibraryResourceBundleOP.getText("TOOLTIP_OP_LOCK_MARK_VALUE"));
 		},
 		"_titleArrowIconCont": function (oParent) {
 			return this._getButton(oParent, "sap-icon://arrow-down", "titleArrow-cont", oParent.oLibraryResourceBundleOP.getText("OP_SELECT_ARROW_TOOLTIP"));
@@ -4816,8 +5002,10 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 	};
 
 	ObjectPageHeader.prototype._proxyMethodToBreadCrumbControl = function (sFuncName, aArguments) {
-		var oBreadCrumbs = this._getInternalAggregation("_breadCrumbs");
-		return oBreadCrumbs[sFuncName].apply(oBreadCrumbs, aArguments);
+		var oBreadCrumbs = this._getInternalAggregation("_breadCrumbs"),
+			vResult = oBreadCrumbs[sFuncName].apply(oBreadCrumbs, aArguments);
+		this.invalidate();
+		return vResult;
 	};
 
 	ObjectPageHeader.prototype.setHeaderDesign = function (sHeaderDesign) {
@@ -4860,13 +5048,23 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 	 * @param {string} sTitle title string
 	 * @return {*} this
 	 */
-	ObjectPageHeader.prototype.setObjectTitle = function (sTitle) {
-		var oBreadcrumbs = this._getInternalAggregation("_breadCrumbs");
-		if (oBreadcrumbs) {
-			oBreadcrumbs.getCurrentLocation().setText(sTitle);
+	ObjectPageHeader.prototype.setObjectTitle = function (sNewTitle) {
+
+		var sOldTitle = this.getProperty("objectTitle"),
+			bChanged = sOldTitle !== sNewTitle;
+
+		this._applyActionProperty("objectTitle", Array.prototype.slice.call(arguments));
+
+		if (bChanged && this.mEventRegistry["_titleChange"] ) {
+			this.fireEvent("_titleChange", {
+				"id": this.getId(),
+				"name": "objectTitle",
+				"oldValue": sOldTitle,
+				"newValue": sNewTitle
+			});
 		}
 
-		return this._applyActionProperty("objectTitle", Array.prototype.slice.call(arguments));
+		return this;
 	};
 
 	var aPropertiesToOverride = ["objectSubtitle", "showTitleSelector", "markLocked", "markFavorite", "markFlagged",
@@ -4940,6 +5138,11 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 			});
 		}
 
+		var oSideBtn = this.getSideContentButton();
+		if (oSideBtn && !oSideBtn.getTooltip()) {
+			oSideBtn.setTooltip(this.oLibraryResourceBundleOP.getText("TOOLTIP_OP_SHOW_SIDE_CONTENT"));
+		}
+
 		var aActions = this.getActions() || [];
 		this._oOverflowActionSheet.removeAllButtons();
 		this._oActionSheetButtonMap = {};
@@ -4948,6 +5151,27 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 		if (aActions.length > 1 || this._hasOneButtonShowText(aActions)) {
 			//create responsive equivalents of the provided controls
 			jQuery.each(aActions, jQuery.proxy(function (iIndex, oAction) {
+				// Set internal visibility for normal buttons like for ObjectPageHeaderActionButton
+				if (oAction instanceof Button && !(oAction instanceof ObjectPageHeaderActionButton)) {
+					oAction._getInternalVisible = function () {
+						return this._bInternalVisible;
+					};
+					oAction._setInternalVisible = function (bValue, bInvalidate) {
+						this.$().toggle(bValue);
+						if (bValue != this._bInternalVisible) {
+							this._bInternalVisible = bValue;
+							if (bInvalidate) {
+								this.invalidate();
+							}
+						}
+					};
+					oAction.onAfterRendering = function () {
+						if (!this._getInternalVisible()) {
+							this.$().hide();
+						}
+					};
+				}
+
 				// Force the design of the button to transparent
 				if (oAction instanceof Button && oAction.getVisible()) {
 					if (oAction instanceof Button && (oAction.getType() === "Default" || oAction.getType() === "Unstyled")) {
@@ -5045,10 +5269,18 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 		}
 
 		if (!this._iResizeId) {
-			this._iResizeId = ResizeHandler.register(this, this._adaptLayout.bind(this));
+			this._iResizeId = ResizeHandler.register(this, this._onHeaderResize.bind(this));
 		}
+		this._shiftHeaderTitle();
 
 		this._attachDetachActionButtonsHandler(true);
+	};
+
+	ObjectPageHeader.prototype._onHeaderResize = function () {
+		this._adaptLayout();
+		if (this.getParent() && typeof this.getParent()._adjustHeaderHeights === "function") {
+			this.getParent()._adjustHeaderHeights();
+		}
 	};
 
 	ObjectPageHeader.prototype._attachDetachActionButtonsHandler = function (bAttach) {
@@ -5057,11 +5289,18 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 			return;
 		}
 		aActions.forEach(function (oAction) {
-			if (oAction instanceof ObjectPageHeaderActionButton) {
+			if (oAction instanceof Button) {
+				var oActionSheetButton = this._oActionSheetButtonMap[oAction.getId()];
 				if (bAttach) {
 					oAction.attachEvent("_change", this._adaptLayout, this);
+					if (oActionSheetButton) {
+						oActionSheetButton.attachEvent("_change", this._adaptOverflow, this);
+					}
 				} else {
 					oAction.detachEvent("_change", this._adaptLayout, this);
+					if (oActionSheetButton) {
+						oActionSheetButton.detachEvent("_change", this._adaptOverflow, this);
+					}
 				}
 			}
 		}, this);
@@ -5127,19 +5366,27 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 	 * Adapt title/subtitle container and action buttons and overflow button
 	 * @private
 	 */
-	ObjectPageHeader.prototype._adaptLayout = function () {
+	ObjectPageHeader.prototype._adaptLayout = function (oEvent) {
 		var iIdentifierContWidth = this.$("identifierLine").width(),
 			iActionsWidth = this._getActionsWidth(), // the width off all actions without hidden one
 			iActionsContProportion = iActionsWidth / iIdentifierContWidth, // the percentage(proportion) that action buttons take from the available space
-			iAvailableSpaceForActions = this._iAvailablePercentageForActions * iIdentifierContWidth;
+			iAvailableSpaceForActions = this._iAvailablePercentageForActions * iIdentifierContWidth,
+			$overflowButton = this._oOverflowButton.$(),
+			$actionButtons = this.$("actions").find(".sapMBtn").not(".sapUxAPObjectPageHeaderExpandButton");
 
 		if (iActionsContProportion > this._iAvailablePercentageForActions) {
 			this._adaptActions(iAvailableSpaceForActions);
-		} else {
-			this._oOverflowButton.$().hide();
+		} else if (oEvent && oEvent.getSource() instanceof ObjectPageHeaderActionButton) {
+			oEvent.getSource()._setInternalVisible(true);
 		}
 
-		this.$("actions").find(".sapMBtn").not(".sapUxAPObjectPageHeaderExpandButton").css("visibility", "visible");
+		$actionButtons.css("visibility", "visible");
+
+		// verify overflow button visibility
+		if ($actionButtons.filter(":visible").length === $actionButtons.length) {
+			$overflowButton.hide();
+		}
+
 		this._adaptObjectPageHeaderIndentifierLine();
 	};
 
@@ -5150,10 +5397,11 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 	ObjectPageHeader.prototype._adaptObjectPageHeaderIndentifierLine = function () {
 		var iIdentifierContWidth = this.$("identifierLine").width(),
 			$subtitle = this.$("subtitle"),
+			$identifierLineContainer = this.$("identifierLineContainer"),
 			iSubtitleBottom,
 			iTitleBottom,
 			iActionsAndImageWidth = this.$("actions").width() + this.$().find(".sapUxAPObjectPageHeaderObjectImageContainer").width(),
-			iPixelTolerance = 3; // the tolerance of pixels from which we can tell that the title and subtitle are on the same row
+			iPixelTolerance = this.$().parents().hasClass('sapUiSizeCompact') ? 7 : 3;  // the tolerance of pixels from which we can tell that the title and subtitle are on the same row
 
 		if ($subtitle.length) {
 			if ($subtitle.hasClass("sapOPHSubtitleBlock")) {
@@ -5168,7 +5416,7 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 			}
 		}
 
-		this.$("identifierLineContainer").width((0.95 - (iActionsAndImageWidth / iIdentifierContWidth)) * 100 + "%");
+		$identifierLineContainer.width((0.95 - (iActionsAndImageWidth / iIdentifierContWidth)) * 100 + "%");
 	};
 
 	/**
@@ -5193,14 +5441,27 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 			//separators and non sap.m.Button or not visible buttons have no equivalent in the overflow
 			if (oActionSheetButton) {
 				iVisibleActionsWidth += oAction.$().width();
-
 				if (iAvailableSpaceForActions > iVisibleActionsWidth && !bMobileScenario) {
-					oActionSheetButton.setVisible(false);
+					this._setActionButtonVisibility(oAction, true);
 				} else {
 					this._setActionButtonVisibility(oAction, false);
 				}
 			}
 		}, this);
+	};
+
+	/**
+	 * Show or hide the overflow button and action sheet according to visible buttons inside
+	 * @private
+	 */
+	ObjectPageHeader.prototype._adaptOverflow = function () {
+		var aActionSheetButtons = this._oOverflowActionSheet.getButtons();
+
+		var bHasVisible = aActionSheetButtons.some(function(oActionSheetButton) {
+			 return oActionSheetButton.getVisible();
+		});
+
+		this._oOverflowButton.$().toggle(bHasVisible);
 	};
 
 	/**
@@ -5212,12 +5473,12 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 
 		//separators and non sap.m.Button or not visible buttons have no equivalent in the overflow
 		if (oActionSheetButton) {
-			if (bVisible) {
-				oAction.$().show();
+			if (oAction.getVisible()) {
+				oAction._setInternalVisible(bVisible);
+				oActionSheetButton.setVisible(!bVisible);
 			} else {
-				oAction.$().hide();
+				oActionSheetButton.setVisible(false);
 			}
-			oActionSheetButton.setVisible(!bVisible);
 		}
 	};
 
@@ -5272,6 +5533,29 @@ sap.ui.define("sap/uxap/ObjectPageHeader",[
 		}
 	};
 
+
+	/**
+	 * Fiori 2.0 adaptation
+	 */
+	ObjectPageHeader.prototype.setNavigationBar = function(oBar) {
+
+		this.setAggregation("navigationBar", oBar);
+
+		if (oBar && this.mEventRegistry["_adaptableContentChange"] ) {
+			this.fireEvent("_adaptableContentChange", {
+				"parent": this,
+				"adaptableContent": oBar
+			});
+		}
+
+		return this;
+	};
+
+	ObjectPageHeader.prototype._getAdaptableContent = function() {
+		return this.getNavigationBar();
+	};
+
+
 	return ObjectPageHeader;
 });
 
@@ -5306,6 +5590,7 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 		 */
 		constructor: function (oObjectPageLayout) {
 			this._oObjectPageLayout = oObjectPageLayout;
+			this._iScrollDuration = oObjectPageLayout._iScrollToSectionDuration;
 		}
 	});
 
@@ -5324,6 +5609,7 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 		if (!oAnchorBar) {
 
 			oAnchorBar = new AnchorBar({
+				id: this.getObjectPageLayout().getId() + "-anchBar",
 				showPopover: this.getObjectPageLayout().getShowAnchorBarPopover()
 			});
 
@@ -5344,13 +5630,13 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 		//tablet & desktop mechanism
 		if (oAnchorBar && this.getObjectPageLayout().getShowAnchorBar()) {
 
-			oAnchorBar.removeAllContent();
+			oAnchorBar._resetControl();
 
 			//first level
 			aSections.forEach(function (oSection) {
 
 				if (!oSection.getVisible() || !oSection._getInternalVisible()) {
-					return true;
+					return;
 				}
 
 				var oButtonClone,
@@ -5368,16 +5654,26 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 							return;
 						}
 
-						var oButtonClone = this._buildAnchorBarButton(oSubSection, false);
+						var oSecondLevelButtonClone = this._buildAnchorBarButton(oSubSection, false);
 
-						if (oButtonClone) {
-							oAnchorBar.addContent(oButtonClone);
+						if (oSecondLevelButtonClone) {
+							oAnchorBar.addContent(oSecondLevelButtonClone);
 						}
 
 					}, this);
 				}
 
 			}, this);
+		}
+	};
+
+	ABHelper.prototype._focusOnSectionWhenUsingKeyboard = function (oEvent) {
+		var oSourceData = oEvent.srcControl.data(),
+			oSection = sap.ui.getCore().byId(oSourceData.sectionId),
+			oObjectPage = this.getObjectPageLayout();
+
+		if (oSection && !oSourceData.bHasSubMenu && !oObjectPage.getUseIconTabBar()) {
+			jQuery.sap.delayedCall(this._iScrollDuration, oSection.$(), "focus");
 		}
 	};
 
@@ -5390,46 +5686,35 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 	 * @private
 	 */
 	ABHelper.prototype._buildAnchorBarButton = function (oSectionBase, bIsSection) {
-
 		var oButtonClone = null,
 			oObjectPageLayout = this.getObjectPageLayout(),
 			oButton,
-			oSectionBindingInfo,
-			sModelName,
-			aSubSections = oSectionBase.getAggregation("subSections");
+			oAnchorBar = this._getAnchorBar(),
+			sId,
+			aSubSections = oSectionBase.getAggregation("subSections"),
+			fnButtonKeyboardUseHandler = this._focusOnSectionWhenUsingKeyboard.bind(this),
+			oEventDelegatesForkeyBoardHandler = {
+				onsapenter: fnButtonKeyboardUseHandler,
+				onsapspace: fnButtonKeyboardUseHandler
+			};
 
 		if (oSectionBase.getVisible() && oSectionBase._getInternalVisible()) {
 			oButton = oSectionBase.getCustomAnchorBarButton();
 
 			//by default we get create a button with the section title as text
 			if (!oButton) {
+				sId = oAnchorBar.getId() + "-" + oSectionBase.getId() + "-anchor";
+
 				oButtonClone = new Button({
-					ariaDescribedBy: oSectionBase
+					ariaDescribedBy: oSectionBase,
+					id: sId
 				});
 
+				oButtonClone.addEventDelegate(oEventDelegatesForkeyBoardHandler);
+
 				//has a ux rule been applied that we need to reflect here?
-				if (oSectionBase._getInternalTitle() != "") {
-					oButtonClone.setText(oSectionBase._getInternalTitle());
-				} else {
-
-					//is the section title bound to a model? in this case we need to apply the same binding
-					oSectionBindingInfo = oSectionBase.getBindingInfo("title");
-					if (oSectionBindingInfo && oSectionBindingInfo.parts && oSectionBindingInfo.parts.length > 0) {
-
-						sModelName = oSectionBindingInfo.parts[0].model;
-
-						//handle relative binding scenarios
-						oButtonClone.setBindingContext(oSectionBase.getBindingContext(sModelName), sModelName);
-
-						//copy binding information
-						oButtonClone.bindProperty("text", {
-							path: oSectionBindingInfo.parts[0].path,
-							model: sModelName
-						});
-					} else { //otherwise just copy the plain text
-						oButtonClone.setText(oSectionBase.getTitle());
-					}
-				}
+				var sTitle = (oSectionBase._getInternalTitle() != "") ? oSectionBase._getInternalTitle() : oSectionBase.getTitle();
+				oButtonClone.setText(sTitle);
 			} else {
 				oButtonClone = oButton.clone(); //keep original button parent control hierarchy
 			}
@@ -5458,16 +5743,22 @@ sap.ui.define("sap/uxap/ObjectPageLayoutABHelper",[
 			}
 
 			if (aSubSections && aSubSections.length > 1) {
-				// the anchor bar need to know if the button has submenu for accessibility rules
-				oButtonClone.addCustomData(new CustomData({
-					key: "bHasSubMenu",
-					value: true
-				}));
+				var iVisibleSubSections = aSubSections.filter(function (oSubSection) {
+					return oSubSection.getVisible();
+				}).length;
 
-				if (oObjectPageLayout.getShowAnchorBarPopover()) {
-					// Add arrow icon-down in order to indicate that on click will open popover
-					oButtonClone.setIcon(IconPool.getIconURI("slim-arrow-down"));
-					oButtonClone.setIconFirst(false);
+				if (iVisibleSubSections > 1) {
+					// the anchor bar need to know if the button has submenu for accessibility rules
+					oButtonClone.addCustomData(new CustomData({
+						key: "bHasSubMenu",
+						value: true
+					}));
+
+					if (oObjectPageLayout.getShowAnchorBarPopover()) {
+						// Add arrow icon-down in order to indicate that on click will open popover
+						oButtonClone.setIcon(IconPool.getIconURI("slim-arrow-down"));
+						oButtonClone.setIconFirst(false);
+					}
 				}
 			}
 		}
@@ -5493,14 +5784,16 @@ jQuery.sap.require('jquery.sap.global'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.core.InvisibleText'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.Device'); // unlisted dependency retained
 jQuery.sap.require('sap.m.Button'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.StashedControlSupport'); // unlisted dependency retained
 sap.ui.define("sap/uxap/ObjectPageSection",[
 	"jquery.sap.global",
 	"sap/ui/core/InvisibleText",
 	"./ObjectPageSectionBase",
 	"sap/ui/Device",
 	"sap/m/Button",
+	"sap/ui/core/StashedControlSupport",
 	"./library"
-], function (jQuery, InvisibleText, ObjectPageSectionBase, Device, Button, library) {
+], function (jQuery, InvisibleText, ObjectPageSectionBase, Device, Button, StashedControlSupport, library) {
 	"use strict";
 
 	/**
@@ -5579,23 +5872,17 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 		Device.media.detachHandler(this._updateImportance, this, ObjectPageSection.MEDIA_RANGE);
 	};
 
-	/**
-	 * Handler for key up - handle
-	 * @param oEvent - The event object
-	 */
+	ObjectPageSection.prototype._getImportanceLevelToHide = function (oCurrentMedia) {
+		var oObjectPage = this._getObjectPageLayout(),
+			oMedia = oCurrentMedia || Device.media.getCurrentRange(ObjectPageSection.MEDIA_RANGE),
+			bShowOnlyHighImportance = oObjectPage && oObjectPage.getShowOnlyHighImportance();
 
-	ObjectPageSection.prototype.onkeyup = function (oEvent) {
-		var eventTarget = sap.ui.getCore().byId(jQuery(oEvent.target).attr("id"));
-		if (oEvent.keyCode === jQuery.sap.KeyCodes.TAB && eventTarget instanceof sap.uxap.ObjectPageSection && this._getObjectPageLayout()._isFirstSection(this)) {
-			this._getObjectPageLayout().$("opwrapper").scrollTop(0);
-		}
+		return this._determineTheLowestLevelOfImportanceToShow(oMedia.name, bShowOnlyHighImportance);
 	};
 
 	ObjectPageSection.prototype._updateImportance = function (oCurrentMedia) {
 		var oObjectPage = this._getObjectPageLayout(),
-			oMedia = oCurrentMedia || Device.media.getCurrentRange(ObjectPageSection.MEDIA_RANGE),
-			bShowOnlyHighImportance = oObjectPage && oObjectPage.getShowOnlyHighImportance(),
-			sImportanceLevelToHide = this._determineTheLowestLevelOfImportanceToShow(oMedia.name, bShowOnlyHighImportance);
+			sImportanceLevelToHide = this._getImportanceLevelToHide(oCurrentMedia);
 
 		this.getSubSections().forEach(function (oSubSection) {
 			oSubSection._applyImportanceRules(sImportanceLevelToHide);
@@ -5604,7 +5891,7 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 		this._applyImportanceRules(sImportanceLevelToHide);
 		this._updateShowHideAllButton(false);
 
-		if (oObjectPage) {
+		if (oObjectPage && this.getDomRef()) {
 			oObjectPage._adjustLayout();
 		}
 	};
@@ -5626,15 +5913,19 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 		});
 	};
 
+	ObjectPageSection.prototype._allowPropagationToLoadedViews = function (bAllow) {
+		this.getSubSections().forEach(function (oSubSection) {
+			oSubSection._allowPropagationToLoadedViews(bAllow);
+		});
+	};
+
 	ObjectPageSection.prototype.onBeforeRendering = function () {
 		var sAriaLabeledBy = "ariaLabelledBy";
 
 		if (!this.getAggregation(sAriaLabeledBy)) {
 			this.setAggregation(sAriaLabeledBy, this._getAriaLabelledBy());
 		}
-	};
 
-	ObjectPageSection.prototype.onAfterRendering = function () {
 		this._updateImportance();
 	};
 
@@ -5660,6 +5951,11 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 			bPreselectedSection;
 
 		if (aSubSections.length === 0) {
+			return this;
+		}
+
+		if (aSubSections.length === 1) {
+			aSubSections[0]._setToFocusable(false);
 			return this;
 		}
 
@@ -5737,6 +6033,7 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 	ObjectPageSection.prototype._getShowHideAllButton = function () {
 		if (!this.getAggregation("_showHideAllButton")) {
 			this.setAggregation("_showHideAllButton", new Button({
+				visible: this._getShouldDisplayShowHideAllButton(),
 				text: this._getShowHideAllButtonText(!this._thereAreHiddenSubSections()),
 				press: this._showHideContentAllContent.bind(this),
 				type: sap.m.ButtonType.Transparent
@@ -5763,6 +6060,7 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 	ObjectPageSection.prototype._getShowHideButton = function () {
 		if (!this.getAggregation("_showHideButton")) {
 			this.setAggregation("_showHideButton", new Button({
+				visible: this._shouldBeHidden(),
 				text: this._getShowHideButtonText(!this._getIsHidden()),
 				press: this._showHideContent.bind(this),
 				type: sap.m.ButtonType.Transparent
@@ -5771,6 +6069,8 @@ sap.ui.define("sap/uxap/ObjectPageSection",[
 
 		return this.getAggregation("_showHideButton");
 	};
+
+	StashedControlSupport.mixInto(ObjectPageSection);
 
 	return ObjectPageSection;
 });
@@ -5790,8 +6090,9 @@ jQuery.sap.require('sap.ui.layout.Grid'); // unlisted dependency retained
 jQuery.sap.require('sap.uxap.ObjectPageSubSectionLayout'); // unlisted dependency retained
 jQuery.sap.require('sap.uxap.ObjectPageSubSectionMode'); // unlisted dependency retained
 jQuery.sap.require('sap.ui.layout.GridData'); // unlisted dependency retained
-jQuery.sap.require('sap.ui.core.ResizeHandler'); // unlisted dependency retained
 jQuery.sap.require('sap.m.Button'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.Device'); // unlisted dependency retained
+jQuery.sap.require('sap.ui.core.StashedControlSupport'); // unlisted dependency retained
 sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	"sap/ui/core/CustomData",
 	"sap/ui/layout/Grid",
@@ -5800,11 +6101,13 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	"./ObjectPageSubSectionMode",
 	"./BlockBase",
 	"sap/ui/layout/GridData",
-	"sap/ui/core/ResizeHandler",
 	"sap/m/Button",
+	"sap/ui/Device",
+	"./ObjectPageLazyLoader",
+	"sap/ui/core/StashedControlSupport",
 	"./library"
 ], function (CustomData, Grid, ObjectPageSectionBase, ObjectPageSubSectionLayout,
-			 ObjectPageSubSectionMode, BlockBase, GridData, ResizeHandler, Button, library) {
+			 ObjectPageSubSectionMode, BlockBase, GridData, Button, Device, ObjectPageLazyLoader, StashedControlSupport, library) {
 	"use strict";
 
 	/**
@@ -5873,6 +6176,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		}
 	});
 
+	ObjectPageSubSection.MEDIA_RANGE = Device.media.RANGESETS.SAP_STANDARD;
 
 	/**
 	 * @private
@@ -5887,6 +6191,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		//dom reference
 		this._$spacer = [];
 		this._sContainerSelector = ".sapUxAPBlockContainer";
+
 
 		//switch logic for the default mode
 		this._switchSubSectionMode(this.getMode());
@@ -5904,7 +6209,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 			this.setAggregation("_grid", new Grid({
 				id: this.getId() + "-innerGrid",
 				defaultSpan: "XL12 L12 M12 S12",
-				hSpacing: 0,
+				hSpacing: 1,
 				vSpacing: 1,
 				width: "100%",
 				containerQuery: true
@@ -5914,10 +6219,18 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		return this.getAggregation("_grid");
 	};
 
+	ObjectPageSubSection.prototype._unStashControls = function () {
+		StashedControlSupport.getStashedControls(this.getId()).forEach(function (oControl) {
+			oControl.setStashed(false);
+		});
+	};
+
 	ObjectPageSubSection.prototype.connectToModels = function () {
 		var aBlocks = this.getBlocks() || [],
 			aMoreBlocks = this.getMoreBlocks() || [],
 			sCurrentMode = this.getMode();
+
+		this._unStashControls();
 
 		aBlocks.forEach(function (oBlock) {
 			if (oBlock instanceof BlockBase) {
@@ -5940,15 +6253,43 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		}
 	};
 
+	ObjectPageSubSection.prototype._allowPropagationToLoadedViews = function (bAllow) {
+		var aBlocks = this.getBlocks() || [],
+			aMoreBlocks = this.getMoreBlocks() || [];
+
+		aBlocks.forEach(function (oBlock) {
+			if (oBlock instanceof BlockBase) {
+				oBlock._allowPropagationToLoadedViews(bAllow);
+			}
+		});
+
+		aMoreBlocks.forEach(function (oMoreBlock) {
+			if (oMoreBlock instanceof BlockBase) {
+				oMoreBlock._allowPropagationToLoadedViews(bAllow);
+			}
+		});
+	};
+
+	ObjectPageSubSection.prototype._cleanProxiedAggregations = function () {
+		var oProxiedAggregations = this._aAggregationProxy;
+		Object.keys(oProxiedAggregations).forEach(function (sKey) {
+			oProxiedAggregations[sKey].forEach(function (oObject) {
+				oObject.destroy();
+			});
+		});
+	};
+
 	ObjectPageSubSection.prototype.exit = function () {
 		if (this._oSeeMoreButton) {
 			this._oSeeMoreButton.destroy();
 			this._oSeeMoreButton = null;
 		}
 
-		if (this._iResizeId) {
-			ResizeHandler.deregister(this._iResizeId);
-		}
+		Device.media.detachHandler(this._updateImportance, this, ObjectPageSubSection.MEDIA_RANGE);
+
+		Device.media.detachHandler(this._titleOnLeftSynchronizeLayouts, this, ObjectPageSubSection.MEDIA_RANGE);
+
+		this._cleanProxiedAggregations();
 
 		if (ObjectPageSectionBase.prototype.exit) {
 			ObjectPageSectionBase.prototype.exit.call(this);
@@ -5966,8 +6307,10 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 			return;
 		}
 
-		if (oObjectPageLayout.getSubSectionLayout() === ObjectPageSubSectionLayout.TitleOnLeft) {
-			this._afterRenderingTitleOnLeftLayout();
+		if (this._getUseTitleOnTheLeft()) {
+			Device.media.attachHandler(this._titleOnLeftSynchronizeLayouts, this, ObjectPageSubSection.MEDIA_RANGE);
+		} else {
+			Device.media.detachHandler(this._titleOnLeftSynchronizeLayouts, this, ObjectPageSubSection.MEDIA_RANGE);
 		}
 
 		this._$spacer = jQuery.sap.byId(oObjectPageLayout.getId() + "-spacer");
@@ -6086,7 +6429,6 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	/*******************************************************************************
 	 * Keyboard navigation
 	 ******************************************************************************/
-
 	/**
 	 * Handler for key down - handle
 	 * @param oEvent - The event object
@@ -6179,7 +6521,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 			}, this);
 
 			//set block layout based on resolution and break to a new line if necessary
-			oBlock.setLayoutData(new GridData({
+			oBlock.setLayoutData(new GridData(oBlock.getId() + "-layoutData", {
 				spanS: iGridSize,
 				spanM: M.iCalculatedSize * (iGridSize / M.iColumnConfig),
 				spanL: L.iCalculatedSize * (iGridSize / L.iColumnConfig),
@@ -6241,29 +6583,13 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	 * TitleOnLeft layout
 	 ************************************************************************************/
 
-	/**
-	 * on after rendering actions for the titleOnLeft Layout
-	 * @private
-	 */
-	ObjectPageSubSection.prototype._afterRenderingTitleOnLeftLayout = function () {
-		this._$standardHeader = jQuery.sap.byId(this.getId() + "-header");
-		this._$grid = this._getGrid().$();
-
-		if (!this._iResizeId) {
-			this._iResizeId = ResizeHandler.register(this, this._titleOnLeftSynchronizeLayouts.bind(this));
-		}
-
-		this._titleOnLeftSynchronizeLayouts();
+	ObjectPageSubSection.prototype._onDesktopMediaRange = function (oCurrentMedia) {
+		var oMedia = oCurrentMedia || Device.media.getCurrentRange(ObjectPageSubSection.MEDIA_RANGE);
+		return ["LargeDesktop", "Desktop"].indexOf(oMedia.name) > -1;
 	};
 
-	ObjectPageSubSection.prototype._titleOnLeftSynchronizeLayouts = function () {
-		jQuery.sap.delayedCall(50 /* dom painting */, this, function () {
-
-			var oRootNode = jQuery("html"),
-				bUseTitleOnTheLeftLayout = oRootNode.hasClass("sapUiMedia-Std-Desktop")
-					|| oRootNode.hasClass("sapUiMedia-Std-LargeDesktop");
-			this._$standardHeader.toggleClass("titleOnLeftLayout", bUseTitleOnTheLeftLayout);
-		});
+	ObjectPageSubSection.prototype._titleOnLeftSynchronizeLayouts = function (oCurrentMedia) {
+		this.$("header").toggleClass("titleOnLeftLayout", this._onDesktopMediaRange(oCurrentMedia));
 	};
 
 
@@ -6293,22 +6619,35 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		return this._aAggregationProxy[sAggregationName];
 	};
 
-	ObjectPageSubSection.prototype._setAggregation = function (sAggregationName, aValue) {
+	ObjectPageSubSection.prototype._setAggregation = function (sAggregationName, aValue, bSuppressInvalidate) {
 		this._aAggregationProxy[sAggregationName] = aValue;
-		this._notifyObjectPageLayout();
-		this.invalidate();
+		if (bSuppressInvalidate !== true){
+			this._notifyObjectPageLayout();
+			this.invalidate();
+		}
 		return this._aAggregationProxy[sAggregationName];
 	};
 
-	ObjectPageSubSection.prototype.addAggregation = function (sAggregationName, oObject) {
+	ObjectPageSubSection.prototype.addAggregation = function (sAggregationName, oObject, bSuppressInvalidate) {
 		var aAggregation;
+
+		if (oObject instanceof ObjectPageLazyLoader) {
+			oObject.getContent().forEach(function (oControl) {
+				this.addAggregation(sAggregationName, oControl, true);
+			}, this);
+
+			oObject.removeAllContent();
+			oObject.destroy();
+			this.invalidate();
+			return this;
+		}
 
 		if (this.hasProxy(sAggregationName)) {
 			aAggregation = this._getAggregation(sAggregationName);
 			aAggregation.push(oObject);
-			this._setAggregation(aAggregation);
+			this._setAggregation(sAggregationName, aAggregation, bSuppressInvalidate);
 
-			if (oObject instanceof BlockBase) {
+			if (oObject instanceof BlockBase || oObject instanceof ObjectPageLazyLoader) {
 				oObject.setParent(this); //let the block know of its parent subsection
 			}
 
@@ -6318,6 +6657,10 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		return ObjectPageSectionBase.prototype.addAggregation.apply(this, arguments);
 	};
 
+	/**
+	 * InsertAggregation is not supported by design.
+	 * If used, it works as addAggregation, e.g. the method adds a single block to the end of blocks or moreBlocks aggregations.
+	 */
 	ObjectPageSubSection.prototype.insertAggregation = function (sAggregationName, oObject, iIndex) {
 		if (this.hasProxy(sAggregationName)) {
 			jQuery.sap.log.warning("ObjectPageSubSection :: used of insertAggregation for " + sAggregationName + " is not supported, will use addAggregation instead");
@@ -6328,13 +6671,12 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	};
 
 	ObjectPageSubSection.prototype.removeAllAggregation = function (sAggregationName) {
-		var aInternalAggregation, aItems;
+		var aInternalAggregation;
 
 		if (this.hasProxy(sAggregationName)) {
 			aInternalAggregation = this._getAggregation(sAggregationName);
-			aItems = aInternalAggregation.slice(0, aInternalAggregation.length - 1);
 			this._setAggregation(sAggregationName, []);
-			return aItems;
+			return aInternalAggregation.slice();
 		}
 
 		return ObjectPageSectionBase.prototype.removeAllAggregation.apply(this, arguments);
@@ -6348,7 +6690,7 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 			aInternalAggregation.forEach(function (oObjectCandidate, iIndex) {
 				if (oObjectCandidate.getId() === oObject.getId()) {
 					aInternalAggregation.splice(iIndex, 1);
-					this._setAggregation(aInternalAggregation);
+					this._setAggregation(sAggregationName, aInternalAggregation);
 					bRemoved = true;
 				}
 				return !bRemoved;
@@ -6498,6 +6840,12 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 		return this;
 	};
 
+	ObjectPageSubSection.prototype._getUseTitleOnTheLeft = function () {
+		var oObjectPageLayout = this._getObjectPageLayout();
+
+		return oObjectPageLayout.getSubSectionLayout() === ObjectPageSubSectionLayout.TitleOnLeft;
+	};
+
 	/**
 	 * If this is the first rendering and a layout has been defined by the subsection developer,
 	 * We remove it and let the built-in mechanism decide on the layouting aspects
@@ -6506,16 +6854,14 @@ sap.ui.define("sap/uxap/ObjectPageSubSection",[
 	 */
 	ObjectPageSubSection.prototype._resetLayoutData = function (aBlocks) {
 		aBlocks.forEach(function (oBlock) {
-			if (!this._bRenderedFirstTime && oBlock.getLayoutData()) {
+			if (oBlock.getLayoutData()) {
 				oBlock.destroyLayoutData();
-				jQuery.sap.log.warning("ObjectPageSubSection :: forbidden use of layoutData for block " +
-					oBlock.getMetadata().getName(), "layout will be set by subSection");
 			}
 		}, this);
 	};
 
 	ObjectPageSubSection.prototype.getVisibleBlocksCount = function () {
-		var iVisibleBlocks = 0;
+		var iVisibleBlocks = StashedControlSupport.getStashedControls(this.getId()).length;
 
 		(this.getBlocks() || []).forEach(function (oBlock) {
 			if (oBlock.getVisible && !oBlock.getVisible()) {
@@ -6820,7 +7166,7 @@ sap.ui.define("sap/uxap/LazyLoading",["jquery.sap.global",	"sap/ui/Device", "sap
 			//only consider subsections not yet loaded
 			jQuery.each(oSectionInfo, jQuery.proxy(function (sId, oInfo) {
 				// on desktop/tablet, find a section, not a subsection
-				if (!oInfo.isSection && !oInfo.loaded && oInfo.sectionReference.getParent().getVisible()) {
+				if (!oInfo.isSection && !oInfo.loaded && oInfo.sectionReference.getParent() && oInfo.sectionReference.getParent().getVisible()) {
 					// 1D segment intersection between visible page and current sub section
 					// C <= B and A <= D -> intersection
 					//    A-----B
@@ -7126,39 +7472,26 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 				/**
 				 * The event is fired when the Edit Header button is pressed
 				 */
-				editHeaderButtonPress: {}
+				editHeaderButtonPress: {},
+
+				/**
+				 * The event is fired when the selected tab changes.
+				 * <b>Note:</b> Event is fired only when IconTabBar is used for navigation.
+				 */
+				tabSelect: {
+					parameters: {
+
+						/**
+						 * The selected section object.
+						 */
+						section: {type: "sap.uxap.ObjectPageSection"}
+					}
+				}
+
 			},
-			designTime : true
+			designTime: true
 		}
 	});
-
-
-	/**
-	 * Scrolls the Object page to the given Section
-	 *
-	 * @name sap.uxap.ObjectPageLayout#scrollToSection
-	 * @function
-	 * @param {string} sId
-	 *         The Section ID to scroll to
-	 * @param {int} iDuration
-	 *         Scroll duration (in ms). Default value is 0
-	 * @param {int} iOffset
-	 *         Additional pixels to scroll
-	 * @type sap.uxap.ObjectPageLayout
-	 * @public
-	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
-	 */
-
-
-	/**
-	 * Returns a sap.ui.core.delegate.ScrollEnablement object used to handle scrolling
-	 *
-	 * @name sap.uxap.ObjectPageLayout#getScrollDelegate
-	 * @function
-	 * @type object
-	 * @public
-	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
-	 */
 
 
 	/*************************************************************************************
@@ -7208,6 +7541,10 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	 */
 
 	ObjectPageLayout.prototype.onBeforeRendering = function () {
+		if (!this.getVisible()) {
+			return;
+		}
+
 		this._bMobileScenario = library.Utilities.isPhoneScenario();
 		this._bTabletScenario = library.Utilities.isTabletScenario();
 
@@ -7253,11 +7590,11 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 
 	ObjectPageLayout.prototype._grepCurrentTabSectionBases = function () {
 		var oFiltered = [],
-		oSectionToLoad = this._oCurrentTabSection || this._oFirstVisibleSection;
+			oSectionToLoad = this._oCurrentTabSection || this._oFirstVisibleSection;
 
 		if (oSectionToLoad) {
 			var sSectionToLoadId = oSectionToLoad.getId();
-			this._aSectionBases.forEach(function(oSection) {
+			this._aSectionBases.forEach(function (oSection) {
 				if (oSection.getParent().getId() === sSectionToLoadId) {
 					oFiltered.push(oSection);
 				}
@@ -7285,7 +7622,6 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		} else {
 			jQuery.sap.delayedCall(ObjectPageLayout.HEADER_CALC_DELAY, this, this._onAfterRenderingDomReady);
 		}
-
 	};
 
 	ObjectPageLayout.prototype._onAfterRenderingDomReady = function () {
@@ -7301,6 +7637,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		this.getHeaderTitle() && this.getHeaderTitle()._shiftHeaderTitle();
 
 		this._setSectionsFocusValues();
+
 		this._restoreScrollPosition();
 	};
 
@@ -7337,6 +7674,21 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		return this;
 	};
 
+	/**
+	* Overwrite setBusy, because the busyIndicator does not cover the header title,
+	* because the header title has z-index: 2 in order to appear on top of the content
+	* @param {boolean} bBusy
+	* @public
+	*/
+	ObjectPageLayout.prototype.setBusy = function (bBusy) {
+		var $title = this.$("headerTitle"),
+			vResult = Control.prototype.setBusy.call(this, bBusy);
+
+		$title.length > 0 && $title.toggleClass("sapUxAPObjectPageHeaderTitleBusy", bBusy);
+
+		return vResult;
+	};
+
 	ObjectPageLayout.prototype._initializeScroller = function () {
 		if (this._oScroller) {
 			return;
@@ -7355,12 +7707,27 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		});
 	};
 
+
+	/**
+	 * if our container has not set a height, we need to enforce it or nothing will get displayed
+	 * the reason is the objectPageLayout has 2 containers with position:absolute, height:100%
+	 * @private
+	 */
 	ObjectPageLayout.prototype._ensureCorrectParentHeight = function () {
-		//if our container has not set a height, we need to enforce it or nothing will get displayed
-		//the reason is the objectPageLayout has 2 containers with position:absolute, height:100%
+		if (this._bCorrectParentHeightIsSet) {
+			return;
+		}
+
+		/* BCP: 1670054830 - returned the original check here since it was breaking in a case where
+		the object page was embedded in sap.m.Page, the sap.m.Page already had height 100%,
+		but we set it to its content div where the ObjectPage is resulting in the sap.m.Page
+		footer would float above some of the ObjectPage content. Its still a bit strange that we check
+		for the framework controls parent's height, but then we apply height 100% to the direct dom parent. */
 		if (this.getParent().getHeight && ["", "auto"].indexOf(this.getParent().getHeight()) !== -1) {
 			this.$().parent().css("height", "100%");
 		}
+
+		this._bCorrectParentHeightIsSet = true;
 	};
 
 	ObjectPageLayout.prototype._cacheDomElements = function () {
@@ -7372,6 +7739,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		this._$headerContent = jQuery.sap.byId(this.getId() + "-headerContent");
 		this._$stickyHeaderContent = jQuery.sap.byId(this.getId() + "-stickyHeaderContent");
 		this._$contentContainer = jQuery.sap.byId(this.getId() + "-scroll");
+		this._bDomElementsCached = true;
 	};
 
 	/**
@@ -7413,6 +7781,12 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 			this._$headerContent.css("height", "auto").append(this._$stickyHeaderContent.children());
 			this._$stickyHeaderContent.children().remove();
 			this._toggleStickyHeader(bExpand);
+		}
+	};
+
+	ObjectPageLayout.prototype._updateNavigation = function () {
+		if (this.getShowAnchorBar()) {
+			this._oABHelper._buildAnchorBar();
 		}
 	};
 
@@ -7517,7 +7891,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		}
 
 		// the AnchorBar needs to reflect the dom state
-		 if (bVisibleAnchorBar) {
+		if (bVisibleAnchorBar) {
 			this._oABHelper._buildAnchorBar();
 		}
 
@@ -7549,8 +7923,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	 * @param oSection
 	 * @private
 	 */
-	ObjectPageLayout.prototype._setCurrentTabSection = function (oSection) {
-
+	ObjectPageLayout.prototype._setCurrentTabSection = function (oSection, bIsTabClicked) {
 		if (!oSection) {
 			return;
 		}
@@ -7565,6 +7938,9 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		}
 
 		if (this._oCurrentTabSection !== oSection) {
+			if (bIsTabClicked) {
+				this.fireTabSelect({section: oSection});
+			}
 			this._renderSection(oSection);
 			this._oCurrentTabSection = oSection;
 		}
@@ -7578,18 +7954,15 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	 * @private
 	 */
 	ObjectPageLayout.prototype._renderSection = function (oSection) {
-
 		var $objectPageContainer = this.$().find(".sapUxAPObjectPageContainer"),
 			oRm;
 
 		if (oSection && $objectPageContainer.length) {
-
 			oRm = sap.ui.getCore().createRenderManager();
 			oRm.renderControl(oSection);
-			oRm.flush($objectPageContainer[0]);// place the section in the ObjectPageContainer
+			oRm.flush($objectPageContainer[0]); // place the section in the ObjectPageContainer
+			oRm.destroy();
 		}
-
-		oRm.destroy();
 	};
 
 	/*************************************************************************************
@@ -7616,7 +7989,6 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	};
 
 	ObjectPageLayout.prototype._adjustLayout = function (oEvent, bImmediate, bNeedLazyLoading) {
-
 		//adjust the layout only if the object page is full ready
 		if (!this._bDomReady) {
 			return;
@@ -7661,15 +8033,31 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		//in case we have added a section or subSection which change the ux rules
 		jQuery.sap.log.debug("ObjectPageLayout :: _adjustLayout", "refreshing ux rules");
 
-		var sSelectedSectionId = this._getSelectedSectionId(); //obtain the currently selected section in the navBar before navBar is destroyed
+		/* obtain the currently selected section in the navBar before navBar is destroyed,
+		 in order to reselect that section after that navBar is reconstructed */
+		var sSelectedSectionId = this._getSelectedSectionId();
 
 		this._applyUxRules(true);
 
-		this._setSelectedSectionId(sSelectedSectionId); //reselect the current section in the navBar
+		var oSelectedSection = sap.ui.getCore().byId(sSelectedSectionId);
 
-		this._adjustLayout(null, false, true /* requires a check on lazy loading */);
+		/* check if the section that was previously selected is still available,
+		 as it might have been deleted, or emptied, or set to hidden in the previous step */
+		if (oSelectedSection && oSelectedSection.getVisible() && oSelectedSection._getInternalVisible()) {
+			this._setSelectedSectionId(sSelectedSectionId); //reselect the current section in the navBar
+			this._adjustLayout(null, false, true /* requires a check on lazy loading */);
+			return;
+		}
+		/* the section that was previously selected is not available anymore, so we cannot reselect it;
+		 in that case we have to select the first visible section instead */
+		oSelectedSection = this._oFirstVisibleSection;
+		if (oSelectedSection) {
+			// fixes BCP:1680125278, new sections positionTop was not ready when calling scroll
+			jQuery.sap.delayedCall(0, this, function () {
+				this.scrollToSection(oSelectedSection.getId());
+			});
+		}
 	};
-
 
 	ObjectPageLayout.prototype._getSelectedSectionId = function () {
 
@@ -7708,10 +8096,10 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	 * @private
 	 */
 	ObjectPageLayout.prototype._cleanMemory = function () {
-
 		var oAnchorBar = this.getAggregation("_anchorBar");
+
 		if (oAnchorBar) {
-			oAnchorBar.destroyContent();
+			oAnchorBar._resetControl();
 		}
 
 		this._oSectionInfo = {};
@@ -7739,25 +8127,30 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	};
 
 	/**
-	 * Scroll to a specific Section
+	 * Scrolls the Object page to the given Section.
 	 *
-	 * @param sId       id of the section to scroll to
-	 * @param iDuration  Scroll duration. Default value is 0
-	 * @param iOffset Additional offset to scroll
-	 *
+	 * @param {string} sId The Section ID to scroll to
+	 * @param {int} iDuration Scroll duration (in ms). Default value is 0
+	 * @param {int} iOffset Additional pixels to scroll
+	 * @public
+	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
 	 */
-	ObjectPageLayout.prototype.scrollToSection = function (sId, iDuration, iOffset) {
-
+	ObjectPageLayout.prototype.scrollToSection = function (sId, iDuration, iOffset, bIsTabClicked) {
 		var oSection = sap.ui.getCore().byId(sId);
 
 		if (this.getUseIconTabBar()) {
-
-			this._setCurrentTabSection(oSection);
-
 			var oToSelect = oSection;
 			if (oToSelect instanceof sap.uxap.ObjectPageSubSection) {
 				oToSelect = oToSelect.getParent();
 			}
+
+			/* exclude the previously selected tab from propagation chain for performance reasons */
+			if (this._oCurrentTabSection) {
+				this._oCurrentTabSection._allowPropagationToLoadedViews(false);
+			}
+			oToSelect._allowPropagationToLoadedViews(true); /* include the newly selected tab back to the propagation chain */
+
+			this._setCurrentTabSection(oSection, bIsTabClicked);
 			this.getAggregation("_anchorBar").setSelectedButton(this._oSectionInfo[oToSelect.getId()].buttonId);
 		}
 
@@ -7781,13 +8174,17 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 
 			if (this._iCurrentScrollTimeout) {
 				clearTimeout(this._iCurrentScrollTimeout);
-				this._$contentContainer.parent().stop(true, false);
+				if (this._$contentContainer){
+					this._$contentContainer.parent().stop(true, false);
+				}
 			}
 
-			this._iCurrentScrollTimeout = jQuery.sap.delayedCall(iDuration, this, function () {
-				this._sCurrentScrollId = undefined;
-				this._iCurrentScrollTimeout = undefined;
-			});
+			if (this._bDomElementsCached) {
+				this._iCurrentScrollTimeout = jQuery.sap.delayedCall(iDuration, this, function () {
+					this._sCurrentScrollId = undefined;
+					this._iCurrentScrollTimeout = undefined;
+				});
+			}
 
 			this._preloadSectionsOnScroll(oSection);
 
@@ -7803,10 +8200,10 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		iDuration = iDuration >= 0 ? iDuration : this._iScrollToSectionDuration;
 
 		if (this.getUseIconTabBar()
-				&& ((oTargetSection instanceof sap.uxap.ObjectPageSection) || this._isFirstVisibleSubSection(oTargetSection))
-				&& this._bStickyAnchorBar) { // in this case we are only scrolling
-											 // a section from expanded to sticky position,
-											 // so the scrolling animation in not needed, instead it looks unnatural, so set a 0 duration
+			&& ((oTargetSection instanceof sap.uxap.ObjectPageSection) || this._isFirstVisibleSubSection(oTargetSection))
+			&& this._bStickyAnchorBar) { // in this case we are only scrolling
+			// a section from expanded to sticky position,
+			// so the scrolling animation in not needed, instead it looks unnatural, so set a 0 duration
 			iDuration = 0;
 		}
 		return iDuration;
@@ -7820,10 +8217,10 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		var iScrollTo = this._bMobileScenario || bFirstLevel ? this._oSectionInfo[sId].positionTopMobile : this._oSectionInfo[sId].positionTop;
 
 		if (this.getUseIconTabBar()
-				&& ((oTargetSection instanceof sap.uxap.ObjectPageSection) || this._isFirstVisibleSubSection(oTargetSection))
-				&& !this._bStickyAnchorBar) { // preserve expanded header if no need to stick
+			&& ((oTargetSection instanceof sap.uxap.ObjectPageSection) || this._isFirstVisibleSubSection(oTargetSection))
+			&& !this._bStickyAnchorBar) { // preserve expanded header if no need to stick
 
-				iScrollTo -= this.iHeaderContentHeight; // scroll to the position where the header is still expanded
+			iScrollTo -= this.iHeaderContentHeight; // scroll to the position where the header is still expanded
 		}
 		return iScrollTo;
 	};
@@ -7932,7 +8329,8 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 		this._aSectionBases.forEach(function (oSectionBase) {
 			var oInfo = this._oSectionInfo[oSectionBase.getId()],
 				$this = oSectionBase.$(),
-				$mobileAnchor;
+				$mobileAnchor,
+				bPromoted = false;
 
 			if (!oInfo /* sectionBase is visible */ || !$this.length) {
 				return;
@@ -7944,7 +8342,8 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 			//performance improvements possible here as .position() is costly
 			oInfo.realTop = $this.position().top; //first get the dom position = scrollTop to get the section at the window top
 			var bHasTitle = (oSectionBase._getInternalTitleVisible() && (oSectionBase.getTitle().trim() !== ""));
-			if (!oInfo.isSection && !bHasTitle) {
+			var bHasButtons = !oInfo.isSection && oSectionBase.getAggregation("actions", []).length > 0;
+			if (!oInfo.isSection && !bHasTitle && !bHasButtons) {
 				oInfo.realTop = $this.find(".sapUiResponsiveMargin.sapUxAPBlockContainer").position().top;
 			}
 
@@ -7960,13 +8359,17 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 				$mobileAnchor = oSectionBase.$("headerTitle");
 			}
 
+			bPromoted = $mobileAnchor.length === 0;
+
 			//calculate the mobile position
-			if ($mobileAnchor.length > 0) {
+			if (!bPromoted) {
 				oInfo.positionTopMobile = Math.ceil($mobileAnchor.position().top) + $mobileAnchor.outerHeight() - this.iAnchorBarHeight - iHeaderGap;
 			} else {
 				//title wasn't found (=first section, hidden title, promoted subsection), scroll to the same position as desktop
 				oInfo.positionTopMobile = oInfo.positionTop;
 			}
+
+			oInfo.sectionReference.toggleStyleClass("sapUxAPObjectPageSubSectionPromoted", bPromoted);
 
 			//for calculating the currently scrolled section of subsection (and for lazy loading) we also need to know the bottom of the section and subsections
 			//we can't use oInfo.$dom.height() since the margin are not taken into account.
@@ -8019,13 +8422,13 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 					//therefore we need to create enough space below the last subsection to get it displayed on top = the spacer
 					//the "top" is just below the sticky header + anchorBar, therefore we just need enough space to get the last subsection below these elements
 
+					iSpacerHeight = this.iScreenHeight - iLastVisibleHeight - this.iAnchorBarHeight - this.iHeaderTitleHeight;
+
 					//the latest position is below the last subsection title in case of a mobile scroll to the last subsection
 					if (this.iHeaderContentHeight || this._bHContentAlwaysExpanded) {
 						// Not always when we scroll the HeaderTitle is in Sticky position so instead of taking out its StickyHeight we have to take out its height and the HeaderGap,
 						// which will be zero when the HeaderTitle is in normal mode
-						iSpacerHeight = this.iScreenHeight - iLastVisibleHeight - this.iHeaderTitleHeight - iHeaderGap - this.iAnchorBarHeight;
-					} else {
-						iSpacerHeight = this.iScreenHeight - iLastVisibleHeight - this.iAnchorBarHeight;
+						iSpacerHeight -= iHeaderGap;
 					}
 
 					//take into account that we may need to scroll down to the positionMobile, thus we need to make sure we have enough space at the bottom
@@ -8043,13 +8446,14 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	};
 
 	/*
-	* Determines wheder spacer, after the last subsection, is needed on the screen.
-	* The main reason for spacer to exist is to have enogth space for scrolling to the last section.
-	*/
+	 * Determines wheder spacer, after the last subsection, is needed on the screen.
+	 * The main reason for spacer to exist is to have enogth space for scrolling to the last section.
+	 */
 	ObjectPageLayout.prototype._isSpacerRequired = function (oLastVisibleSubSection, iLastVisibleHeight) {
-		var oSelectedSection = this.getAggregation("_anchorBar").getSelectedSection(),
+		var oAnchorBar = this.getAggregation("_anchorBar"),
+			oSelectedSection = oAnchorBar && oAnchorBar.getSelectedSection(),
 			bIconTabBarWithOneSectionAndOneSubsection = this.getUseIconTabBar() && oSelectedSection
-					&& oSelectedSection.getSubSections().length === 1,
+				&& oSelectedSection.getSubSections().length === 1,
 			bOneSectionOneSubsection = this.getSections().length === 1 && this.getSections()[0].getSubSections().length === 1;
 
 		// When there there is only one element the scrolling is not required so the spacer is redundant.
@@ -8088,7 +8492,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 			return;
 		}
 		var oFirstSubSection;
-		this._aSectionBases.every(function(oSectionBase) {
+		this._aSectionBases.every(function (oSectionBase) {
 			if (oSectionBase.getParent() && (oSectionBase.getParent().getId() === oSection.getId())) {
 				oFirstSubSection = oSectionBase;
 				return false;
@@ -8175,7 +8579,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 
 			this._adjustLayout(null, true);
 
-			this._oScroller.scrollTo(0, this._$opWrapper.scrollTop(), 0);
+			this._scrollTo(this._$opWrapper.scrollTop(), 0);
 		});
 
 	};
@@ -8399,17 +8803,22 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	 */
 	ObjectPageLayout.prototype._toggleHeaderStyleRules = function (bStuck) {
 		bStuck = !!bStuck;
-		var sValue = bStuck ? "hidden" : "inherit",
-			sABarVisible = this._bIsHeaderExpanded ? "hidden" : "inherit";
+		var sValue = bStuck ? "hidden" : "inherit";
+
 		this._bStickyAnchorBar = bStuck;
 		this._$headerContent.css("overflow", sValue);
 		this._$headerContent.css("visibility", sValue);
-		this._$anchorBar.css("visibility", sABarVisible);
+		this._$anchorBar.css("visibility", sValue);
 		this.fireToggleAnchorBar({fixed: bStuck});
 	};
 
+	// use type 'object' because Metamodel doesn't know ScrollEnablement
 	/**
-	 * Returns the sap.ui.core.ScrollEnablement delegate which is used with this control.
+	 * Returns a sap.ui.core.delegate.ScrollEnablement object used to handle scrolling
+	 *
+	 * @type object
+	 * @public
+	 * @ui5-metamodel This method also will be described in the UI5 (legacy) designtime metamodel
 	 */
 	ObjectPageLayout.prototype.getScrollDelegate = function () {
 		return this._oScroller;
@@ -8617,6 +9026,7 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 
 		var oRm = sap.ui.getCore().createRenderManager();
 		this.getRenderer()._rerenderHeaderContentArea(oRm, this);
+		this._getHeaderContent().invalidate();
 		oRm.destroy();
 	};
 
@@ -8726,11 +9136,39 @@ sap.ui.define("sap/uxap/ObjectPageLayout",[
 	ObjectPageLayout.prototype._storeScrollLocation = function () {
 		this._iStoredScrollPosition = this._oScroller.getScrollTop();
 		this._oStoredSection = this._oCurrentTabSubSection || this._oCurrentTabSection;
+
+		if (this.getSections().indexOf(this._oStoredSection) === -1) {
+			this._oStoredSection = null;
+		}
+
 		this._oCurrentTabSection = null;
 	};
 
 	ObjectPageLayout.HEADER_CALC_DELAY = 350;   //ms. The higher the safer and the uglier...
 	ObjectPageLayout.DOM_CALC_DELAY = 200;      //ms.
+
+	ObjectPageLayout.prototype.onkeyup = function (oEvent) {
+		var oFocusedControlId,
+			oFocusedControl,
+			oFocusedControlPosition,
+			iHeaderHeight;
+
+		if (oEvent.which === jQuery.sap.KeyCodes.TAB) {
+			oFocusedControlId = sap.ui.getCore().getCurrentFocusedControlId();
+			oFocusedControl = oFocusedControlId && sap.ui.getCore().byId(oFocusedControlId);
+
+			if (oFocusedControl && oFocusedControl.$().length) {
+				oFocusedControlPosition = oFocusedControl.$().position().top;
+				iHeaderHeight = this.iHeaderTitleHeight + this.iHeaderContentHeight + this.iAnchorBarHeight;
+
+				if (this._isFirstSection(oFocusedControl)) {
+					this._scrollTo(0, 0);
+				} else if (oFocusedControlPosition > iHeaderHeight) {
+					this._scrollTo(oFocusedControlPosition - this.iHeaderTitleHeight - this.iAnchorBarHeight, 0);
+				}
+			}
+		}
+	};
 
 	return ObjectPageLayout;
 
@@ -8745,7 +9183,8 @@ if ( !jQuery.sap.isDeclared('sap.uxap.ObjectPageHeaderRenderer') ) {
  */
 
 jQuery.sap.declare('sap.uxap.ObjectPageHeaderRenderer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
-sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], function (ObjectPageLayout) {
+jQuery.sap.require('sap.ui.core.Icon'); // unlisted dependency retained
+sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout", "sap/ui/core/Icon"], function (ObjectPageLayout, Icon) {
 	"use strict";
 
 	/**
@@ -8760,8 +9199,11 @@ sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], functi
 			bTitleVisible = (oControl.getIsObjectIconAlwaysVisible() || oControl.getIsObjectTitleAlwaysVisible() || oControl.getIsObjectSubtitleAlwaysVisible() || oControl.getIsActionAreaAlwaysVisible()),
 			oParent = oControl.getParent(),
 			oExpandButton = oControl.getAggregation("_expandButton"),
+			oObjectImage = oControl._getInternalAggregation("_objectImage"),
 			bIsDesktop = sap.ui.Device.system.desktop,
-			bIsHeaderContentVisible = oParent && oParent instanceof ObjectPageLayout && oParent.getHeaderContent() && oParent.getHeaderContent().length > 0 && oParent.getShowHeaderContent();
+			bIsHeaderContentVisible = oParent && oParent instanceof ObjectPageLayout && ((oParent.getHeaderContent()
+				&& oParent.getHeaderContent().length > 0 && oParent.getShowHeaderContent()) ||
+			(oParent.getShowHeaderContent() && oParent.getShowTitleInHeaderContent()));
 
 		oRm.write("<div");
 		oRm.writeControlData(oControl);
@@ -8808,14 +9250,11 @@ sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], functi
 			oRm.writeClasses();
 			oRm.write(">");
 			oRm.write("<span class='sapUxAPObjectPageHeaderObjectImageContainerSub'>");
-			if (oControl.getObjectImageURI()) {
-				oRm.renderControl(oControl._getInternalAggregation("_objectImage"));
-				if (oControl.getShowPlaceholder()) {
-					this._renderPlaceholder(oRm, oControl, false);
-				}
-			} else {
-				this._renderPlaceholder(oRm, oControl, true);
-			}
+
+			ObjectPageHeaderRenderer._renderInProperContainer(function () {
+				oRm.renderControl(oObjectImage);
+				ObjectPageHeaderRenderer._renderPlaceholder(oRm, oControl, !(oControl.getObjectImageShape() || oControl.getShowPlaceholder()));
+			}, oObjectImage, oRm);
 
 			oRm.write("</span>");
 			oRm.write("</span>");
@@ -8855,11 +9294,28 @@ sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], functi
 		}
 		var oOverflowButton = oControl.getAggregation("_overflowButton");
 		oRm.renderControl(oOverflowButton);
+
+		this._renderSideContentBtn(oRm, oControl);
+
 		oRm.write("</span>");
 
 		oRm.write("</div>");
 
 		oRm.write("</div>");
+	};
+
+	ObjectPageHeaderRenderer._renderInProperContainer = function (fnRender, oObjectImage, oRm) {
+		if (oObjectImage instanceof Icon) {
+			oRm.write("<div");
+			oRm.addClass("sapUxAPObjectPageHeaderObjectImage");
+			oRm.addClass("sapUxAPObjectPageHeaderPlaceholder");
+			oRm.writeClasses();
+			oRm.write(">");
+			fnRender();
+			oRm.write("</div>");
+		} else {
+			fnRender();
+		}
 	};
 
 
@@ -8987,7 +9443,7 @@ sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], functi
 	 * @param {sap.ui.core.RenderManager}
 	 *            oRm the RenderManager that can be used for writing to the render output buffer
 	 *
-	 * @param {sap.m.ObjectHeader}
+	 * @param {sap.uxap.ObjectPageHeader}
 	 *            oControl the ObjectPageHeader
 	 * @param {boolean}
 	 *      bTitleInContent - if the arrow will be rendered in content or in title
@@ -9007,6 +9463,34 @@ sap.ui.define("sap/uxap/ObjectPageHeaderRenderer",["./ObjectPageLayout"], functi
 			oRm.write("</span>"); // end title arrow container
 		}
 	};
+
+	/**
+	 * Renders the sideContentButton button.
+	 *
+	 * @param {sap.ui.core.RenderManager}
+	 *            oRm the RenderManager that can be used for writing to the render output buffer
+	 *
+	 * @param {sap.uxap.ObjectPageHeader}
+	 *            oControl the ObjectPageHeader
+	 * @private
+	 */
+	ObjectPageHeaderRenderer._renderSideContentBtn = function (oRm, oControl) {
+		var oSideBtn = oControl.getSideContentButton();
+
+		if (oSideBtn) { // render sideContent button and separator
+			oRm.write("<span"); // Start button and separator container
+			oRm.addClass("sapUxAPObjectPageHeaderSideContentBtn");
+			oRm.writeClasses();
+			oRm.write(">");
+			oRm.write("<span");
+			oRm.addClass("sapUxAPObjectPageHeaderSeparator");
+			oRm.writeClasses();
+			oRm.write("></span>");
+			oRm.renderControl(oSideBtn);
+			oRm.write("</span>"); // end container
+		}
+	};
+
 
 	/**
 	 * Renders the Unsaved Changes icon.
@@ -9166,7 +9650,10 @@ sap.ui.define("sap/uxap/ObjectPageLayoutRenderer",["sap/ui/core/Renderer", "./Ob
 		ObjectPageLayoutRenderer.render = function (oRm, oControl) {
 			var aSections,
 				oHeader = oControl.getHeaderTitle(),
-				oAnchorBar = null;
+				oAnchorBar = null,
+				bIsHeaderContentVisible = oControl.getHeaderContent() && oControl.getHeaderContent().length > 0 && oControl.getShowHeaderContent(),
+				bIsTitleInHeaderContent = oControl.getShowTitleInHeaderContent() && oControl.getShowHeaderContent(),
+				bRenderHeaderContent = 	bIsHeaderContentVisible || bIsTitleInHeaderContent;
 
 			if (oControl.getShowAnchorBar() && oControl._getInternalAnchorBarVisible()) {
 				oAnchorBar = oControl.getAggregation("_anchorBar");
@@ -9194,7 +9681,10 @@ sap.ui.define("sap/uxap/ObjectPageLayoutRenderer",["sap/ui/core/Renderer", "./Ob
 				oRm.renderControl(oHeader);
 			}
 
-			this._renderHeaderContentDOM(oRm, oControl, oControl._bHContentAlwaysExpanded, "-stickyHeaderContent");
+			// Sticky Header Content
+			if (bRenderHeaderContent) {
+				this._renderHeaderContentDOM(oRm, oControl, oControl._bHContentAlwaysExpanded, "-stickyHeaderContent");
+			}
 
 			// Sticky anchorBar placeholder
 			oRm.write("<div ");
@@ -9227,13 +9717,15 @@ sap.ui.define("sap/uxap/ObjectPageLayoutRenderer",["sap/ui/core/Renderer", "./Ob
 			oRm.write(">");
 
 			// Header Content
-			this._renderHeaderContentDOM(oRm, oControl, !oControl._bHContentAlwaysExpanded, "-headerContent");
+			if (bRenderHeaderContent) {
+				this._renderHeaderContentDOM(oRm, oControl, !oControl._bHContentAlwaysExpanded, "-headerContent");
+			}
 
 			// Anchor Bar
 			oRm.write("<section ");
 			oRm.writeAttributeEscaped("id", oControl.getId() + "-anchorBar");
 			// write ARIA role
-			oRm.writeAttribute("role", "navigaiton");
+			oRm.writeAttribute("role", "navigation");
 			oRm.addClass("sapUxAPObjectPageNavigation");
 			oRm.writeClasses();
 			oRm.write(">");
@@ -9368,7 +9860,11 @@ if ( !jQuery.sap.isDeclared('sap.uxap.ObjectPageHeaderContentRenderer') ) {
  */
 
 jQuery.sap.declare('sap.uxap.ObjectPageHeaderContentRenderer'); // unresolved dependency added by SAPUI5 'AllInOne' Builder
-sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",["./ObjectPageHeaderRenderer", "./ObjectPageLayout"], function (ObjectPageHeaderRenderer, ObjectPageLayout) {
+jQuery.sap.require('sap.ui.core.Icon'); // unlisted dependency retained
+sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",[
+	"./ObjectPageHeaderRenderer",
+	"./ObjectPageLayout",
+	"sap/ui/core/Icon"], function (ObjectPageHeaderRenderer, ObjectPageLayout, Icon) {
 	"use strict";
 
 	/**
@@ -9383,12 +9879,15 @@ sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",["./ObjectPageHeaderRen
 			oHeader = (oParent && bParentLayout) ? oParent.getHeaderTitle() : false,
 			bRenderTitle = (oParent && bParentLayout) ? ((oParent instanceof ObjectPageLayout)
 			&& oParent.getShowTitleInHeaderContent()) : false,
-			bRenderEditBtn = bParentLayout && oParent.getShowEditHeaderButton();
+			bRenderEditBtn = bParentLayout && oParent.getShowEditHeaderButton() && oControl.getContent() && oControl.getContent().length > 0;
 
 		if (bRenderEditBtn) {
 			oRm.write("<div ");
 			oRm.addClass("sapUxAPObjectPageHeaderContentFlexBox");
 			oRm.addClass("sapUxAPObjectPageHeaderContentDesign-" + oControl.getContentDesign());
+			if (oHeader) {
+				oRm.addClass('sapUxAPObjectPageContentObjectImage-' + oHeader.getObjectImageShape());
+			}
 			oRm.writeClasses();
 			oRm.write(">");
 		}
@@ -9398,6 +9897,9 @@ sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",["./ObjectPageHeaderRen
 			oRm.addClass("sapUxAPObjectPageHeaderContentCellLeft");
 		} else {
 			oRm.addClass("sapUxAPObjectPageHeaderContentDesign-" + oControl.getContentDesign());
+			if (oHeader) {
+				oRm.addClass('sapUxAPObjectPageContentObjectImage-' + oHeader.getObjectImageShape());
+			}
 		}
 		oRm.addClass("ui-helper-clearfix");
 		oRm.addClass("sapUxAPObjectPageHeaderContent");
@@ -9516,6 +10018,7 @@ sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",["./ObjectPageHeaderRen
 	 * @param {sap.ui.core.Control} oHeader an object representation of the titleHeader that should be rendered
 	 */
 	ObjectPageHeaderContentRenderer._renderTitleImage = function (oRm, oHeader) {
+		var oObjectImage = oHeader._getInternalAggregation("_objectImage");
 
 		if (oHeader.getObjectImageURI() || oHeader.getShowPlaceholder()) {
 			oRm.write("<span");
@@ -9524,15 +10027,10 @@ sap.ui.define("sap/uxap/ObjectPageHeaderContentRenderer",["./ObjectPageHeaderRen
 			oRm.writeClasses();
 			oRm.write(">");
 
-			if (oHeader.getObjectImageURI()) {
-				oRm.renderControl(oHeader._getInternalAggregation("_objectImage"));
-				if (oHeader.getShowPlaceholder()) {
-					ObjectPageHeaderRenderer._renderPlaceholder(oRm, oHeader, false);
-				}
-			} else {
-				ObjectPageHeaderRenderer._renderPlaceholder(oRm, oHeader, true);
-			}
-
+			ObjectPageHeaderRenderer._renderInProperContainer(function (){
+				oRm.renderControl(oObjectImage);
+				ObjectPageHeaderRenderer._renderPlaceholder(oRm, oHeader, !(oHeader.getObjectImageShape() || oHeader.getShowPlaceholder()));
+			}, oObjectImage, oRm);
 			oRm.write("</span>");
 		}
 	};

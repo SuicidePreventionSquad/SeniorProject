@@ -19,11 +19,18 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './TableRenderer'],
 
 	TreeTableRenderer.renderTableCellControl = function(rm, oTable, oCell, iCellIndex) {
 		if (oTable.isTreeBinding("rows") && iCellIndex === 0 && !oTable.getUseGroupMode()) {
+			var oRow = oCell.getParent();
 			rm.write("<span");
 			rm.addClass("sapUiTableTreeIcon");
-			rm.addClass("sapUiTableTreeIconLeaf");
+			rm.addClass(oCell.getParent()._sTreeIconClass);
 			rm.writeClasses();
+			var aLevelIndentCSS = oTable._getLevelIndentCSS(oRow);
+			if (aLevelIndentCSS) {
+				rm.addStyle.apply(rm, aLevelIndentCSS);
+				rm.writeStyles();
+			}
 			rm.writeAttribute("tabindex", -1);
+			oTable._getAccRenderExtension().writeAriaAttributesFor(rm, oTable, "TREEICON", {row: oRow});
 			rm.write(">&nbsp;</span>");
 		}
 		rm.renderControl(oCell);

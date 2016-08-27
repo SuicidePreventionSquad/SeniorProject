@@ -97,12 +97,6 @@ sap.ui.define(['jquery.sap.global', './BarRenderer'],
 				});
 			}
 
-			if (oHeader) {
-				oRm.writeAccessibilityState(oControl, {
-					labelledby: oHeader.getId()
-				});
-			}
-
 			if (oControl._forceDisableScrolling) {
 				oRm.addClass("sapMDialogWithScrollCont");
 			}
@@ -170,7 +164,13 @@ sap.ui.define(['jquery.sap.global', './BarRenderer'],
 
 			oRm.write('<section id="' + id + '-cont" class="sapMDialogSection">');
 			oRm.write('<div id="' + id + '-scroll" class="sapMDialogScroll">');
-			oRm.write('<div id="' + id + '-scrollCont" class="sapMDialogScrollCont">');
+			oRm.write('<div id="' + id + '-scrollCont" class="sapMDialogScrollCont');
+
+			if (oControl.getStretch() || initialHeight) {
+				oRm.write(' sapMDialogStretchContent');
+			}
+
+			oRm.write('">');
 
 			var aContent = oControl.getContent();
 

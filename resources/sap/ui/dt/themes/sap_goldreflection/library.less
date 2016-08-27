@@ -34,11 +34,13 @@
 		height: 100%;
 		box-sizing: border-box;
 	}
+}
 
+.sapUiDtOverlayFocusable {
 	&:focus {
 		&:before {
 			content: " ";
-			border: 2px solid @sapUiDtFocusColor;
+			border: 2px solid darken(@sapUiSelected, 5);
 		}
 	}
 }

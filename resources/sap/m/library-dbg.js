@@ -7,11 +7,11 @@
 /**
  * Initialization Code and shared classes of library sap.m.
  */
-sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
+sap.ui.define(['jquery.sap.global', 'sap/ui/Device', 'sap/ui/base/DataType',
 	'sap/ui/core/library', // library dependency
 	'jquery.sap.mobile', // referenced here in case the Core decides to throw it out - shall always be available when using the mobile lib.
 	'./Support'], // referenced here to enable the Support feature
-	function(jQuery, Device) {
+	function(jQuery, Device, DataType) {
 
 	"use strict";
 
@@ -22,14 +22,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	 * @namespace
 	 * @name sap.m
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @public
 	 */
 
 	// delegate further initialization of this library to the Core
 	sap.ui.getCore().initLibrary({
 		name : "sap.m",
-		version: "1.34.8",
+		version: "1.38.7",
 		dependencies : ["sap.ui.core"],
 		types: [
 			"sap.m.BackgroundDesign",
@@ -47,6 +47,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.FlexJustifyContent",
 			"sap.m.FlexRendertype",
 			"sap.m.FrameType",
+			"sap.m.GenericTileMode",
 			"sap.m.HeaderLevel",
 			"sap.m.IBarHTMLTag",
 			"sap.m.IconTabFilterDesign",
@@ -56,10 +57,12 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.InputType",
 			"sap.m.LabelDesign",
 			"sap.m.ListHeaderDesign",
+			"sap.m.ListKeyboardMode",
 			"sap.m.ListMode",
 			"sap.m.ListSeparators",
 			"sap.m.ListType",
 			"sap.m.LoadState",
+			"sap.m.MenuButtonMode",
 			"sap.m.OverflowToolbarPriority",
 			"sap.m.P13nPanelType",
 			"sap.m.PageBackgroundDesign",
@@ -68,6 +71,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.QuickViewGroupElementType",
 			"sap.m.RatingIndicatorVisualMode",
 			"sap.m.ScreenSize",
+			"sap.m.SelectListKeyboardNavigationMode",
 			"sap.m.SelectType",
 			"sap.m.SplitAppMode",
 			"sap.m.StandardTileType",
@@ -79,6 +83,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		interfaces: [
 			"sap.m.IBar",
 			"sap.m.IconTab",
+			"sap.m.ISnappable",
 			"sap.m.semantic.IGroup",
 			"sap.m.semantic.IFilter",
 			"sap.m.semantic.ISort",
@@ -90,6 +95,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.ActionSheet",
 			"sap.m.App",
 			"sap.m.Bar",
+			"sap.m.DynamicPage",
+			"sap.m.DynamicPageHeader",
+			"sap.m.DynamicPageTitle",
 			"sap.m.BusyDialog",
 			"sap.m.BusyIndicator",
 			"sap.m.Button",
@@ -105,6 +113,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.DatePicker",
 			"sap.m.DateRangeSelection",
 			"sap.m.DateTimeInput",
+			"sap.m.DateTimePicker",
 			"sap.m.Dialog",
 			"sap.m.DisplayListItem",
 			"sap.m.DraftIndicator",
@@ -115,6 +124,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.FeedInput",
 			"sap.m.FeedListItem",
 			"sap.m.FlexBox",
+			"sap.m.FormattedText",
+			"sap.m.FlexibleColumnLayout",
 			"sap.m.GenericTile",
 			"sap.m.GroupHeaderListItem",
 			"sap.m.GrowingList",
@@ -122,6 +133,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.IconTabBar",
 			"sap.m.IconTabHeader",
 			"sap.m.Image",
+			"sap.m.ImageContent",
 			"sap.m.Input",
 			"sap.m.InputBase",
 			"sap.m.InputListItem",
@@ -131,6 +143,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.ListBase",
 			"sap.m.ListItemBase",
 			"sap.m.MaskInput",
+			"sap.m.Menu",
+			"sap.m.MenuButton",
 			"sap.m.MessagePage",
 			"sap.m.MessagePopover",
 			"sap.m.MessageStrip",
@@ -146,11 +160,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.ObjectHeader",
 			"sap.m.ObjectIdentifier",
 			"sap.m.ObjectListItem",
+			"sap.m.ObjectMarker",
 			"sap.m.ObjectNumber",
 			"sap.m.ObjectStatus",
 			"sap.m.OverflowToolbar",
 			"sap.m.OverflowToolbarButton",
 			"sap.m.P13nColumnsItem",
+			"sap.m.P13nDimMeasureItem",
 			"sap.m.P13nColumnsPanel",
 			"sap.m.P13nDimMeasurePanel",
 			"sap.m.P13nConditionPanel",
@@ -171,6 +187,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.QuickViewGroupElement",
 			"sap.m.RadioButton",
 			"sap.m.RadioButtonGroup",
+			"sap.m.RangeSlider",
 			"sap.m.RatingIndicator",
 			"sap.m.ResponsivePopover",
 			"sap.m.ScrollContainer",
@@ -211,6 +228,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.UploadCollectionToolbarPlaceholder",
 			"sap.m.VBox",
 			"sap.m.ViewSettingsDialog",
+			"sap.m.ViewSettingsPopover",
 			"sap.m.semantic.DetailPage",
 			"sap.m.semantic.FullscreenPage",
 			"sap.m.semantic.MasterPage",
@@ -224,6 +242,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			"sap.m.IconTabSeparator",
 			"sap.m.OverflowToolbarLayoutData",
 			"sap.m.MaskInputRule",
+			"sap.m.MenuItem",
 			"sap.m.MessagePopoverItem",
 			"sap.m.PageAccessibleLandmarkInfo",
 			"sap.m.P13nFilterItem",
@@ -582,31 +601,31 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	sap.m.FlexAlignItems = {
 
 		/**
-		 * The cross-start margin edges of the box items are placed flush with the cross-start edge of the line.
+		 * The cross-start margin edges of the flex items are placed flush with the cross-start edge of the line.
 		 * @public
 		 */
 		Start : "Start",
 
 		/**
-		 * The cross-start margin edges of the box items are placed flush with the cross-end edge of the line.
+		 * The cross-start margin edges of the flex items are placed flush with the cross-end edge of the line.
 		 * @public
 		 */
 		End : "End",
 
 		/**
-		 * The box items' margin boxes are centered in the cross axis within the line.
+		 * The flex item's margin boxes are centered in the cross axis within the line.
 		 * @public
 		 */
 		Center : "Center",
 
 		/**
-		 * If the box items' inline axes are the same as the cross axis, this value is identical to ?start?. Otherwise, it participates in baseline alignment: all participating box items on the line are aligned such that their baselines align, and the item with the largest distance between its baseline and its cross-start margin edge is placed flush against the cross-start edge of the line.
+		 * If the flex item's inline axes are the same as the cross axis, this value is identical to "Start". Otherwise, it participates in baseline alignment: all participating box items on the line are aligned such that their baselines align, and the item with the largest distance between its baseline and its cross-start margin edge is placed flush against the cross-start edge of the line.
 		 * @public
 		 */
 		Baseline : "Baseline",
 
 		/**
-		 * Make the cross size of the items' margin boxes as close to the same size as the line as possible.
+		 * Make the cross size of the item's margin boxes as close to the same size as the line as possible.
 		 * @public
 		 */
 		Stretch : "Stretch",
@@ -636,25 +655,25 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		Auto : "Auto",
 
 		/**
-		 * The cross-start margin edges of the box item is placed flush with the cross-start edge of the line.
+		 * The cross-start margin edges of the flex item is placed flush with the cross-start edge of the line.
 		 * @public
 		 */
 		Start : "Start",
 
 		/**
-		 * The cross-start margin edges of the box item is placed flush with the cross-end edge of the line.
+		 * The cross-start margin edges of the flex item is placed flush with the cross-end edge of the line.
 		 * @public
 		 */
 		End : "End",
 
 		/**
-		 * The box item's margin box is centered in the cross axis within the line.
+		 * The flex item's margin box is centered in the cross axis within the line.
 		 * @public
 		 */
 		Center : "Center",
 
 		/**
-		 * If the box item's inline axis is the same as the cross axis, this value is identical to ?start?. Otherwise, it participates in baseline alignment: all participating box items on the line are aligned such that their baselines align, and the item with the largest distance between its baseline and its cross-start margin edge is placed flush against the cross-start edge of the line.
+		 * If the flex item's inline axis is the same as the cross axis, this value is identical to "Start". Otherwise, it participates in baseline alignment: all participating box items on the line are aligned such that their baselines align, and the item with the largest distance between its baseline and its cross-start margin edge is placed flush against the cross-start edge of the line.
 		 * @public
 		 */
 		Baseline : "Baseline",
@@ -684,25 +703,25 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	sap.m.FlexDirection = {
 
 		/**
-		 * Elements are layed out along the direction of the inline axis (text direction).
+		 * Flex items are laid out along the direction of the inline axis (text direction).
 		 * @public
 		 */
 		Row : "Row",
 
 		/**
-		 * Elements are layed out along the direction of the block axis (usually top to bottom).
+		 * Flex items are laid out along the direction of the block axis (usually top to bottom).
 		 * @public
 		 */
 		Column : "Column",
 
 		/**
-		 * Elements are layed out along the reverse direction of the inline axis (against the text direction).
+		 * Flex items are laid out along the reverse direction of the inline axis (against the text direction).
 		 * @public
 		 */
 		RowReverse : "RowReverse",
 
 		/**
-		 * Elements are layed out along the reverse direction of the block axis (usually bottom to top).
+		 * Flex items are laid out along the reverse direction of the block axis (usually bottom to top).
 		 * @public
 		 */
 		ColumnReverse : "ColumnReverse",
@@ -726,31 +745,31 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	sap.m.FlexJustifyContent = {
 
 		/**
-		 * Box items are packed toward the start of the line.
+		 * Flex items are packed toward the start of the line.
 		 * @public
 		 */
 		Start : "Start",
 
 		/**
-		 * Box items are packed toward the end of the line.
+		 * Flex items are packed toward the end of the line.
 		 * @public
 		 */
 		End : "End",
 
 		/**
-		 * Box items are packed toward the center of the line.
+		 * Flex items are packed toward the center of the line.
 		 * @public
 		 */
 		Center : "Center",
 
 		/**
-		 * Box items are evenly distributed in the line.
+		 * Flex items are evenly distributed in the line.
 		 * @public
 		 */
 		SpaceBetween : "SpaceBetween",
 
 		/**
-		 * Box items are evenly distributed in the line, with half-size spaces on either end.
+		 * Flex items are evenly distributed in the line, with half-size spaces on either end.
 		 * <b>Note:</b> This value behaves like SpaceBetween in Internet Explorer 10.
 		 * @public
 		 */
@@ -766,6 +785,90 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 
 	/**
+	 * Available options for the wrapping behavior of a flex container.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.FlexWrap = {
+
+		/**
+		 * The flex container is single-line.
+		 * @public
+		 */
+		NoWrap : "NoWrap",
+
+		/**
+		 * The flex container is multi-line.
+		 * @public
+		 */
+		Wrap : "Wrap",
+
+		/**
+		 * The flex container is multi-line with the cross-axis start and end being swapped.
+		 * @public
+		 */
+		WrapReverse : "WrapReverse"
+
+	};
+
+
+	/**
+	 * Available options for the layout of container lines along the cross axis of the flexbox layout. <b>Note:</b> This property has no effect in Internet Explorer 10.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.FlexAlignContent = {
+
+		/**
+		 * Lines are packed toward the start of the line.
+		 * @public
+		 */
+		Start : "Start",
+
+		/**
+		 * Lines are packed toward the end of the line.
+		 * @public
+		 */
+		End : "End",
+
+		/**
+		 * Line are packed toward the center of the line.
+		 * @public
+		 */
+		Center : "Center",
+
+		/**
+		 * Lines are evenly distributed in the line.
+		 * @public
+		 */
+		SpaceBetween : "SpaceBetween",
+
+		/**
+		 * Lines are evenly distributed in the line, with half-size spaces on either end.
+		 * <b>Note:</b> This value behaves like SpaceBetween in Internet Explorer 10.
+		 * @public
+		 */
+		SpaceAround : "SpaceAround",
+
+		/**
+		 * Lines stretch to take up the remaining space.
+		 * @public
+		 */
+		Stretch : "Stretch",
+
+		/**
+		 * Inherits the value from its parent.
+		 * @public
+		 */
+		Inherit : "Inherit"
+
+	};
+
+	/**
 	 * Determines the type of HTML elements used for rendering controls.
 	 *
 	 * @enum {string}
@@ -775,13 +878,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	sap.m.FlexRendertype = {
 
 		/**
-		 * DIV elements are used for rendering
+		 * The UI5 controls are wrapped in DIV elements
 		 * @public
 		 */
 		Div : "Div",
 
 		/**
-		 * Unordered lists are used for rendering.
+		 * The UI5 controls are wrapped in LI elements, the entire Flex Box is an unordered list (UL)
 		 * @public
 		 */
 		List : "List"
@@ -794,33 +897,59 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		 *
 		 * @enum {string}
 		 * @public
-		 * @since 1.34
+		 * @since 1.34.0
 		 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
 		 */
 	sap.m.FrameType = {
 
 		/**
 		 * The 1x1 frame type.
+		 * @public
 		 */
 		OneByOne : "OneByOne",
 
 		/**
 		 * The 2x1 frame type.
+		 * @public
 		 */
 		TwoByOne : "TwoByOne",
 
 		/**
 		 * The 2/3 frame type.
+		 * @protected
 		 */
 		TwoThirds : "TwoThirds",
 
 		/**
 		 * The Auto frame type that adjusts the size of the control to the content.
+		 * @protected
 		 */
 		Auto : "Auto"
 
 	};
 
+	/**
+	 * Defines the mode of GenericTile.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.38.0
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.GenericTileMode = {
+
+		/**
+		 * Default mode (Two lines for the header and one line for the subtitle).
+		 * @public
+		 */
+		ContentMode : "ContentMode",
+
+		/**
+		 * Header mode (Four lines for the header and one line for the subtitle).
+		 * @public
+		 */
+		HeaderMode : "HeaderMode"
+	};
 
 	/**
 	 * Different levels for headers
@@ -883,6 +1012,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
 	 */
 
+	/**
+	 *
+	 *   Interface for controls which are suitable as a Header in sap.m.DynamicPage.
+	 *   If the control wants to get have the pin/unpin functionality, it must fire the pinUnpinPress event
+	 *
+	 * @since 1.38
+	 * @name sap.m.ISnappable
+	 * @interface
+	 * @public
+	 * @ui5-metamodel This interface also will be described in the UI5 (legacy) designtime metamodel
+	 */
 
 	/**
 	 * Allowed tags for the implementation of the IBar interface.
@@ -1087,7 +1227,30 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 	};
 
-		/**
+	/**
+	 * @classdesc A string type that represents CSS color values and sap.m.ValueColor.
+	 *
+	 * Allowed values are {@link sap.ui.core.CSSColor} and {@link sap.m.ValueColor}
+	 *
+	 * The empty string is also allowed and has the same effect as setting no color.
+	 *
+	 * @final
+	 * @namespace
+	 * @public
+	 * @ui5-metamodel This simple type also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.ValueCSSColor = DataType.createType('sap.m.ValueCSSColor', {
+		isValid : function(vValue) {
+				// Note: the following regexp by intention is a single regexp literal.
+				// It could be made much more readable by constructing it out of (reused) sub-expressions (strings)
+				// but this would not be parseable by the metamodel recovery tooling that is used inside SAP
+				return /^(#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})|rgb\(\s*((1?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))|([0-9]?[0-9](\.[0-9]+)?|100(\.0+)?)%)\s*(,\s*((1?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))|([0-9]?[0-9](\.[0-9]+)?|100(\.0+)?)%)\s*){2}\)|rgba\((\s*((1?[0-9]?[0-9]|2([0-4][0-9]|5[0-5]))|([0-9]?[0-9](\.[0-9]+)?|100(\.0+)?)%)\s*,){3}\s*(0(\.[0-9]+)?|1(\.0+)?)\s*\)|hsl\(\s*([0-2]?[0-9]?[0-9]|3([0-5][0-9]|60))\s*(,\s*(([0-9]?[0-9](\.[0-9]+)?|100(\.0+)?)%)\s*){2}\)|hsla\(\s*([0-2]?[0-9]?[0-9]|3([0-5][0-9]|60))\s*,(\s*(([0-9]?[0-9](\.[0-9]+)?|100(\.0+)?)%)\s*,){2}\s*(0(\.[0-9]+)?|1(\.0+)?)\s*\)|aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coralcornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silverskyblue|slateblue|slategray|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen|transparent|inherit|Neutral|Good|Critical|Error|)$/.test(vValue);
+			}
+		},
+		DataType.getType('string')
+	);
+
+	/**
 	 * A subset of input types that fits to a simple API returning one string.
 	 * Not available on purpose: button, checkbox, hidden, image, password, radio, range, reset, search, submit.
 	 *
@@ -1281,6 +1444,31 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 	};
 
+	/**
+	 * Defines the keyboard handling behavior of the <code>sap.m.List</code> or <code>sap.m.Table</code>.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.38.0
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.ListKeyboardMode = {
+
+		/**
+		 * This default mode is suitable if the number of items is unlimited or if there is no editable field within the item.
+		 * While the last/first interactive element within an item has the focus, pressing tab/shift+tab moves the focus to the next/previous element in the tab chain after/before the <code>sap.m.List</code> or <code>sap.m.Table</code>.
+		 * @public
+		 */
+		Navigation : "Navigation",
+
+		/**
+		 * This mode is suitable if the number of items is limited and if there are editable fields within the item.
+		 * While the last/first interactive element within an item has the focus, pressing tab/shift+tab moves the focus to the next/previous element in the tab chain after/before the item </code>.
+		 * @public
+		 */
+		Edit : "Edit"
+
+	};
 
 	/**
 	 * Defines which separator style will be applied for the items.
@@ -1357,6 +1545,29 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	};
 
 	/**
+	 * Defines the keyboard navigation mode.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.38
+	 * @ui5-metamodel This enumeration will also be described in the UI5 (legacy) design time meta model.
+	 */
+	sap.m.SelectListKeyboardNavigationMode = {
+
+		/**
+		 * Keyboard navigation is disabled.
+		 * @public
+		 */
+		None: "None",
+
+		/**
+		 * Keyboard navigation is delimited at the last item or first item of the list.
+		 * @public
+		 */
+		Delimited: "Delimited"
+	};
+
+	/**
 	 * Enumeration of possible load statuses.
 	 *
 	 * @enum {string}
@@ -1389,6 +1600,30 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		 * @public
 		 */
 		Disabled : "Disabled"
+	};
+
+	/**
+	 * Different mode for a MenuButton (predefined types)
+	 *
+	 * @enum {string}
+	 * @since 1.38.0
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.MenuButtonMode = {
+
+		/**
+		 * Default regular type (Menu button appears as a regular button, pressing opens a menu)
+		 * @public
+		 */
+		Regular: "Regular",
+
+		/**
+		 * Split type (Menu button appears as a split button, pressing fires the default action a menu,
+		 * pressing the arrow part opens a menu)
+		 * @public
+		 */
+		Split: "Split"
 	};
 
 	/**
@@ -1560,8 +1795,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		Vertical : "Vertical",
 
 		/**
-		 * Popover will be placed at the top or bottom of the reference control but will try to position on the
-		 * top side if the space is greater than the Popover's height.
+		 * Deprecated - use <code>sap.m.PlacementType.VerticalPreferredTop</code> type.
+		 * @deprecated Since version 1.36. Instead, use <code>sap.m.PlacementType.VerticalPreferredTop</code> type.
 		 * @public
 		 * @since 1.29
 		 */
@@ -1569,11 +1804,27 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 		/**
 		 * Popover will be placed at the top or bottom of the reference control but will try to position on the
-		 * bottom side if the space is greater than the Popover's height.
+		 * top side if the space is greater than the Popover's height.
+		 * @public
+		 * @since 1.36
+		 */
+		VerticalPreferredTop : "VerticalPreferredTop",
+
+		/**
+		 * Deprecated - use <code>sap.m.PlacementType.VerticalPreferredBottom</code> type.
+		 * @deprecated Since version 1.36. Instead, use <code>sap.m.PlacementType.VerticalPreferredBottom</code> type.
 		 * @public
 		 * @since 1.29
 		 */
 		VerticalPreferedBottom : "VerticalPreferedBottom",
+
+		/**
+		 * Popover will be placed at the top or bottom of the reference control but will try to position on the
+		 * bottom side if the space is greater than the Popover's height.
+		 * @public
+		 * @since 1.36
+		 */
+		VerticalPreferredBottom : "VerticalPreferredBottom",
 
 		/**
 		 * Popover will be placed at the right or left side of the reference control.
@@ -1582,8 +1833,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		Horizontal : "Horizontal",
 
 		/**
-		 * Popover will be placed at the right or left side of the reference control but will try to position on the
-		 * right side if the space is greater than the Popover's width.
+		 * Deprecated - use <code>sap.m.PlacementType.HorizontalPreferredRight</code> type.
+		 * @deprecated Since version 1.36. Instead, use <code>sap.m.PlacementType.HorizontalPreferredRight</code> type.
 		 * @public
 		 * @since 1.29
 		 */
@@ -1591,11 +1842,59 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 		/**
 		 * Popover will be placed at the right or left side of the reference control but will try to position on the
-		 * left side if the space is greater than the Popover's width.
+		 * right side if the space is greater than the Popover's width.
+		 * @public
+		 * @since 1.36
+		 */
+		HorizontalPreferredRight : "HorizontalPreferredRight",
+
+		/**
+		 * Deprecated - use <code>sap.m.PlacementType.HorizontalPreferredLeft</code> type.
+		 * @deprecated Since version 1.36. Instead, use <code>sap.m.PlacementType.HorizontalPreferredLeft</code> type.
 		 * @public
 		 * @since 1.29
 		 */
 		HorizontalPreferedLeft : "HorizontalPreferedLeft",
+
+		/**
+		 * Popover will be placed at the right or left side of the reference control but will try to position on the
+		 * left side if the space is greater than the Popover's width.
+		 * @public
+		 * @since 1.36
+		 */
+		HorizontalPreferredLeft : "HorizontalPreferredLeft",
+
+		/**
+		 * Popover will be placed to the left of the reference control. If the available space is less than the Popover's width,
+		 * it will appear to the right of the same reference control left border.
+		 * @public
+		 * @since 1.38
+		 */
+		PreferredLeftOrFlip : "PreferredLeftOrFlip",
+
+		/**
+		 * Popover will be placed to the right of the reference control. If the available space is less than the Popover's width,
+		 * it will appear to the left of the same reference control right border.
+		 * @public
+		 * @since 1.38
+		 */
+		PreferredRightOrFlip : "PreferredRightOrFlip",
+
+		/**
+		 * Popover will be placed to the top of the reference control. If the available space is less than the Popover's height,
+		 * it will appear to the bottom of the same reference control top border.
+		 * @public
+		 * @since 1.38
+		 */
+		PreferredTopOrFlip : "PreferredTopOrFlip",
+
+		/**
+		 * Popover will be placed to the bottom of the reference control. If the available space is less than the Popover's height,
+		 * it will appear to the top of the same reference control bottom border.
+		 * @public
+		 * @since 1.38
+		 */
+		PreferredBottomOrFlip : "PreferredBottomOrFlip",
 
 		/**
 		 * Popover will be placed automatically at the reference control.
@@ -1900,6 +2199,78 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 
 	/**
+	 * Predefined types for ObjectMarker.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.ObjectMarkerType = {
+
+		/**
+		 * Flagged type
+		 * @public
+		 */
+		Flagged : "Flagged",
+
+		/**
+		 * Favorite type
+		 * @public
+		 */
+		Favorite : "Favorite",
+
+		/**
+		 * Draft type
+		 * @public
+		 */
+		Draft : "Draft",
+
+		/**
+		 * Locked type
+		 * @public
+		 */
+		Locked : "Locked",
+
+		/**
+		 * Unsaved type
+		 * @public
+		 */
+		Unsaved : "Unsaved"
+
+	};
+
+
+	/**
+	 * Predefined visibility for ObjectMarker.
+	 *
+	 * @enum {string}
+	 * @public
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.ObjectMarkerVisibility = {
+
+		/**
+		 * Shows only icon
+		 * @public
+		 */
+		IconOnly : "IconOnly",
+
+		/**
+		 * Shows only text
+		 * @public
+		 */
+		TextOnly : "TextOnly",
+
+		/**
+		 * Shows icon and text
+		 * @public
+		 */
+		IconAndText : "IconAndText"
+
+	};
+
+
+	/**
 	 * Directions for swipe event.
 	 *
 	 * @enum {string}
@@ -1952,6 +2323,28 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 	};
 
+	/**
+	 * Types of three-column layout for the sap.m.FlexibleColumnLayout control
+	 *
+	 * @enum {string}
+	 * @public
+	 * @since 1.38
+	 * @ui5-metamodel This enumeration also will be described in the UI5 (legacy) designtime metamodel
+	 */
+	sap.m.ThreeColumnLayoutType = {
+
+		/**
+		 * Emphasized last column (endColumn) - column layout 25/25/50
+		 * @public
+		 */
+		EndColumnEmphasized : "EndColumnEmphasized",
+
+		/**
+		 * Emphasized middle column (midColumn) - column layout 25/50/25
+		 * @public
+		 */
+		MidColumnEmphasized : "MidColumnEmphasized"
+	};
 
 	/**
 	 * Types of the Toolbar Design.
@@ -2025,7 +2418,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	!(function(oLib) {
 
 		/**
-		 * Returns invalid date value of UI5
+		 * Returns invalid date value of UI5.
 		 *
 		 * @deprecated Since 1.12 UI5 returns null for invalid date
 		 * @returns {null}
@@ -2064,7 +2457,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		};
 
 		/**
-		 * Finds default locale data once and returns always the same
+		 * Finds default locale data once and returns always the same.
 		 *
 		 * @return {Object} sap.ui.core.LocaleData instance
 		 * @public
@@ -2084,7 +2477,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		};
 
 		/**
-		 * Checks if the given parameter is a valid JsDate Object
+		 * Checks if the given parameter is a valid JsDate Object.
 		 *
 		 * @param {any} value Any variable to test.
 		 * @return {boolean}
@@ -2099,7 +2492,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 
 		/**
-		 * Search given control's parents and try to find iScroll
+		 * Search given control's parents and try to find iScroll.
 		 *
 		 * @param {sap.ui.core.Control} oControl
 		 * @return {iScroll|undefined} iScroll reference or undefined if cannot find
@@ -2125,7 +2518,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 
 		/**
-		 * Search given control's parents and try to find ScrollDelegate
+		 * Search given control's parents and try to find ScrollDelegate.
 		 *
 		 * @param {sap.ui.core.Control} oControl
 		 * @return {Object|undefined} ScrollDelegate or undefined if cannot find
@@ -2179,7 +2572,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		oLib.BaseFontSize = jQuery(document.documentElement).css("font-size");
 
 		/**
-		 * Hide the soft keyboard
+		 * Hide the soft keyboard.
 		 *
 		 * @name sap.m#closeKeyboard
 		 * @public
@@ -2291,19 +2684,20 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	};
 
 	/**
-	 * <pre>
-	 * URL(Uniform Resource Locator) Helper
+	 * URL(Uniform Resource Locator) Helper.
+	 *
 	 * This helper can be used to trigger a native application (e.g. email, sms, phone) from the browser.
 	 * That means we are restricted of browser or application implementation. e.g.
-	 *  - Some browsers do not let you to pass more than 2022 characters in the URL
-	 *  - MAPI (Outlook) limit is 2083, max. path under Internet Explorer it is 2048
-	 *  - Different Internet Explorer versions have a different limitation (IE9 approximately 1000 characters)
-	 *  - MS mail app under Windows 8 cuts mail links after approximately 100 characters
-	 *  - Safari gets a confirmation from user before opening a native application and can block other triggers if the user cancels it
-	 *  - Some mail applications(Outlook) do not respect all encodings(e.g. Cyrillic texts are not encoded correctly)
+	 * <ul>
+	 * <li>Some browsers do not let you to pass more than 2022 characters in the URL</li>
+	 * <li>MAPI (Outlook) limit is 2083, max. path under Internet Explorer it is 2048</li>
+	 * <li>Different Internet Explorer versions have a different limitation (IE9 approximately 1000 characters)</li>
+	 * <li>MS mail app under Windows 8 cuts mail links after approximately 100 characters</li>
+	 * <li>Safari gets a confirmation from user before opening a native application and can block other triggers if the user cancels it</li>
+	 * <li>Some mail applications(Outlook) do not respect all encodings(e.g. Cyrillic texts are not encoded correctly)</li>
+	 * </ul>
 	 *
-	 * Note: all the given limitation lengths are for encoded text(e.g space character will be encoded to "%20")
-	 * </pre>
+	 * Note: all the given limitation lengths are for encoded text(e.g space character will be encoded to "%20").
 	 *
 	 * @namespace
 	 * @name sap.m.URLHelper
@@ -2399,13 +2793,14 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			 *
 			 * @param {String} sURL Uniform resource locator
 			 * @param {boolean} [bNewWindow] Opens URL in a new browser window or tab. Please note that, opening a new window/tab can be ignored by browsers(e.g. on Windows Phone) or by popup blockers.
+			 * NOTE: On Windows Phone the URL will be enforced to open in the same window if opening in a new window/tab fails (because of a known system restriction on cross-window communications). Use sap.m.Link instead (with blank target) if you necessarily need to open URL in a new window.
+			 *
 			 * @public
 			 * @name sap.m.URLHelper#redirect
 			 * @function
 			 */
 			redirect : function (sURL, bNewWindow) {
 				$.sap.assert(isValidString(sURL), this + "#redirect: URL must be a string" );
-
 				this.fireEvent("redirect", sURL);
 				if (!bNewWindow) {
 					window.location.href = sURL;
@@ -2413,6 +2808,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 					var oWindow = window.open(sURL, "_blank");
 					if (!oWindow) {
 						$.sap.log.error(this + "#redirect: Could not open " + sURL);
+						if (Device.os.windows_phone || (Device.browser.edge && Device.browser.mobile)) {
+							jQuery.sap.log.warning("URL will be enforced to open in the same window as a fallback from a known Windows Phone system restriction. Check the documentation for more information.");
+							window.location.href = sURL;
+						}
 					}
 				}
 			},
@@ -2495,7 +2894,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 
 
 	/**
-	 * Helper for rendering themable background
+	 * Helper for rendering themable background.
 	 *
 	 * @namespace
 	 * @name sap.m.BackgroundHelper
@@ -2609,7 +3008,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	}(jQuery, window));
 
 	/**
-	 * Helper for Images
+	 * Helper for Images.
 	 *
 	 * @namespace
 	 * @name sap.m.ImageHelper
@@ -2705,7 +3104,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	}(jQuery, window));
 
 	/**
-	 * Helper for Popups
+	 * Helper for Popups.
 	 *
 	 * @namespace
 	 * @name sap.m.PopupHelper
@@ -2760,6 +3159,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 	 * @param {int} iLength If iLength is provided only these number of entries will be requested.
 	 *
 	 * @name sap.m.InputODataSuggestProvider
+	 * @namespace
 	 * @since 1.21.2
 	 *
 	 * @public
@@ -2980,9 +3380,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 		createLabel: function(sText){
 			return new sap.m.Label({text: sText});
 		},
-		createButton: function(sId, fPressFunction, oThis){
-			var oButton = new sap.m.Button(sId);
-			oButton.attachEvent('press', fPressFunction, oThis); // attach event this way to have the right this-reference in handler
+		createButton: function(sId, fPressFunction){
+			var oButton = new sap.m.Button(sId, {type: sap.m.ButtonType.Transparent});
+			oButton.attachEvent('press', fPressFunction, this); // attach event this way to have the right this-reference in handler
 			return oButton;
 		},
 		setButtonContent: function(oButton, sText, sTooltip, sIcon, sIconHovered){
@@ -2992,6 +3392,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/Device',
 			oButton.setActiveIcon(sIconHovered);
 		},
 		addFormClass: function(){ return "sapUiFormM"; },
+		setToolbar: function(oToolbar){
+			var oOldToolbar = this.getToolbar();
+			if (oOldToolbar && oOldToolbar.setDesign) {
+				// check for setDesign vecause we don't know what kind of custom toolbars might be used.
+				oOldToolbar.setDesign(oOldToolbar.getDesign(), true);
+			}
+			if (oToolbar && oToolbar.setDesign) {
+				oToolbar.setDesign(sap.m.ToolbarDesign.Transparent, true);
+			}
+			return oToolbar;
+		},
 		bArrowKeySupport: false, /* disables the keyboard support for arrow keys */
 		bFinal: true
 	});

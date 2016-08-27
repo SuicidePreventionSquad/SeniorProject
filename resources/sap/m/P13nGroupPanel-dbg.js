@@ -17,7 +17,7 @@ sap.ui.define([
 	 * @param {object} [mSettings] initial settings for the new control
 	 * @class The P13nGroupPanel control is used to define group-specific settings for table personalization.
 	 * @extends sap.m.P13nPanel
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @constructor
 	 * @public
 	 * @alias sap.m.P13nGroupPanel
@@ -255,6 +255,7 @@ sap.ui.define([
 			validationExecutor: jQuery.proxy(this._callValidationExecutor, this)
 		});
 		this._oGroupPanel.setOperations(this._aOperations);
+		this._oGroupPanel._sAddRemoveIconTooltipKey = "GROUP";
 
 		this.addAggregation("content", this._oGroupPanel);
 	};
@@ -428,6 +429,7 @@ sap.ui.define([
 					index: iIndex,
 					groupItemData: oGroupItem
 				});
+				that._notifyChange();
 			}
 			if (sOperation === "add") {
 				oGroupItem = new sap.m.P13nGroupItem({
@@ -443,6 +445,7 @@ sap.ui.define([
 					groupItemData: oGroupItem
 				});
 				that._bIgnoreBindCalls = false;
+				that._notifyChange();
 			}
 			if (sOperation === "remove") {
 				that._bIgnoreBindCalls = true;
@@ -451,6 +454,7 @@ sap.ui.define([
 					index: iIndex
 				});
 				that._bIgnoreBindCalls = false;
+				that._notifyChange();
 			}
 		};
 	};
@@ -500,6 +504,13 @@ sap.ui.define([
 		this.setProperty("validationListener", fListener);
 		if (fListener) {
 			fListener(this, jQuery.proxy(this._updateValidationResult, this));
+		}
+	};
+
+	P13nGroupPanel.prototype._notifyChange = function() {
+		var fListener = this.getChangeNotifier();
+		if (fListener) {
+			fListener(this);
 		}
 	};
 

@@ -5,8 +5,8 @@
  */
 
 // Provides class sap.ui.core.format.NumberFormat
-sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleData'],
-	function(jQuery, BaseObject, LocaleData) {
+sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/Locale', 'sap/ui/core/LocaleData'],
+	function(jQuery, BaseObject, Locale, LocaleData) {
 	"use strict";
 
 
@@ -38,6 +38,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 	 * @param {string} [oFormatOptions.pattern] CLDR number pattern which is used to format the number
 	 * @param {boolean} [oFormatOptions.groupingEnabled] defines whether grouping is enabled (show the grouping separators)
 	 * @param {string} [oFormatOptions.groupingSeparator] defines the used grouping separator
+	 * @param {int} [oFormatOptions.groupingSize] defines the grouping size in digits, the default is three
+	 * @param {int} [oFormatOptions.groupingBaseSize] defines the grouping base size in digits, in case it is different from the grouping size (e.g. indian grouping)
 	 * @param {string} [oFormatOptions.decimalSeparator] defines the used decimal separator
 	 * @param {string} [oFormatOptions.plusSign] defines the used plus symbol
 	 * @param {string} [oFormatOptions.minusSign] defines the used minus symbol
@@ -56,6 +58,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 	 *  The 'format' and 'parse' are done in a symmetric way which means when this parameter is set to NaN, empty string is parsed as NaN and NaN is formatted as empty string.
 	 *
 	 * @alias sap.ui.core.format.NumberFormat
+	 * @extends sap.ui.base.Object
 	 */
 	var NumberFormat = BaseObject.extend("sap.ui.core.format.NumberFormat", /** @lends sap.ui.core.format.NumberFormat.prototype */ {
 		constructor : function(oFormatOptions) {
@@ -72,14 +75,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 		FLOAT: "float",
 		CURRENCY: "currency",
 		PERCENT: "percent"
-	};
-
-	/**
-	 * Internal enumeration for type of number grouping
-	 */
-	var mGroupingType = {
-		ARABIC: "arabic",
-		INDIAN: "indian"
 	};
 
 	/**
@@ -164,7 +159,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 		minFractionDigits: 0,
 		maxFractionDigits: 0,
 		groupingEnabled: false,
-		groupingType: mGroupingType.ARABIC,
+		groupingSize: 3,
 		groupingSeparator: ",",
 		decimalSeparator: ".",
 		plusSign: "+",
@@ -187,7 +182,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 		minFractionDigits: 0,
 		maxFractionDigits: 99,
 		groupingEnabled: true,
-		groupingType: mGroupingType.ARABIC,
+		groupingSize: 3,
 		groupingSeparator: ",",
 		decimalSeparator: ".",
 		plusSign: "+",
@@ -210,7 +205,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 		minFractionDigits: 0,
 		maxFractionDigits: 99,
 		groupingEnabled: true,
-		groupingType: mGroupingType.ARABIC,
+		groupingSize: 3,
 		groupingSeparator: ",",
 		decimalSeparator: ".",
 		plusSign: "+",
@@ -235,7 +230,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 		// the default value for min/maxFractionDigits is defined in oLocaleData.getCurrencyDigits
 		// they need to be left undefined here in order to detect whether they are set from outside
 		groupingEnabled: true,
-		groupingType: mGroupingType.ARABIC,
+		groupingSize: 3,
 		groupingSeparator: ",",
 		decimalSeparator: ".",
 		plusSign: "+",
@@ -379,7 +374,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 	NumberFormat.createInstance = function(oFormatOptions, oLocale) {
 		var oFormat = jQuery.sap.newObject(this.prototype),
 			oPatternOptions;
-		if ( oFormatOptions instanceof sap.ui.core.Locale ) {
+		if ( oFormatOptions instanceof Locale ) {
 			oLocale = oFormatOptions;
 			oFormatOptions = undefined;
 		}
@@ -467,12 +462,18 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 	 * @static
 	 */
 	NumberFormat.parseNumberPattern = function(sFormatString) {
-		var iMinIntegerDigits = 0;
-		var iMinFractionDigits = 0;
-		var iMaxFractionDigits = 0;
-		var bGroupingEnabled = false;
-		var sGroupingType = mGroupingType.ARABIC;
-		var iSeparatorPos = sFormatString.indexOf(";");
+		var iMinIntegerDigits = 0,
+			iMinFractionDigits = 0,
+			iMaxFractionDigits = 0,
+			bGroupingEnabled = false,
+			iGroupSize = 0,
+			iBaseGroupSize = 0,
+			iSeparatorPos = sFormatString.indexOf(";"),
+			mSection = {
+				Integer: 0,
+				Fraction: 1
+			},
+			iSection = mSection.Integer;
 
 		// The sFormatString can be ¤#,##0.00;(¤#,##0.00). If the whole string is parsed, the wrong
 		// iMinFractionDigits and iMaxFractionDigits are wrong.
@@ -481,32 +482,44 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 			sFormatString = sFormatString.substring(0, iSeparatorPos);
 		}
 
-		var iSection = 0;
-
 		for (var i = 0; i < sFormatString.length; i++) {
 			var sCharacter = sFormatString[i];
-
-			if (sCharacter === ",") {
-				// If there are multiple grouping separators, enable indian grouping
-				if (bGroupingEnabled) {
-					sGroupingType = mGroupingType.INDIAN;
-				}
-				bGroupingEnabled = true;
-				continue;
-			} else if (sCharacter === ".") {
-				iSection = 1;
-				continue;
-			} else if (iSection == 0 && sCharacter === "0") {
-				iMinIntegerDigits++;
-			} else if (iSection == 1) {
-				if (sCharacter === "0") {
-					iMinFractionDigits++;
-					iMaxFractionDigits++;
-				} else if (sCharacter === "#") {
-					iMaxFractionDigits++;
-				}
+			switch (sCharacter) {
+				case ",":
+					if (bGroupingEnabled) {
+						iGroupSize = iBaseGroupSize;
+						iBaseGroupSize = 0;
+					}
+					bGroupingEnabled = true;
+					break;
+				case ".":
+					iSection = mSection.Fraction;
+					break;
+				case "0":
+					if (iSection === mSection.Integer) {
+						iMinIntegerDigits++;
+						if (bGroupingEnabled) {
+							iBaseGroupSize++;
+						}
+					} else {
+						iMinFractionDigits++;
+						iMaxFractionDigits++;
+					}
+					break;
+				case "#":
+					if (iSection === mSection.Integer) {
+						if (bGroupingEnabled) {
+							iBaseGroupSize++;
+						}
+					} else {
+						iMaxFractionDigits++;
+					}
+					break;
 			}
-
+		}
+		if (!iGroupSize) {
+			iGroupSize = iBaseGroupSize;
+			iBaseGroupSize = 0;
 		}
 
 		return {
@@ -514,7 +527,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 			minFractionDigits: iMinFractionDigits,
 			maxFractionDigits: iMaxFractionDigits,
 			groupingEnabled: bGroupingEnabled,
-			groupingType: sGroupingType
+			groupingSize: iGroupSize,
+			groupingBaseSize: iBaseGroupSize
 		};
 	};
 
@@ -541,6 +555,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 			iPosition = 0,
 			iLength = 0,
 			iGroupSize = 0,
+			iBaseGroupSize = 0,
 			bNegative = oValue < 0,
 			iDotPos = -1,
 			oOptions = jQuery.extend({}, this.oFormatOptions),
@@ -602,6 +617,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 			oValue = rounding(oValue, oOptions.maxFractionDigits, oOptions.roundingMode);
 		}
 
+		// No sign on zero values
+		if (oValue == 0) {
+			bNegative = false;
+		}
+
 		sNumber = this.convertToDecimal(oValue);
 
 		if (sNumber == "NaN") {
@@ -638,16 +658,13 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 
 		// grouping
 		iLength = sIntegerPart.length;
-		if (oOptions.groupingEnabled && iLength > 3) {
-			if (oOptions.groupingType == mGroupingType.ARABIC) {
-				iPosition = iLength % 3 || 3;
-				iGroupSize = 3;
-			} else {
-				iPosition = iLength % 2 + 1 || 3;
-				iGroupSize = 2;
-			}
+
+		if (oOptions.groupingEnabled) {
+			iGroupSize = oOptions.groupingSize;
+			iBaseGroupSize = oOptions.groupingBaseSize || iGroupSize;
+			iPosition = Math.max(iLength - iBaseGroupSize, 0) % iGroupSize || iGroupSize;
 			sGroupedIntegerPart = sIntegerPart.substr(0, iPosition);
-			while (iPosition < sIntegerPart.length - 1) {
+			while (iLength - iPosition >= iBaseGroupSize) {
 				sGroupedIntegerPart += oOptions.groupingSeparator;
 				sGroupedIntegerPart += sIntegerPart.substr(iPosition, iGroupSize);
 				iPosition += iGroupSize;
@@ -718,9 +735,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 	};
 
 	NumberFormat.prototype._composeCurrencyResult = function(sPattern, sFormattedNumber, sMeasure, oOptions) {
-		if (oOptions.negative) {
-			sPattern = sPattern.replace(/-/, oOptions.minusSign);
-		}
+		var sMinusSign = oOptions.minusSign;
 
 		sPattern = sPattern.replace(/[0#.,]+/, sFormattedNumber);
 
@@ -732,7 +747,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 					"[:^S:]": /[^\$\xA2-\xA5\u058F\u060B\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB\u20A0-\u20BD\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6]/
 				},
 				iMeasureStart = sPattern.indexOf(sPlaceHolder),
-				// determine whether the measure is before the number or after it by comparing the position of measure placeholder with half of the length of the pattern string
+				// determine whether the number is before the measure or after it by comparing the position of measure placeholder with half of the length of the pattern string
 				sPosition = iMeasureStart < sPattern.length / 2 ? "after" : "before",
 				oSpacingSetting = this.oLocaleData.getCurrencySpacing(sPosition),
 				sCurrencyChar = (sPosition === "after" ? sMeasure.charAt(sMeasure.length - 1) : sMeasure.charAt(0)),
@@ -756,10 +771,22 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 
 				// insert the space char between the measure and the number
 				sPattern = sPattern.slice(0, iInsertPos) + oSpacingSetting.insertBetween + sPattern.slice(iInsertPos);
+			} else if (oOptions.negative && sPosition === "after") {
+				// when no space is inserted between measure and number
+				// and when the number is negative and the measure is shown before the number
+				// a zero-width non-breakable space ("\ufeff") is inserted before the minus sign
+				// in order to prevent the formatted currency number from being wrapped after the
+				// minus sign when the space isn't enough for displaying the currency number within
+				// one line
+				sMinusSign = "\ufeff" + oOptions.minusSign;
 			}
 		} else {
 			// If measure is not shown, also remove whitespace next to the measure symbol
 			sPattern = sPattern.replace(/\s*\u00a4\s*/, "");
+		}
+
+		if (oOptions.negative) {
+			sPattern = sPattern.replace(/-/, sMinusSign);
 		}
 
 		return sPattern;
@@ -1081,43 +1108,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 
 	function getNumberFromShortened(sValue, sStyle, oLocaleData) {
 
-		var sNumber;
-		var iFactor = 1;
+
 
 		if (sStyle != "short" && sStyle != "long") {
 			return;
 		}
-
-		var iKey = 10;
-		var sPlural;
-		var sCldrFormat;
-		while ( iKey < 1e14) {
-			for (var i = 0; i < 6; i++) {
-				switch (i) {
-				case 0:
-					sPlural = "zero";
-					break;
-
-				case 1:
-					sPlural = "one";
-					break;
-
-				case 2:
-					sPlural = "two";
-					break;
-
-				case 3:
-					sPlural = "few";
-					break;
-
-				case 4:
-					sPlural = "many";
-					break;
-
-				default:
-					sPlural = "other";
-				}
-
+		var sNumber,
+			iFactor = 1,
+			iKey = 10,
+			aPlurals = ["zero", "one", "two", "few", "many", "other"],
+			sCldrFormat,
+			fnGetFactor = function(sPlural) {
 				sCldrFormat = oLocaleData.getDecimalFormat(sStyle, iKey.toString(), sPlural);
 
 				if (sCldrFormat) {
@@ -1131,18 +1132,22 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/Object', 'sap/ui/core/LocaleDat
 						// determine unit -> may be on the beginning e.g. for he
 						var sValueSubString = match[0];
 						var sUnit = sCldrFormat.replace(sValueSubString, "");
+						if (!sUnit) {
+							// If there's no scale defined in the pattern, skip the pattern
+							return;
+						}
 						var iIndex = sValue.indexOf(sUnit);
 						if (iIndex >= 0) {
 							// parse the number part like every other number and then use the factor to get the real number
 							sNumber = sValue.replace(sUnit, "");
 							iFactor = iKey;
-							break;
+							return true;
 						}
 					}
 				}
-			}
-
-			if (sNumber) {
+			};
+		while (iKey < 1e14) {
+			if (aPlurals.some(fnGetFactor)) {
 				break;
 			}
 

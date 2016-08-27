@@ -24,7 +24,7 @@ function(jQuery, DesignTimeMetadata) {
 	 * @extends sap.ui.core.DesignTimeMetadata
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @private
@@ -57,6 +57,12 @@ function(jQuery, DesignTimeMetadata) {
 				ignore : true
 			},
 			customData : {
+				ignore : true
+			},
+			layoutData : {
+				ignore : true
+			},
+			tooltip: {
 				ignore : true
 			}
 		};

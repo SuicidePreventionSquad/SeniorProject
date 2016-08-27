@@ -25,7 +25,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 		 * @implements sap.ui.core.PopupInterface
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -123,7 +123,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 				aggregations: {
 
 					/**
-					 * The content inside the dialog.
+					 * The content inside the dialog.<br/><b>Note:</b> When the content of the <code>Dialog</code> is comprised of controls that use <code>position: absolute</code>, such as <code>SplitContainer</code>, the dialog has to have either <code>stretch: true</code> or <code>contentHeight</code> set.
 					 */
 					content: {type: "sap.ui.core.Control", multiple: true, singularName: "content"},
 
@@ -204,7 +204,12 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 					/**
 					 * Association to controls / ids which describe this control (see WAI-ARIA attribute aria-describedby).
 					 */
-					ariaDescribedBy: {type: "sap.ui.core.Control", multiple: true, singularName: "ariaDescribedBy"}
+					ariaDescribedBy: {type: "sap.ui.core.Control", multiple: true, singularName: "ariaDescribedBy"},
+
+					/**
+					 * Association to controls / ids which label this control (see WAI-ARIA attribute aria-labelledby).
+					 */
+					ariaLabelledBy : {type : "sap.ui.core.Control", multiple : true, singularName : "ariaLabelledBy"}
 				},
 				events: {
 
@@ -277,6 +282,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 			this.oPopup = new Popup();
 			this.oPopup.setShadow(true);
+			this.oPopup.setNavigationMode("SCOPE");
 			if (jQuery.device.is.iphone && !this._bMessageType) {
 				this.oPopup.setModal(true, "sapMDialogTransparentBlk");
 			} else {
@@ -314,7 +320,12 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 					top: that._oManuallySetPosition ? that._oManuallySetPosition.y : '50%'
 				};
 
+				//deregister the content resize handler before repositioning
+				that._deregisterContentResizeHandler();
 				Popup.prototype._applyPosition.call(this, oPosition);
+
+				//register the content resize handler
+				that._registerContentResizeHandler();
 			};
 
 			if (Dialog._bPaddingByDefault) {
@@ -363,6 +374,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 		Dialog.prototype.exit = function () {
 			InstanceManager.removeDialogInstance(this);
+			this._deregisterContentResizeHandler();
 			this._deregisterResizeHandler();
 
 			if (this.oPopup) {
@@ -458,6 +470,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 				this._oManuallySetPosition = null;
 				this._oManuallySetSize = null;
 				oPopup.close();
+				this._deregisterContentResizeHandler();
 			}
 			return this;
 		};
@@ -615,6 +628,10 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 			$this.css(oStyles);
 
+			if (!bStretch && !this._oManuallySetSize && !this._bDisableRepositioning) {
+				this._applyCustomTranslate();
+			}
+
 			//In Chrome when the dialog is stretched the footer is not rendered in the right position;
 			if (window.navigator.userAgent.toLowerCase().indexOf("chrome") !== -1 && this.getStretch()) {
 				//forcing repaint
@@ -660,39 +677,47 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 		 * @private
 		 */
 		Dialog.prototype._onResize = function () {
-			var $dialog,
-				$dialogContent,
-				iDialogWidth,
+			var $dialog = this.$(),
+				$dialogContent = this.$('cont'),
 				iDialogHeight,
-				sTranslateX = '',
-				sTranslateY = '';
+				iDialogTopBorderHeight,
+				iDialogBottomBorderHeight;
 
-			//if there is a manually set height or height by manually resizing return;
-			if (this.getContentHeight() || this._oManuallySetSize) {
+			//if height is set by manually resizing return;
+			if (this._oManuallySetSize) {
 				return;
 			}
 
 			if (!this.getContentHeight()) {
-				$dialog = this.$();
-				$dialogContent = this.$('cont');
-
 				//reset the height so the dialog can grow
 				$dialogContent.css({
 					height: 'auto'
 				});
 
 				//set the newly calculated size by getting it from the browser rendered layout - by the max-height
-				$dialogContent.height(parseInt($dialog.height(), 10) + parseInt($dialog.css("border-top-width"), 10) + parseInt($dialog.css("border-bottom-width"), 10));
+				iDialogHeight = parseFloat($dialog.height());
+				iDialogTopBorderHeight = parseFloat($dialog.css("border-top-width"));
+				iDialogBottomBorderHeight = parseFloat($dialog.css("border-bottom-width"));
+				$dialogContent.height(Math.round( iDialogHeight + iDialogTopBorderHeight + iDialogBottomBorderHeight));
 			}
 
-			if (this.getStretch()) {
-				return;
+			if (!this.getStretch() && !this._oManuallySetSize && !this._bDisableRepositioning) {
+				this._applyCustomTranslate();
 			}
+		};
 
-			iDialogWidth = $dialog.innerWidth();
-			iDialogHeight = $dialog.innerHeight();
+		/**
+		 *
+		 * @private
+		 */
+		Dialog.prototype._applyCustomTranslate = function() {
+			var $dialog = this.$(),
+				sTranslateX,
+				sTranslateY,
+				iDialogWidth = $dialog.innerWidth(),
+				iDialogHeight = $dialog.innerHeight();
 
-			if (iDialogWidth % 2 !== 0 || iDialogHeight % 2 !== 0) {
+			if (sap.ui.Device.system.desktop && (iDialogWidth % 2 !== 0 || iDialogHeight % 2 !== 0)) {
 				if (!this._bRTL) {
 					sTranslateX = '-' + Math.floor(iDialogWidth / 2) + "px";
 				} else {
@@ -701,6 +726,8 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 				sTranslateY = '-' + Math.floor(iDialogHeight / 2) + "px";
 				$dialog.css('transform', 'translate(' + sTranslateX + ',' + sTranslateY + ') scale(1)');
+			} else {
+				$dialog.css('transform', '');
 			}
 		};
 
@@ -1040,6 +1067,31 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 			this._onResize();
 		};
 
+		/**
+		 *
+		 * @private
+		 */
+		Dialog.prototype._deregisterContentResizeHandler = function () {
+			if (this._sContentResizeListenerId) {
+				sap.ui.core.ResizeHandler.deregister(this._sContentResizeListenerId);
+				this._sContentResizeListenerId = null;
+			}
+		};
+
+		/**
+		 *
+		 * @param oScrollDomRef
+		 * @private
+		 */
+		Dialog.prototype._registerContentResizeHandler = function() {
+			if (!this._sContentResizeListenerId) {
+				this._sContentResizeListenerId = sap.ui.core.ResizeHandler.register(this.getDomRef("scrollCont"), jQuery.proxy(this._onResize, this));
+			}
+
+			//set the initial size of the content container so when a dialog with large content is open there will be a scroller
+			this._onResize();
+		};
+
 		Dialog.prototype._attachHandler = function(oButton) {
 			var that = this;
 
@@ -1181,6 +1233,24 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 			}
 
 			return originalResponse;
+		};
+
+		Dialog.prototype.getAriaLabelledBy = function() {
+			var header = this._getAnyHeader(),
+				// Due to a bug in getAssociation in ManagedObject slice the Array
+				// Remove slice when the bug is fixed.
+				labels = this.getAssociation("ariaLabelledBy", []).slice();
+
+			var subHeader = this.getSubHeader();
+			if (subHeader) {
+				labels.unshift(subHeader.getId());
+			}
+
+			if (header) {
+				labels.unshift(header.getId());
+			}
+
+			return labels;
 		};
 
 		Dialog.prototype.setTitle = function (sTitle) {
@@ -1399,6 +1469,9 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 						action();
 					}, 0);
 				};
+				var DIALOG_MIN_VISIBLE_SIZE = 30;
+				var windowWidth = window.innerWidth;
+				var windowHeight = window.innerHeight;
 				var initial = {
 					x: e.pageX,
 					y: e.pageY,
@@ -1429,8 +1502,9 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 					//set the new position of the dialog on mouse down when the transform is disabled by the class
 					that._$dialog.css({
-						left: that._oManuallySetPosition.x,
-						top: that._oManuallySetPosition.y
+						left: Math.min(Math.max(0, that._oManuallySetPosition.x), windowWidth - DIALOG_MIN_VISIBLE_SIZE),
+						top: Math.min(Math.max(0, that._oManuallySetPosition.y), windowHeight - DIALOG_MIN_VISIBLE_SIZE),
+						transform: ""
 					});
 				}
 
@@ -1446,8 +1520,9 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 							//move the dialog
 							that._$dialog.css({
-								left: that._oManuallySetPosition.x,
-								top: that._oManuallySetPosition.y
+								left: Math.min(Math.max(0, that._oManuallySetPosition.x), windowWidth - DIALOG_MIN_VISIBLE_SIZE),
+								top: Math.min(Math.max(0, that._oManuallySetPosition.y), windowHeight - DIALOG_MIN_VISIBLE_SIZE),
+								transform: ""
 							});
 						});
 					});
@@ -1458,6 +1533,9 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 					var styles = {};
 					var minWidth = parseInt(that._$dialog.css('min-width'), 10);
 					var maxLeftOffset = initial.x + initial.width - minWidth;
+
+					// BCP: 1680048166 remove inline set height so that the content resizes together with the mouse pointer
+					that.$('cont').height('');
 
 					$w.on("mousemove.sapMDialog", function (e) {
 						fnMouseMoveHandler(function () {
@@ -1470,6 +1548,7 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 
 							if (that._bRTL) {
 								styles.left = Math.min(Math.max(e.pageX, 0), maxLeftOffset);
+								styles.transform = "";
 								that._oManuallySetSize.width = initial.width + initial.x - Math.max(e.pageX, 0);
 							}
 
@@ -1484,10 +1563,14 @@ sap.ui.define(['jquery.sap.global', './Bar', './InstanceManager', './Associative
 				}
 
 				$w.on("mouseup.sapMDialog", function () {
+					var $dialog = that.$(),
+						$dialogContent = that.$('cont');
+
 					$w.off("mouseup.sapMDialog, mousemove.sapMDialog");
 
 					if (bResize) {
 						that._$dialog.removeClass('sapMDialogResizing');
+						$dialogContent.height(parseInt($dialog.height(), 10) + parseInt($dialog.css("border-top-width"), 10) + parseInt($dialog.css("border-bottom-width"), 10));
 					}
 				});
 

@@ -51,7 +51,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 				"getPath", "getContext", "getModel", "attachChange", "detachChange", "refresh", "isInitial",
 				"attachDataStateChange","detachDataStateChange",
 				"attachAggregatedDataStateChange", "detachAggregatedDataStateChange",
-				"attachDataRequested","detachDataRequested","attachDataReceived","detachDataReceived","suspend","resume"
+				"attachDataRequested","detachDataRequested","attachDataReceived","detachDataReceived","suspend","resume", "isSuspended"
 			]
 		}
 
@@ -71,20 +71,35 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	 * @public
 	 */
 
-	/**
-	 * The 'dataReceived' event is fired, when data was received from a backend. This event may also be fired when an error occured.
-	 *
-	 * Note: Subclasses might add additional parameters to the event object. Optional parameters can be omitted.
-	 *
-	 * @name sap.ui.model.Binding#dataReceived
-	 * @event
-	 * @param {sap.ui.base.Event} oEvent
-	 * @param {sap.ui.base.EventProvider} oEvent.getSource
-	 * @param {object} oEvent.getParameters
+	 /**
+ 	 * The 'dataReceived' event is fired, when data was received from a backend. This event may also be fired when an error occured.
+ 	 *
+ 	 * Note: Subclasses might add additional parameters to the event object. Optional parameters can be omitted.
+ 	 *
+ 	 * @name sap.ui.model.Binding#dataReceived
+ 	 * @event
+ 	 * @param {sap.ui.base.Event} oEvent
+ 	 * @param {sap.ui.base.EventProvider} oEvent.getSource
+ 	 * @param {object} oEvent.getParameters
 
-	 * @param {string} [oEvent.getParameters.data] The data received. In error cases it will be undefined.
-	 * @public
-	 */
+ 	 * @param {string} [oEvent.getParameters.data] The data received. In error cases it will be undefined.
+ 	 * @public
+ 	 */
+
+	 /**
+ 	 * The 'change' event is fired, when the data of the Binding is changed from the model. The reason parameter of the event provides a hint where the change came from.
+ 	 *
+ 	 * Note: Subclasses might add additional parameters to the event object. Optional parameters can be omitted.
+ 	 *
+ 	 * @name sap.ui.model.Binding#change
+ 	 * @event
+ 	 * @param {sap.ui.base.Event} oEvent
+ 	 * @param {sap.ui.base.EventProvider} oEvent.getSource
+ 	 * @param {object} oEvent.getParameters
+
+ 	 * @param {string} [oEvent.getParameters.reason] A string stating the reason for the data change. Can be any string and new values can be added in the future.
+ 	 * @public
+ 	 */
 
 	// Getter
 	/**
@@ -109,9 +124,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	 */
 	Binding.prototype.setContext = function(oContext) {
 		if (this.oContext != oContext) {
+			sap.ui.getCore().getMessageManager().removeMessages(this.getDataState().getControlMessages(), true);
 			this.oContext = oContext;
 			this.oDataState = null;
-			this._fireChange();
+			this._fireChange({reason : ChangeReason.Context});
 		}
 	};
 
@@ -330,47 +346,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	};
 
 	/**
-	 * Checks whether an update of the data state of this binding is required.
-	 *
-	 * @private
-	 */
-	Binding.prototype.checkDataState = function() {
-		var oDataState = this._updateDataState();
-
-		if (oDataState && oDataState.changed()) {
-			this.fireEvent("DataStateChange", { dataState: oDataState });
-
-			if (!this._sDataStateTimout) {
-				this._sDataStateTimout = setTimeout(function() {
-					//console.info("[DS]" + JSON.stringify(jQuery.extend({}, oDataState), null, 4));
-					oDataState.calculateChanges();
-					this.fireEvent("AggregatedDataStateChange", { dataState: oDataState });
-					oDataState.changed(false);
-					this._sDataStateTimout = null;
-				}.bind(this), 0);
-			}
-		}
-	};
-
-	/**
-	 * Updates the data state and returns it.
-	 *
-	 * @returns {sap.ui.model.DataStata} The data state
-	 * @private
-	 */
-	Binding.prototype._updateDataState = function() {
-		var oDataState = this.getDataState();
-		if (this.oModel && this.sPath) {
-			var sResolvedPath = this.oModel.resolve(this.sPath, this.oContext);
-			if (sResolvedPath) {
-				oDataState.setModelMessages(this.oModel.getMessagesByPath(sResolvedPath));
-				oDataState.setLaundering(this.oModel.isLaundering(this.sPath, this.oContext));
-			}
-		}
-		return oDataState;
-	};
-
-	/**
 	 * Refreshes the binding, check whether the model data has been changed and fire change event
 	 * if this is the case. For server side models this should refetch the data from the server.
 	 * To update a control, even if no data has been changed, e.g. to reset a control after failed
@@ -394,7 +369,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	 * @protected
 	 */
 	Binding.prototype.initialize = function() {
-		this.checkUpdate(true);
+		if (!this.bSuspended) {
+			this.checkUpdate(true);
+		}
 		return this;
 	};
 
@@ -521,6 +498,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	};
 
 	/**
+	 * Returns true if the binding is suspended or false if not.
+	 *
+	 * @return {boolean} whether binding is suspended
+	 * @public
+	 */
+	Binding.prototype.isSuspended = function() {
+		return this.bSuspended;
+	};
+
+	/**
 	 * Resumes the binding update. Change events will be fired again.
 	 *
 	 * When the binding is resumed, a change event will be fired immediately, if the data has changed while the binding
@@ -531,6 +518,17 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/base/EventProvider', './ChangeReason
 	Binding.prototype.resume = function() {
 		this.bSuspended = false;
 		this.checkUpdate();
+	};
+
+	/**
+	 * Removes all control messages for this binding from the MessageManager in addition to the standard clean-up tasks.
+	 * @see sap.ui.base.EventProvider#destroy
+	 *
+	 * @public
+	 */
+	sap.ui.model.Binding.prototype.destroy = function() {
+		sap.ui.getCore().getMessageManager().removeMessages(this.getDataState().getControlMessages(), true);
+		sap.ui.base.EventProvider.prototype.destroy.apply(this, arguments);
 	};
 
 	return Binding;

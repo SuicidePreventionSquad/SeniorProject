@@ -11,32 +11,32 @@
     {
       "name" : "sap/tnt/NavigationListItem.js",
       "description" : "Provides control sap.tnt.NavigationListItem.",
-      "size" : 16802,
-      "compressedSize" : 9290,
+      "size" : 17118,
+      "compressedSize" : 9383,
       "required" : ["jquery.sap.global.js", "sap/tnt/library.js", "sap/ui/core/Item.js", "sap/ui/core/Icon.js", "sap/tnt/NavigationList.js", "sap/ui/core/Renderer.js", "sap/ui/core/IconPool.js"],
       "includes" : []
     },
     {
       "name" : "sap/tnt/NavigationListRenderer.js",
       "description" : "Provides the default renderer for control sap.tnt.NavigationList",
-      "size" : 1654,
-      "compressedSize" : 725,
+      "size" : 1666,
+      "compressedSize" : 728,
       "required" : ["jquery.sap.global.js", "sap/ui/core/Renderer.js"],
       "includes" : []
     },
     {
       "name" : "sap/tnt/SideNavigation.js",
       "description" : "Provides control sap.t.SideNavigation.",
-      "size" : 10325,
-      "compressedSize" : 4059,
-      "required" : ["jquery.sap.global.js", "sap/tnt/library.js", "sap/ui/core/Control.js", "sap/ui/core/ResizeHandler.js", "sap/ui/core/Icon.js", "sap/tnt/NavigationList.js"],
+      "size" : 12495,
+      "compressedSize" : 5089,
+      "required" : ["jquery.sap.global.js", "sap/tnt/library.js", "sap/ui/core/Control.js", "sap/ui/core/ResizeHandler.js", "sap/ui/core/Icon.js", "sap/ui/core/delegate/ScrollEnablement.js"],
       "includes" : []
     },
     {
       "name" : "sap/tnt/SideNavigationRenderer.js",
       "description" : "! UI development toolkit for HTML5 (OpenUI5) (c) Copyright 2009-2016 SAP SE or an SAP affiliate company. Licensed under the Apache License, Version 2.0 - see LICENSE.txt.",
-      "size" : 4060,
-      "compressedSize" : 1902,
+      "size" : 4129,
+      "compressedSize" : 1953,
       "required" : ["jquery.sap.global.js"],
       "includes" : []
     },
@@ -67,8 +67,8 @@
     {
       "name" : "sap/tnt/ToolPage.js",
       "description" : "Provides control sap.t.ToolPage.",
-      "size" : 5038,
-      "compressedSize" : 2371,
+      "size" : 5021,
+      "compressedSize" : 2374,
       "required" : ["sap/tnt/library.js", "sap/ui/core/Control.js", "sap/ui/Device.js", "sap/ui/core/ResizeHandler.js", "jquery.sap.global.js"],
       "includes" : []
     },

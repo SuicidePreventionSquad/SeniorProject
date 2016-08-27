@@ -5,8 +5,8 @@
  */
 
 // Provides class sap.m.MessageBox
-sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/core/IconPool'],
-		function (jQuery, Button, Dialog, Text, IconPool) {
+sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', './TextArea', './Link', './VBox', 'sap/ui/core/IconPool'],
+		function (jQuery, Button, Dialog, Text, TextArea, Link, VBox, IconPool) {
 			"use strict";
 
 			/**
@@ -33,8 +33,6 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 			 * @since 1.21.2
 			 */
 			var MessageBox = {};
-
-			MessageBox._rb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
 
 			/**
 			 * Enumeration of supported actions in a MessageBox.
@@ -164,6 +162,12 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 							"QUESTION": IconPool.getIconURI("question-mark")
 						};
 
+				var _verifyBundle = function () {
+					if (sap.m.MessageBox._rb !== sap.ui.getCore().getLibraryResourceBundle("sap.m")) {
+						sap.m.MessageBox._rb = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+					}
+				};
+
 				/**
 				 * Creates and displays a sap.m.Dialog with type sap.m.DialogType.Message with the given text and buttons, and optionally other parts.
 				 * After the user has tapped a button, the <code>onClose</code> function is invoked when given.
@@ -217,7 +221,7 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.show = function (vMessage, mOptions) {
-					var oDialog, oResult = null, that = this, aButtons = [], i,
+					var oDialog, oMessageText, vMessageContent, oResult = null, that = this, aButtons = [], i,
 							sIcon, sTitle, vActions, fnCallback, sDialogId, sClass,
 							mDefaults = {
 								id: sap.ui.core.ElementMetadata.uid("mbox"),
@@ -227,6 +231,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 								horizontalScrolling: true,
 								details: ""
 							};
+
+					_verifyBundle();
 
 					if (typeof mOptions === "string" || arguments.length > 2) {
 						// Old API compatibility
@@ -255,7 +261,6 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 							//Using stringify() with "tab" as space argument
 							mOptions.details = JSON.stringify(mOptions.details, null, '\t');
 						}
-						vMessage = getInformationLayout(mOptions, vMessage);
 					}
 
 					mOptions = jQuery.extend({}, mDefaults, mOptions);
@@ -292,23 +297,16 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 						aButtons.push(button(mOptions.actions[i]));
 					}
 
-					function getInformationLayout(mOptions, vMessage) {
+					function getInformationLayout(mOptions, oMessageText) {
 						//Generate MessageBox Layout
 
-						var oContent;
-						if (typeof vMessage === "string") {
-							oContent = new Text().setText(vMessage).addStyleClass("sapMMsgBoxText");
-						} else if (vMessage instanceof sap.ui.core.Control) {
-							oContent = vMessage.addStyleClass("sapMMsgBoxText");
-						}
-
-						var oTextArea = new sap.m.TextArea({
+						var oTextArea = new TextArea({
 							editable: false,
 							visible: false,
 							rows: 3
 						}).setValue(mOptions.details);
 
-						var oLink = new sap.m.Link({
+						var oLink = new Link({
 							text: that._rb.getText("MSGBOX_LINK_TITLE"),
 							press: function () {
 								oTextArea.setVisible(true);
@@ -319,15 +317,13 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 						oLink.addStyleClass("sapMMessageBoxLinkText");
 						oTextArea.addStyleClass("sapMMessageBoxDetails");
 
-						var oLayout = new sap.ui.layout.VerticalLayout({
-							width: "100%",
-							content: [
-								oContent,
+						return new VBox({
+							items: [
+								oMessageText,
 								oLink,
 								oTextArea
 							]
 						});
-						return oLayout;
 					}
 
 					function onclose() {
@@ -367,19 +363,24 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 					}
 
 					if (typeof (vMessage) === "string") {
-						vMessage = new Text({
+						vMessageContent = new Text({
 								textDirection: mOptions.textDirection
 							}).setText(vMessage).addStyleClass("sapMMsgBoxText");
+
+						// If we have only text we need to keep a reference to it and add it to the aria-labelledby attribute of the dialog.
+						oMessageText = vMessageContent;
 					} else if (vMessage instanceof sap.ui.core.Control) {
-						vMessage.addStyleClass("sapMMsgBoxText");
+						vMessageContent = vMessage.addStyleClass("sapMMsgBoxText");
+					}
+
+					// If we have additional details, we should wrap the content in a details layout.
+					if (mOptions && mOptions.hasOwnProperty("details") && mOptions.details !== "") {
+						vMessageContent = getInformationLayout(mOptions, vMessageContent);
 					}
 
 					function onOpen () {
-						var oInitiallyFocusedControl = sap.ui.getCore().byId(oDialog.getInitialFocus());
-
-						oDialog.$().attr("role", "alertdialog");
-						if (vMessage instanceof sap.m.Text) {
-							oInitiallyFocusedControl.$().attr("aria-describedby", vMessage.getId());
+						if (sap.ui.getCore().getConfiguration().getAccessibility()) {
+							oDialog.$().attr("role", "alertdialog");
 						}
 					}
 
@@ -387,14 +388,15 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 						id: mOptions.id,
 						type: sap.m.DialogType.Message,
 						title: mOptions.title,
-						content: vMessage,
+						content: vMessageContent,
 						icon: mIcons[mOptions.icon],
 						initialFocus: getInitialFocusControl(),
 						verticalScrolling: mOptions.verticalScrolling,
 						horizontalScrolling: mOptions.horizontalScrolling,
 						afterOpen: onOpen,
 						afterClose: onclose,
-						buttons: aButtons
+						buttons: aButtons,
+						ariaLabelledBy: oMessageText ? oMessageText.getId() : undefined
 					});
 
 					if (mClasses[mOptions.icon]) {
@@ -450,6 +452,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.alert = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.NONE,
 						title: this._rb.getText("MSGBOX_TITLE_ALERT"),
@@ -523,6 +527,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.confirm = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.QUESTION,
 						title: this._rb.getText("MSGBOX_TITLE_CONFIRM"),
@@ -593,6 +599,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.error = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.ERROR,
 						title: this._rb.getText("MSGBOX_TITLE_ERROR"),
@@ -647,6 +655,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.information = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.INFORMATION,
 						title: this._rb.getText("MSGBOX_TITLE_INFO"),
@@ -701,6 +711,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.warning = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.WARNING ,
 						title: this._rb.getText("MSGBOX_TITLE_WARNING"),
@@ -755,6 +767,8 @@ sap.ui.define(['jquery.sap.global', './Button', './Dialog', './Text', 'sap/ui/co
 				 * @static
 				 */
 				MessageBox.success = function (vMessage, mOptions) {
+					_verifyBundle();
+
 					var mDefaults = {
 						icon: Icon.SUCCESS ,
 						title: this._rb.getText("MSGBOX_TITLE_SUCCESS"),

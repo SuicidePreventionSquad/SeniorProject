@@ -36,7 +36,28 @@
 }
 
 .sapUiAnalyticalTable .sapUiTableGroupIcon {
-	padding-right: 10px;
+	padding-right: 40px;
+	background: @sapUiListTableGroupHeaderBackground;
+	background-clip: content-box;
+}
+
+// Fading effect for overlapping
+.sapUiAnalyticalTable .sapUiTableGroupIcon:after {
+	position: absolute;
+	content: "";
+	width: 40px;
+	top: 1px;
+	bottom: 1px;
+	box-shadow: inset 40px 0px 20px -20px @sapUiListTableGroupHeaderBackground;
+}
+
+// Fading effect for overlapping: Hover
+.sapUiAnalyticalTable .sapUiTableRowHvr .sapUiTableGroupIcon {
+	background-color: @sapUiListHoverBackground;
+}
+
+.sapUiAnalyticalTable .sapUiTableRowHvr .sapUiTableGroupIcon:after {
+	box-shadow: inset 40px 0px 20px -20px @sapUiListHoverBackground;
 }
 
 // No checkboxes should be shown in group header of Analytical Table
@@ -47,10 +68,6 @@
 .sapUiAnalyticalTable .sapUiTableRSel .sapUiTableCtrlScr,
 .sapUiAnalyticalTable .sapUiTableRSel .sapUiTableCtrlScrFixed {
 	margin-left: @sapUiTableRowHdrWidth;
-}
-
-.sapUiAnalyticalTable .sapUiTableRSel .sapUiTableCtrlEmpty {
-	left: @sapUiTableRowHdrWidth;
 }
 
 .sapUiAnalyticalTable .sapUiTableRSel .sapUiTableHSb {
@@ -104,10 +121,6 @@
 	color: @sapUiContentLabelColor;
 }
 
-.sapUiAnalyticalTable .sapUiTableColRsz {
-	z-index: 3;
-}
-
 .sapUiAnalyticalTable .sapUiTableCtrl tr.sapUiTableRowHvr,
 .sapUiAnalyticalTable tr.sapUiTableRowHvr .sapUiLbl,
 .sapUiAnalyticalTable tr.sapUiTableRowHvr .sapUiTf,
@@ -128,10 +141,6 @@
 	.sapUiTableSelModeMultiToggle .sapUiAnalyticalTableSum.sapUiTableRowHdr::after {
 		display: none;
 	}
-}
-
-.sapUiAnalyticalTable .sapUiTableTr > td:focus {
-	outline: 1px dotted @sapUiFocus;
 }
 
 .sapUiAnalyticalTable .sapUiTableRowHdr {
@@ -364,7 +373,6 @@
  ******************************************************************************/
 
 .sapUiTable > div {
-	border: 0;
 	border-left: 1px solid @sapUiListVerticalBorderColor;
 	border-right: 1px solid @sapUiListVerticalBorderColor;
 }
@@ -390,7 +398,12 @@
 	height: auto;
 	min-height: 28px;
 	background-color: @sapUiListBackground;
+	border-top: 1px solid @sapUiListBorderColor;
 	padding-top: 4px;
+}
+
+.sapUiTableHScr > .sapUiTableFtr {
+	border-top: 2px solid @sapUiListBorderColor;
 }
 
 .sapUiTable > .sapUiTableTbr {
@@ -445,11 +458,11 @@
 .sapUiTableColRowHdr,
 .sapUiTableCol {
 	padding-top: 7px;
-	padding-bottom: 5px;
+	padding-bottom: 7px;
 }
 
-.sapUiTableColIcons {
-	padding-top: 6px;
+.sapUiTableColSF::after {
+	color: @sapUiElement;
 }
 
 .sapUiTableCol:hover {
@@ -520,19 +533,9 @@
 	border-bottom: 1px solid @sapUiListTableFixedBorder !important;
 }
 
-// Hide last row bottom cell border
-.sapUiTableRowHdr:last-child,
-.sapUiTableCtrl:last-child tr:not(.sapUiTableFixedLastTopRow):last-child > td,
-.sapUiTableCtrlScrFixed tr:not(.sapUiTableFixedLastTopRow):last-child > td,
-.sapUiTableCtrlRowFixedBottom tr:not(.sapUiTableFixedLastTopRow):last-child > td
-{
-	border-bottom: none;
-}
-
 .sapUiTableEdt .sapUiTableCtrl {
 	background: @sapUiListBackground;
 }
-
 
 /* Table Row (only) Selected */
 /* data cells of row */
@@ -659,7 +662,6 @@
 }
 
 .sapUiSizeCondensed .sapUiTableSelModeMultiToggle .sapUiTableColRowHdr.sapUiTableSelAllEnabled::after {
-	margin-top: 2px;
 	font-size: 10px;
 }
 
@@ -674,12 +676,17 @@
 	padding: 0 0.5rem;
 }
 
-.sapUiTable>div.sapUiTableCnt {
-	border-top: 1px solid @sapUiListBorderColor;
-	border-bottom: 1px solid @sapUiListBorderColor;
+// Hide last row bottom cell border
+.sapUiTableRowHdr:last-child,
+.sapUiTableCtrl:last-child tr:not(.sapUiTableFixedLastTopRow):last-child > td,
+.sapUiTableCtrlScrFixed tr:not(.sapUiTableFixedLastTopRow):last-child > td,
+.sapUiTableCtrlRowFixedBottom tr:not(.sapUiTableFixedLastTopRow):last-child > td
+{
+	border-bottom: 1px solid transparent;
 }
-.sapUiTable>div:last-child {
-	border-bottom: 1px solid @sapUiListBorderColor;
+
+.sapUiTable > div.sapUiTableCnt {
+	background-color: @sapUiListBackground;
 }
 
 .sapUiTableCol,.sapUiTableTr > td {
@@ -776,13 +783,49 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 	color: @sapUiListTextColor;
 }
 
-.sapUiTableTr > td:focus {
+/*
+ * Focus Outline for Table Cells
+ *
+ * IE, Edge : use native outline rendering. It has correct contrast and offset.
+ * Any attempt to specify another outline in CSS breaks it.
+ *
+ * Other browsers see below:
+ */
+
+/* WebKit */
+.sapUiTableTr > td:focus:not(*:root),
+.sapUiTableCol:focus:not(*:root),
+.sapUiTableRowHdr:focus:not(*:root),
+.sapUiTableColRowHdr:focus:not(*:root) {
+	outline-offset: -1px;
 	outline: 1px dotted @sapUiFocus;
+}
+.sapUiTableRowHdr.sapUiTableGroupHeader:focus:not(*:root) {
+	outline: 0px;
+}
+
+/* Firefox */
+@supports (-moz-appearance:meterbar) {
+.sapUiTableTr > td:focus,
+.sapUiTableCol:focus,
+.sapUiTableRowHdr:focus,
+.sapUiTableColRowHdr:focus {
+	outline-offset: -1px;
+	outline: 1px dotted @sapUiFocus;
+}}
+
+.sapUiTableRowHdr.sapUiTableGroupHeader:focus .sapUiTableGroupIcon {
+	outline-width: 1px;
+	outline-style: dotted;
+	outline-offset: 0px;
+	outline-color: @sapUiContentFocusColor;
+}
+
+.sapUiTableRowHdr.sapUiTableGroupHeader {
+	outline: 0px;
 }
 
 .sapUiTableRSel {
-	.sapUiTableColHdrScr,
-	.sapUiTableColHdrFixed,
 	.sapUiTableCtrlScr,
 	.sapUiTableCtrlScrFixed {
 		margin-left: @sapUiTableRowHdrWidth;
@@ -790,8 +833,6 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 }
 
 .sapUiSizeCompact .sapUiTableRSel {
-	.sapUiTableColHdrScr,
-	.sapUiTableColHdrFixed,
 	.sapUiTableCtrlScr,
 	.sapUiTableCtrlScrFixed {
 		margin-left: @sapUiTableCompactRowHdrWidth;
@@ -799,8 +840,6 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 }
 
 .sapUiSizeCozy .sapUiTableRSel {
-	.sapUiTableColHdrScr,
-	.sapUiTableColHdrFixed,
 	.sapUiTableCtrlScr,
 	.sapUiTableCtrlScrFixed {
 		margin-left: @sapUiTableCozyRowHdrWidth;
@@ -815,6 +854,13 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 
 .sapUiTableRowHdrScr,.sapUiTableColRowHdr {
 	width: @sapUiTableRowHdrWidth;
+}
+
+.sapUiSizeCondensed {
+	.sapUiTableRowHdrScr,
+	.sapUiTableColRowHdr {
+		min-height: 32px;
+	}
 }
 
 .sapUiSizeCompact {
@@ -832,12 +878,6 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 		min-height: @sapUiTableCozyRowHdrHeight;
 	}
 }
-
-/* Table Column Resizer */
-.sapUiTableColRsz:hover {
-	background-color: @sapUiListHighlightColor;
-}
-
 
 /* Table Row Tree Node */
 .sapUiTableTr {
@@ -858,6 +898,16 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 	line-height: 1.5rem;
 }
 
+.sapUiTableGroupIconOpen,
+.sapUiTableTreeIconNodeOpen {
+	background-image: url(img/ico12_open_minus.gif);
+}
+
+.sapUiTableGroupIconClosed,
+.sapUiTableTreeIconNodeClosed {
+	background-image: url(img/ico12_closed_plus.gif);
+}
+
 .sapUiTableTreeIcon {
 	margin-right: 6px;
 }
@@ -868,6 +918,11 @@ tr.sapUiTableRowHvr .sapUiLnk:hover,
 
 .sapUiSizeCompact .sapUiTableGroupIcon {
 	font-size: 0.875rem;
+}
+
+.sapUiSizeCondensed .sapUiTableGroupIcon {
+	height: 22px;
+	line-height: 22px;
 }
 
 /* Table Cell Tree Node */
@@ -968,9 +1023,33 @@ div.sapUiTable {
 	color: @sapUiElement;
 }
 
-.sapUiTableColTouchRszActive {
-	background: @sapUiListActiveBackground;
-}
+.sapUiTableM {
+	.sapUiTableHeightResizer {
+		box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		-webkit-box-sizing: border-box;
+		height: 5px;
+		width: 100%;
+		position: relative;
+		text-align:center;
+	}
+	.sapUiTableHeightResizer::before {
+		font-family: SAP-icons;
+		content: "\e1fb";
+		position: absolute;
+		top: 0px;
+		line-height: 5px;
+	}
 
+	.sapUiTableHeightResizer:focus {
+		outline: 0;
+	}
+
+	.sapUiTableHeightResizer:hover {
+		cursor: n-resize;
+		background-color: @sapUiDarkBG;
+		color: @sapUiTextInverted;
+	}
+}
 /* END "Table.less" */
 

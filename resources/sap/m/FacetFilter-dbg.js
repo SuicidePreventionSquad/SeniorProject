@@ -1,8 +1,8 @@
 /*!
- * UI development toolkit for HTML5 (OpenUI5)
+* UI development toolkit for HTML5 (OpenUI5)
  * (c) Copyright 2009-2016 SAP SE or an SAP affiliate company.
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
- */
+*/
 
 // Provides control sap.m.FacetFilter.
 sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/Control', 'sap/ui/core/IconPool', 'sap/ui/core/delegate/ItemNavigation'],
@@ -21,7 +21,7 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 	 * The FacetFilter control is used to provide filtering functionality with multiple parameters.
 	 * @extends sap.ui.core.Control
 	 * @implements sap.ui.core.IShrinkable
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -134,6 +134,7 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 	/**
 	 * Loads the appropriate type of FacetFilter according to device.
 	 * @param {object} oType Type of FacetFilter to render depending on device
+	 * @returns {sap.m.FacetFilter} this for chaining
 	 */
 	FacetFilter.prototype.setType = function(oType) {
 
@@ -158,11 +159,13 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 				this._removeResetFromSummary(oSummaryBar);
 			}
 		}
+		return this;
 	};
 
 	/**
 	 * Sets whether or not to display Reset button to reset values.
 	 * @param {boolean} bVal Boolean to set Reset button to true or false
+	 * @returns {sap.m.FacetFilter} this for chaining
 	 */
 	FacetFilter.prototype.setShowReset = function(bVal) {
 
@@ -182,11 +185,13 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 				this._removeResetFromSummary(oSummaryBar);
 			}
 		}
+		return this;
 	};
 
 	/**
 	 * Sets whether or not to display summary bar.
 	 * @param {boolean} bVal Boolean to set summary bar to <code>true</code> or <code>false</code>
+	 * @returns {sap.m.FacetFilter} this for chaining
 	 */
 	FacetFilter.prototype.setShowSummaryBar = function(bVal) {
 
@@ -205,6 +210,7 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 			}
 			oSummaryBar.setActive(this.getType() === sap.m.FacetFilterType.Light);
 		}
+		return this;
 	};
 
 	/**
@@ -293,7 +299,7 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 		var oDialog = this._getFacetDialog();
 		var oNavContainer = this._getFacetDialogNavContainer();
 		oDialog.addContent(oNavContainer);
-		//keoboard acc - focus on 1st item of 1st page
+		//keyboard acc - focus on 1st item of 1st page
 		oDialog.setInitialFocus(oNavContainer.getPages()[0].getContent()[0].getItems()[0]);
 		oDialog.open();
 		return this;
@@ -383,8 +389,8 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 			oText.setTooltip(this._getSummaryText());
 		}
 
-		// Detach the interval timer attached in onAfterRendering
-		sap.ui.getCore().detachIntervalTimer(this._checkOverflow, this);
+			// Detach the interval timer attached in onAfterRendering
+			sap.ui.getCore().detachIntervalTimer(this._checkOverflow, this);
 	};
 
 	/**
@@ -392,7 +398,7 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 	 */
 	FacetFilter.prototype.onAfterRendering = function() {
 
-		if (!sap.ui.Device.system.phone) {
+		if (this.getType() !== sap.m.FacetFilterType.Light && !sap.ui.Device.system.phone) {
 			// Attach a interval timer that periodically checks overflow of the "head" div in the event that the window is resized or the device orientation is changed. This is ultimately to
 			// see if carousel arrows should be displayed.
 			sap.ui.getCore().attachIntervalTimer(this._checkOverflow, this); // proxy() is needed for the additional parameters, not for "this"
@@ -807,19 +813,22 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 
 				placement: sap.m.PlacementType.Bottom,
 				beforeOpen: function(oEvent) {
+					if (that._displayedList) {
+						that._displayedList._setSearchValue("");
+					}
 
 					this.setCustomHeader(that._createFilterItemsSearchFieldBar(that._displayedList));
 					var subHeaderBar = this.getSubHeader();
 					if (!subHeaderBar) {
 						this.setSubHeader(that._createSelectAllCheckboxBar(that._displayedList));
 					}
+					clearDeleteFacetIconTouchStartFlag(that._displayedList);
 				},
 				afterClose: function(oEvent) {
 
 					that._addDelegateFlag = true;
 					that._closePopoverFlag = true;
 
-					var oList = that._restoreListFromDisplayContainer(this);
 
 					// The facet button will not be removed when the remove icon is pressed if we don't delay hiding the icon in ie 9.
 					//
@@ -827,11 +836,9 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 					//
 					// TODO: Remove when ie 9 is no longer supported
 					if (sap.ui.Device.browser.internet_explorer && sap.ui.Device.browser.version < 10) {
-						jQuery.sap.delayedCall(100, that, that._handlePopoverAfterClose, [oList]);
+						jQuery.sap.delayedCall(100, that, that._handlePopoverAfterClose);
 					} else {
-//fix remove icon press issue. click remove icon and can't remove facet, so delay the popover close
-						jQuery.sap.delayedCall(120, that, that._handlePopoverAfterClose, [oList]);
-						oPopover.destroySubHeader();
+						that._handlePopoverAfterClose();
 					}
 				},
 				horizontalScrolling: false
@@ -852,6 +859,17 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 			// This is not the same as setting Popover.contentWidth, which sets a fixed width size. We want the popover
 			// to grow in width if any of its content is wider than the min width.
 			oPopover.addStyleClass("sapMFFPop");
+
+			var clearDeleteFacetIconTouchStartFlag = function(oList) {
+				if (!oList) {
+					return;
+				}
+				var oIcon = that._getFacetRemoveIcon(oList);
+
+				if (oIcon) {
+					oIcon._bTouchStarted = false;
+				}
+			};
 		}
 
 		if (this.getShowPopoverOKButton()) {
@@ -865,10 +883,43 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 	};
 
 	/**
+	 * Handles closing of the popover with given filter list.
 	 *
+	 * We have 2 options for calling this method:
+	 * 1. Popover.afterClose handler.
+	 * 2. Delete Icon.touchend(2.1) & Icon.press handler(2.2) - fnProcessRemoveFacetAction
+	 *
+	 * When the user clicks on the delete facet icon, the following event flows are possible:
+	 * a) quick click - icon touchstart, icon touchend, icon press, popover afterClose
+	 * b) click, hold & release delete icon - icon touchstart, popover afterClose, icon touchend, icon press
+	 * c) click, hold delete icon, but release elsewhere - icon touchstart, popover afterClose, icon touchend
+	 *
+	 * Having in mind the above, the following corresponding actions are taken:
+	 * a) current method is called due to option#1 where "listClose" & "confirm" events are fired.
+	 * b) method call due to option #1 is skipped, the real work is posponed to the next call (due to option #2.2)
+	 * c) method call due to option #1 is skipped and as there is no press event, next the underlying method is called
+	 *    due to option #2.1
+	 *
+	 * If popover is destroyed any further calls of this method results in nothing as the work has already been done.
+	 *
+	 * (Re) opening popover restarts this functionality.
 	 * @private
 	 */
-	FacetFilter.prototype._handlePopoverAfterClose = function(oList) {
+	FacetFilter.prototype._handlePopoverAfterClose = function () {
+		var oPopover = this.getAggregation("popover"),
+			oList = this._displayedList;
+
+		if (!oPopover) { // make sure we skip redundant work
+			return;
+		}
+
+		var oIcon = this._getFacetRemoveIcon(oList);
+
+		if (oIcon && oIcon._bTouchStarted) {
+			//do not react on popover close if the "remove facet" button was touched, but not released (i.e. no 'press' event)
+			return;
+		}
+		this._restoreListFromDisplayContainer(oPopover);
 		this._displayRemoveIcon(false, oList);
 		oList._fireListCloseEvent();
 		// Destroy the popover aggregation, otherwise if the list is then moved to the dialog filter items page, it will still think it's DOM element parent
@@ -896,8 +947,8 @@ sap.ui.define(['jquery.sap.global', './NavContainer', './library', 'sap/ui/core/
 	              var oList = sap.ui.getCore().byId(oControl.getAssociation("list"));
 	              jQuery.sap.assert(oList, "The facet filter button should be associated with a list.");
 
+			      oList.fireListOpen({});
 	              this._moveListToDisplayContainer(oList, oPopover);
-	              oList.fireListOpen({});
 	              oPopover.openBy(oControl);
 	              //Display remove facet icon only if ShowRemoveFacetIcon property is set to true
 	              if (oList.getShowRemoveFacetIcon()) {
@@ -975,8 +1026,11 @@ oPopover.setContentWidth("30%");
 					if (oPopover.isOpen()) {
 						// create a deferred that will be triggered after the popover is closed
 						jQuery.sap.delayedCall(100, this, function() {
-						that._oOpenPopoverDeferred = jQuery.Deferred();
-						that._oOpenPopoverDeferred.promise().done(fnOpenPopover);
+							if (oPopover.isOpen()) {
+								return;
+							}
+							that._oOpenPopoverDeferred = jQuery.Deferred();
+							that._oOpenPopoverDeferred.promise().done(fnOpenPopover);
 						});
 					} else {
 						jQuery.sap.delayedCall(100, this, fnOpenPopover);
@@ -1015,7 +1069,7 @@ oPopover.setContentWidth("30%");
 					sText = this._bundle.getText("FACETFILTER_ITEM_SELECTION", [ oList.getTitle(), iLength ]);
 				}
 			} else {
-				sText = this._bundle.getText("FACETFILTER_ALL_SELECTED", [ oList.getTitle() ]);
+				sText = oList.getTitle();
 			}
 
 			oButton.setText(sText);
@@ -1030,20 +1084,48 @@ oPopover.setContentWidth("30%");
 	 * @private
 	 */
 	FacetFilter.prototype._getFacetRemoveIcon = function(oList) {
+		var that = this,
+			oIcon = this._removeFacetIcons[oList.getId()];
 
-		var oIcon = this._removeFacetIcons[oList.getId()];
 		if (!oIcon) {
 			oIcon = new sap.ui.core.Icon({
-
 				src : IconPool.getIconURI("sys-cancel"),
 				tooltip:this._bundle.getText("FACETFILTER_REMOVE"),
-				press : function(oEvent) {
-					var oList = sap.ui.getCore().byId(this.getAssociation("list"));
+				press: function() {
+					oIcon._bPressed = true;
+				}
+			});
+
+			oIcon.addDelegate({
+				ontouchstart: function() {
+					//Mark this icon as touch started
+					oIcon._bTouchStarted = true;
+					oIcon._bPressed = false;
+				},
+
+				ontouchend: function() {
+					// Not all touchend are followed by "press" event(e.g. touchstart over the icon, but the user touchend-s somewhere else.
+					// So make sure the "remove icon" is always hidden
+					that._displayRemoveIcon(false, oList);
+					oIcon._bTouchStarted = false;
+					//Schedule actual processing so eventual "press" event is caught.
+					jQuery.sap.delayedCall(100, this,  fnProcessRemoveFacetAction);
+				}
+			}, true);
+
+			/**
+			 * Handles touch/click on "remove facet" icon depending on the received events.
+			 **/
+			var fnProcessRemoveFacetAction = function() {
+				if (oIcon._bPressed) {// touchstart, touchend, press
 					oList.removeSelections(true);
 					oList.setSelectedKeys();
 					oList.setProperty("active", false, true);
-				}
-			});
+				} //otherwise - touchstart, touchend, because the user released the mouse/touchend-ed outside the icon.
+
+				//In both cases popover closes and needs to be handled
+				that._handlePopoverAfterClose();
+			};
 
 			oIcon.setAssociation("list", oList.getId(), true);
 			oIcon.addStyleClass("sapMFFLRemoveIcon");
@@ -1082,7 +1164,11 @@ oPopover.setContentWidth("30%");
 	 */
 	FacetFilter.prototype._getFacetDialogNavContainer = function() {
 
-		var oNavContainer = new NavContainer();
+		// set autoFocus of the NavContainer to false because otherwise on touch devices
+		// the keyboard pops out due to the focus being automatically set on an input field
+		var oNavContainer = new NavContainer({
+				autoFocus: false
+			});
 		var oFacetPage = this._createFacetPage();
 		oNavContainer.addPage(oFacetPage);
 		oNavContainer.setInitialPage(oFacetPage);
@@ -1374,7 +1460,6 @@ oPopover.setContentWidth("30%");
 		oFacetList.attachUpdateFinished(function() {
 
 			for (var i = 0; i < oFacetList.getItems().length; i++) {
-
 				var oFacetListItem = this.getItems()[i];
 				oFacetListItem.detachPress(that._handleFacetListItemPress, that);
 				oFacetListItem.attachPress(that._handleFacetListItemPress, that);
@@ -1395,55 +1480,40 @@ oPopover.setContentWidth("30%");
 	 * @private
 	 */
 	FacetFilter.prototype._createSelectAllCheckboxBar = function(oList) {
+		if (!oList.getMultiSelect()) {
+			return null;
+		}
 
-			if (!oList.getMultiSelect()) {
-				return null;
+		var bSelected = oList.getActive() && oList.getItems().length > 0 && Object.getOwnPropertyNames(oList._oSelectedKeys).length === oList.getItems().length;
+
+		var oCheckbox = new sap.m.CheckBox(oList.getId() + "-selectAll", {
+			text : this._bundle.getText("FACETFILTER_CHECKBOX_ALL"),
+			tooltip:this._bundle.getText("FACETFILTER_CHECKBOX_ALL"),
+			selected: bSelected,
+			select : function(oEvent) {
+				oCheckbox.setSelected(oEvent.getParameter("selected"));
+				oList._handleSelectAll(oEvent.getParameter("selected"));
 			}
+		});
 
-			var oCheckbox = new sap.m.CheckBox(oList.getId() + "-selectAll", {
-				text : this._bundle.getText("FACETFILTER_CHECKBOX_ALL"),
-				tooltip:this._bundle.getText("FACETFILTER_CHECKBOX_ALL"),
-				selected: oList.getActive() && !oList.getSelectedItem() && !Object.getOwnPropertyNames(oList._oSelectedKeys).length,
-				select : function(oEvent) {
+		// We need to get the checkbox from the list when selection changes so that we can set the state of the
+		// checkbox.  See the selection change handler on FacetFilterList.
+		oList.setAssociation("allcheckbox", oCheckbox);
 
-					fnHandleCheckboxSelection(!oEvent.getParameter("selected"));
+		var oBar = new sap.m.Bar();
+
+		// Bar does not support the tap event, so create a delegate to handle tap and set the state of the select all checkbox.
+		oBar.addEventDelegate({
+			ontap: function(oEvent) {
+				if (oEvent.srcControl === this) {
+					oList._handleSelectAll(oCheckbox.getSelected());
 				}
-			});
+			}
+		}, oBar);
 
-			// We need to get the checkbox from the list when selection changes so that we can set the state of the
-			// checkbox.  See the selection change handler on FacetFilterList.
-			oList.setAssociation("allcheckbox", oCheckbox);
+		oBar.addContentLeft(oCheckbox);
+		oBar.addStyleClass("sapMFFCheckbar");
 
-			var oBar = new sap.m.Bar();
-
-			// Bar does not support the tap event, so create a delegate to handle tap and set the state of the select all checkbox.
-			oBar.addEventDelegate({
-				ontap: function(oEvent) {
-
-					if (oEvent.srcControl === this) {
-
-						fnHandleCheckboxSelection(oCheckbox.getSelected());
-					}
-				}
-			}, oBar);
-			oBar.addContentLeft(oCheckbox);
-
-			var fnHandleCheckboxSelection = function(bSelected) {
-
-				if (oList.getActive()) {
-
-					oCheckbox.setSelected(true);
-
-				} else {
-
-					oCheckbox.setSelected(!bSelected);
-				}
-				if (oCheckbox.getSelected()) {
-					oList.removeSelections(true);
-					oList.setSelectedKeys();
-				}
-			};
-			oBar.addStyleClass("sapMFFCheckbar");
 		return oBar;
 	};
 
@@ -1480,6 +1550,7 @@ oPopover.setContentWidth("30%");
 		// This page instance is used to display content for every facet filter list, so remove any prior content, if any.
 		//oFilterItemsPage.destroyAggregation("content", true);
 
+		oFacetFilterList.fireListOpen({});
 		// Add the facet filter list
 		this._moveListToDisplayContainer(oFacetFilterList, oFilterItemsPage);
 
@@ -1496,7 +1567,6 @@ oPopover.setContentWidth("30%");
 
 		oFilterItemsPage.setTitle(oFacetFilterList.getTitle());
 
-		oFacetFilterList.fireListOpen({});
 		oNavCont.to(oFilterItemsPage);
 		}
 	};
@@ -1864,67 +1934,46 @@ oPopover.setContentWidth("30%");
 	 * @private
 	 */
 	FacetFilter.prototype._checkOverflow = function() {
-
-		var oBarHead = this.getDomRef("head");
-		var $bar = this.$();
-
-		var bScrolling = false;
-
-		if (oBarHead) {
-
-			if (oBarHead.scrollWidth > oBarHead.clientWidth) {
-				// scrolling possible
-				bScrolling = true;
-			}
-		}
-
-		$bar.toggleClass("sapMFFScrolling", bScrolling);
-		$bar.toggleClass("sapMFFNoScrolling", !bScrolling);
-		this._lastScrolling = bScrolling;
+		var oBarHead = this.getDomRef("head"),
+			$List = jQuery(oBarHead),
+			$Bar = this.$(),
+			bScrollBack = false,
+			bScrollForward = false,
+			bScrolling = false,
+			iBarScrollLeft = null,
+			iBarScrollWidth = null,
+			iBarClientWidth = null;
 
 		if (oBarHead) {
-			var iScrollLeft = oBarHead.scrollLeft;
+			iBarScrollLeft = oBarHead.scrollLeft;
+			iBarScrollWidth = oBarHead.scrollWidth; //sp realwidth>availablewidth
+			iBarClientWidth = oBarHead.clientWidth;
 
-			// check whether scrolling to the left is possible
-			var bScrollBack = false;
-			var bScrollForward = false;
-
-			var realWidth = oBarHead.scrollWidth;  //sp realwidth>availablewidth
-			var availableWidth = oBarHead.clientWidth;
-
-
-			if (Math.abs(realWidth - availableWidth) == 1) { // Avoid rounding issues see CSN 1316630 2013
-				realWidth = availableWidth;
-			}
-
-			if (!this._bRtl) { // normal LTR mode
-
-				if (iScrollLeft > 0 ) {
-								bScrollBack = true;
-
-				}
-				if ((realWidth > availableWidth) && (iScrollLeft + availableWidth < realWidth)) {
-					bScrollForward = true;
-
-				}
-
-			} else { // RTL mode
-				var $List = jQuery(oBarHead);
-				if ($List.scrollLeftRTL() > 0) {
-					bScrollForward = true;
-				}
-				if ($List.scrollRightRTL() > 0 ) {
-
-					bScrollBack = true;
+			if (iBarScrollWidth > iBarClientWidth) {
+				if (iBarScrollWidth - iBarClientWidth == 1) {
+					// Avoid rounding issues see CSN 1316630 2013
+					iBarScrollWidth = iBarClientWidth;
+				} else {
+					bScrolling = true;
 				}
 			}
+			$Bar.toggleClass("sapMFFScrolling", bScrolling);
+			$Bar.toggleClass("sapMFFNoScrolling", !bScrolling);
+			this._lastScrolling = bScrolling;
 
+			if (!this._bRtl) {
+				bScrollBack = iBarScrollLeft > 0;
+				bScrollForward = (iBarScrollWidth > iBarClientWidth) && (iBarScrollWidth > iBarScrollLeft + iBarClientWidth);
+			} else {
+				bScrollForward = $List.scrollLeftRTL() > 0;
+				bScrollBack = $List.scrollRightRTL() > 0;
+			}
 			// only do DOM changes if the state changed to avoid periodic application of identical values
 			if ((bScrollForward != this._bPreviousScrollForward) || (bScrollBack != this._bPreviousScrollBack)) {
-				$bar.toggleClass("sapMFFNoScrollBack", !bScrollBack);
-				$bar.toggleClass("sapMFFNoScrollForward", !bScrollForward);
+				$Bar.toggleClass("sapMFFNoScrollBack", !bScrollBack);
+				$Bar.toggleClass("sapMFFNoScrollForward", !bScrollForward);
 			}
-			}
+		}
 	};
 
 	/**

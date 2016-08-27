@@ -20,7 +20,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		 * @extends sap.ui.core.Control
 		 *
 		 * @author SAP SE
-		 * @version 1.34.8
+		 * @version 1.38.7
 		 *
 		 * @constructor
 		 * @public
@@ -160,7 +160,9 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 				oDomRef.setAttribute("aria-checked", "false");
 			}
 
-			$Switch.addClass(CSS_CLASS + "Trans");
+			if (sap.ui.getCore().getConfiguration().getAnimation()) {
+				$Switch.addClass(CSS_CLASS + "Trans");
+			}
 
 			// remove inline styles
 			oSwitchInnerDomRef.style.cssText = "";
@@ -207,11 +209,6 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		/* Lifecycle methods                                           */
 		/* =========================================================== */
 
-		/**
-		 * Required adaptations before rendering.
-		 *
-		 * @private
-		 */
 		Switch.prototype.onBeforeRendering = function() {
 			var Swt = Switch;
 
@@ -434,6 +431,27 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			this.setProperty("state", bState, true);
 			this._setDomState(this.getState());
 			return this;
+		};
+
+		/**
+		 * @see {sap.ui.core.Control#getAccessibilityInfo}
+		 * @protected
+		 */
+		Switch.prototype.getAccessibilityInfo = function() {
+			var oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+
+			var sDesc = "";
+			if (this.getState()) {
+				sDesc = oBundle.getText("ACC_CTR_STATE_CHECKED") + " " + oBundle.getText(this.getInvisibleElementText());
+			}
+
+			return {
+				role: "checkbox",
+				type: oBundle.getText("ACC_CTR_TYPE_CHECKBOX"),
+				description: sDesc.trim(),
+				focusable: this.getEnabled(),
+				enabled: this.getEnabled()
+			};
 		};
 
 		return Switch;

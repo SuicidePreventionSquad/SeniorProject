@@ -449,7 +449,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 	 * @private
 	 */
 	ObjectHeaderRenderer._renderNumber = function(oRM, oOH) {
-		if (!oOH.getNumber()) {
+		var numbers = oOH.getAdditionalNumbers();
+
+		if (!oOH.getNumber() && (numbers && !numbers.length)) {
 			return;
 		}
 
@@ -466,8 +468,49 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 			oObjectNumber.setTextDirection(oOH.getNumberTextDirection());
 			this._renderChildControl(oRM, oOH, oObjectNumber);
 		}
-
 		oRM.write("</div>"); // End Number/units container
+
+		if (!oOH.getCondensed()) {
+			this._renderAdditionalNumbers(oRM, oOH);
+		}
+	};
+
+	/**
+	 * Renders the HTML for the provided in aggregation additionalNumbers {@link sap.ui.core.RenderManager}.
+	 *
+	 * @param {sap.ui.core.RenderManager}
+	 *            oRM the RenderManager that can be used for writing to the render output buffer
+	 * @param {sap.m.Control}
+	 *            oOH an object representation of the ObjectHeader
+	 * @private
+	 */
+	ObjectHeaderRenderer._renderAdditionalNumbers = function(oRM, oOH) {
+		var numbers = oOH.getAdditionalNumbers();
+		if (numbers && !numbers.length) {
+			return;
+		}
+
+		if (numbers.length === 1) {
+			oRM.write("<div");
+			oRM.addClass("additionalOHNumberSeparatorDiv");
+			oRM.writeClasses();
+			oRM.write("></div>");
+		}
+
+		for (var i = 0; i < numbers.length; i++) {
+			oRM.write("<div");
+			oRM.writeAttribute("id", oOH.getId() + "-additionalNumber" + i);
+			oRM.addClass("sapMOHNumberDiv additionalOHNumberDiv");
+			if (numbers.length === 1) {
+				oRM.addClass("sapMOHOnlyANumber");
+			}
+			oRM.writeClasses();
+			oRM.write(">");
+			numbers[i].setTextDirection(oOH.getNumberTextDirection());
+			this._renderChildControl(oRM, oOH, numbers[i]);
+
+			oRM.write("</div>"); // End container
+		}
 	};
 
 	/**
@@ -491,6 +534,8 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 		}
 
 		if (oOH.getTitle()) {
+			var sTitleLevel = (oOH.getTitleLevel() === sap.ui.core.TitleLevel.Auto) ? sap.ui.core.TitleLevel.H1 : oOH.getTitleLevel();
+
 			oOH._titleText.setText(oOH.getTitle());
 			// set text direction of the title
 			oOH._titleText.setTextDirection(oOH.getTitleTextDirection());
@@ -503,7 +548,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 						oRM.writeAttributeEscaped("target", oOH.getTitleTarget());
 					}
 				} else {
-					oRM.writeAttribute("href", "#");
+					/*eslint-disable no-script-url */
+					oRM.writeAttribute("href", "javascript:void(0);");
+					/*eslint-enable no-script-url */
 				}
 
 				//ARIA attributes
@@ -526,9 +573,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 			}
 			oRM.writeClasses();
 			oRM.write(">");
-			oRM.write("<h1>");
+			oRM.write("<" + sTitleLevel + ">");
 			this._renderChildControl(oRM, oOH, oOH._titleText);
-			oRM.write("</h1>");
+			oRM.write("</" + sTitleLevel + ">");
 			if (oOH.getTitleActive()) {
 				oRM.write("</a>"); // End Title Text container
 			} else {
@@ -560,7 +607,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 	 * @private
 	 */
 	ObjectHeaderRenderer._renderFullTitle = function(oRM, oOH) {
-		if (!oOH.getNumber()) {
+		var numbers = oOH.getAdditionalNumbers();
+
+		if (!oOH.getNumber() && (numbers && !numbers.length)) {
 			oRM.addClass("sapMOHTitleDivFull");
 		}
 	};
@@ -787,6 +836,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 
 		oRM.write("<div");
 		oRM.addClass("sapMOHR");
+		if (bTabs) {
+			oRM.addClass("sapMOHRNoBorder");
+		}
 
 		oRM.addClass("sapMOHRBg" + oOH._getBackground());
 		oRM.writeClasses();
@@ -1247,7 +1299,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 		oRM.writeAttribute("id", oOH.getId() + "-title");
 		oRM.addClass("sapMOHRTitle");
 
-		if (oOH.getTitleActive()) {
+		if (oOH.getTitle().length && oOH.getTitleActive()) {
 			oRM.addClass("sapMOHRTitleActive");
 		}
 		if (oOH.getShowTitleSelector()) {
@@ -1309,8 +1361,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 	ObjectHeaderRenderer._renderResponsiveTitleAndArrow = function(oRM, oOH, nCutLen) {
 		var sOHTitle, sEllipsis = '', sTextDir = oOH.getTitleTextDirection();
 		var bMarkers = (oOH.getShowMarkers() && (oOH.getMarkFavorite() || oOH.getMarkFlagged()));
+		var sTitleLevel = (oOH.getTitleLevel() === sap.ui.core.TitleLevel.Auto) ? sap.ui.core.TitleLevel.H1 : oOH.getTitleLevel();
 
-		oRM.write("<h1>");
+		oRM.write("<" + sTitleLevel + ">");
 		oRM.write("<span");
 		oRM.addClass("sapMOHRTitleTextContainer");
 		oRM.writeClasses();
@@ -1319,7 +1372,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 			oRM.writeAttribute("dir", sTextDir.toLowerCase());
 		}
 		oRM.write(">");
-		if (oOH.getTitleActive()) {
+		if (oOH.getTitle().length && oOH.getTitleActive()) {
 			oRM.write("<a");
 			if (oOH.getTitleHref()) { // if title is link write it
 				oRM.writeAttributeEscaped("href", oOH.getTitleHref());
@@ -1327,7 +1380,9 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 					oRM.writeAttributeEscaped("target", oOH.getTitleTarget());
 				}
 			} else {
-				oRM.writeAttribute("href", "#");
+				/*eslint-disable no-script-url */
+				oRM.writeAttribute("href", "javascript:void(0);");
+				/*eslint-enable no-script-url */
 			}
 
 			oRM.writeAttribute("tabindex", "0");
@@ -1399,7 +1454,7 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/IconPool'],
 			this._renderChildControl(oRM, oOH, oOH._oTitleArrowIcon);
 			oRM.write("</span>"); // end title arrow container
 		}
-		oRM.write("</h1>");
+		oRM.write("</" + sTitleLevel + ">");
 
 	};
 

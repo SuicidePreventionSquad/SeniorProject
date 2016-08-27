@@ -12,20 +12,20 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 
 
 	/**
-	 * Constructor for a new FlexBox.
+	 * Constructor for a new <code>sap.m.FlexBox</code>.
 	 *
 	 * @param {string} [sId] id for the new control, generated automatically if no id is given
 	 * @param {object} [mSettings] initial settings for the new control
 	 *
 	 * @class
-	 * The FlexBox control builds the container for a flexible box layout.
+	 * The <code>sap.m.FlexBox</code> control builds the container for a flexible box layout.
 	 *
 	 * Browser support:
 	 * This control is not supported in Internet Explorer 9!
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -38,29 +38,33 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 		properties : {
 
 			/**
-			 * The height of the FlexBox. Note that when a percentage is given, for the height to work as expected, the height of the surrounding container must be defined.
+			 * The height of the <code>sap.m.FlexBox</code>. Note that when a percentage is given, for the height to work as expected, the height of the surrounding container must be defined.
 			 * @since 1.9.1
 			 */
 			height : {type : "sap.ui.core.CSSSize", group : "Dimension", defaultValue : ''},
 
 			/**
-			 * The width of the FlexBox. Note that when a percentage is given, for the width to work as expected, the width of the surrounding container must be defined.
+			 * The width of the <code>sap.m.FlexBox</code>. Note that when a percentage is given, for the width to work as expected, the width of the surrounding container must be defined.
 			 * @since 1.9.1
 			 */
 			width : {type : "sap.ui.core.CSSSize", group : "Dimension", defaultValue : ''},
 
 			/**
-			 * Determines whether the flexbox is in block or inline mode
+			 * Determines whether the <code>sap.m.FlexBox</code> is in block or inline mode.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#flex-containers
 			 */
 			displayInline : {type : "boolean", group : "Appearance", defaultValue : false},
 
 			/**
-			 * Determines the direction of the layout of child elements
+			 * Determines the direction of the layout of child elements.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#flex-direction-property
 			 */
 			direction : {type : "sap.m.FlexDirection", group : "Appearance", defaultValue : sap.m.FlexDirection.Row},
 
 			/**
-			 * Determines whether the flexbox will be sized to completely fill its container. If the FlexBox is inserted into a Page, the property 'enableScrolling' of the Page needs to be set to 'false' for the FlexBox to fit the entire viewport.
+			 * Determines whether the <code>sap.m.FlexBox</code> will be sized to completely fill its container. If the <code>sap.m.FlexBox</code> is inserted into a Page, the property 'enableScrolling' of the Page needs to be set to 'false' for the FlexBox to fit the entire viewport.
 			 */
 			fitContainer : {type : "boolean", group : "Appearance", defaultValue : false},
 
@@ -70,20 +74,49 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 			renderType : {type : "sap.m.FlexRendertype", group : "Misc", defaultValue : sap.m.FlexRendertype.Div},
 
 			/**
-			 * Determines the layout behavior along the main axis. "SpaceAround" is currently not supported in most non-Webkit browsers.
+			 * Determines the layout behavior along the main axis.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#justify-content-property
 			 */
 			justifyContent : {type : "sap.m.FlexJustifyContent", group : "Appearance", defaultValue : sap.m.FlexJustifyContent.Start},
 
 			/**
-			 * Determines the layout behavior of items along the cross-axis. "Baseline" is not supported in Internet Explorer <10.
+			 * Determines the layout behavior of items along the cross-axis. "Baseline" is not supported in Internet Explorer 10.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#align-items-property
 			 */
-			alignItems : {type : "sap.m.FlexAlignItems", group : "Appearance", defaultValue : sap.m.FlexAlignItems.Stretch}
+			alignItems : {type : "sap.m.FlexAlignItems", group : "Appearance", defaultValue : sap.m.FlexAlignItems.Stretch},
+
+			/**
+			 * Determines the wrapping behavior of the flex container. This property has no effect in older browsers, e.g. Android Native 4.3 and below.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#flex-wrap-property
+			 *
+			 * @since 1.36.0
+			 */
+			wrap : {type : "sap.m.FlexWrap", group : "Appearance", defaultValue : sap.m.FlexWrap.NoWrap},
+
+			/**
+			 * Determines the layout behavior of container lines when there's extra space along the cross-axis. This property has no effect in Internet Explorer 10.
+			 *
+			 * @see http://www.w3.org/TR/css-flexbox-1/#align-content-property
+			 *
+			 * @since 1.36.0
+			 */
+			alignContent : {type : "sap.m.FlexAlignContent", group : "Appearance", defaultValue : sap.m.FlexAlignContent.Stretch},
+
+			/**
+			 * Defines the background style of the <code>sap.m.FlexBox</code>.
+			 *
+			 * @since 1.38.5
+			 */
+			backgroundDesign: {type: "sap.m.BackgroundDesign", group: "Appearance", defaultValue: sap.m.BackgroundDesign.Transparent}
 		},
 		defaultAggregation : "items",
 		aggregations : {
 
 			/**
-			 * Flex items within the FlexBox layout
+			 * Flex items within the flexible box layout
 			 */
 			items : {type : "sap.ui.core.Control", multiple : true, singularName : "item"}
 		}
@@ -92,10 +125,10 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 
 	FlexBox.prototype.init = function() {
 		// Make sure that HBox and VBox have a valid direction
-		if (this instanceof sap.m.HBox && (this.getDirection() !== "Row" || this.getDirection() !== "RowReverse")) {
+		if (this instanceof sap.m.HBox && (this.getDirection() !== sap.m.FlexDirection.Row || this.getDirection() !== sap.m.FlexDirection.RowReverse)) {
 			this.setDirection('Row');
 		}
-		if (this instanceof sap.m.VBox && (this.getDirection() !== "Column" || this.getDirection() !== "ColumnReverse")) {
+		if (this instanceof sap.m.VBox && (this.getDirection() !== sap.m.FlexDirection.Column || this.getDirection() !== sap.m.FlexDirection.ColumnReverse)) {
 			this.setDirection('Column');
 		}
 	};
@@ -103,7 +136,7 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 	FlexBox.prototype.addItem = function(oItem) {
 		this.addAggregation("items", oItem);
 
-		if (oItem) {
+		if (oItem && !(oItem instanceof sap.m.FlexBox)) {
 			oItem.attachEvent("_change", this.onItemChange, this);
 		}
 
@@ -113,7 +146,7 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 	FlexBox.prototype.insertItem = function(oItem, iIndex) {
 		this.insertAggregation("items", oItem, iIndex);
 
-		if (oItem) {
+		if (oItem && !(oItem instanceof sap.m.FlexBox)) {
 			oItem.attachEvent("_change", this.onItemChange, this);
 		}
 
@@ -121,10 +154,15 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 	};
 
 	FlexBox.prototype.removeItem = function(vItem) {
-		var oItem = this.removeAggregation("items", vItem);
+		var oItem = this.removeAggregation("items", vItem, true);
 
-		if (oItem) {
+		if (oItem && !(oItem instanceof sap.m.FlexBox)) {
 			oItem.detachEvent("_change", this.onItemChange, this);
+			if (oItem instanceof sap.m.FlexBox) {
+				oItem.$().remove();
+			} else {
+				oItem.$().parent().remove();
+			}
 		}
 
 		return oItem;
@@ -141,181 +179,130 @@ sap.ui.define(['jquery.sap.global', './FlexBoxStylingHelper', './library', 'sap/
 	};
 
 	FlexBox.prototype.onItemChange = function(oControlEvent) {
-		// Early return condition
-		if (oControlEvent.getParameter("name") !== "visible") {
+		// Early return conditions
+		if (oControlEvent.getParameter("name") !== "visible"
+			|| (this.getRenderType() !== sap.m.FlexRendertype.List && this.getRenderType() !== sap.m.FlexRendertype.Div)) {
 			return;
 		}
 
-		// Render or remove flex item if visibility changes
-		var sId = oControlEvent.getParameter("id"),
-			sNewValue = oControlEvent.getParameter("newValue"),
-			oLayoutData = sap.ui.getCore().byId(sId).getLayoutData();
+		// Sync visibility of flex item wrapper, if visibility changes
+		var oItem = sap.ui.getCore().byId(oControlEvent.getParameter("id")),
+			oWrapper = null;
 
-		if (!(oLayoutData instanceof sap.m.FlexItemData)) {
-			return;
-		}
-
-		if (sNewValue) {
-			oLayoutData.$().removeClass("sapUiHiddenPlaceholder").removeAttr("aria-hidden");
+		if (oItem.getLayoutData()) {
+			oWrapper = jQuery.sap.byId(oItem.getLayoutData().getId());
 		} else {
-			oLayoutData.$().addClass("sapUiHiddenPlaceholder").attr("aria-hidden", "true");
+			oWrapper = jQuery.sap.byId(sap.ui.core.RenderPrefixes.Invisible + oItem.getId()).parent();
+		}
+
+		if (oControlEvent.getParameter("newValue")) {
+			oWrapper.removeClass("sapUiHiddenPlaceholder").removeAttr("aria-hidden");
+		} else {
+			oWrapper.addClass("sapUiHiddenPlaceholder").attr("aria-hidden", "true");
 		}
 	};
 
 	FlexBox.prototype.setDisplayInline = function(bInline) {
-		var sDisplay = "";
+		this.setProperty("displayInline", bInline, true);
+		this.$().toggleClass("sapMFlexBoxInline", this.getDisplayInline());
 
-		this.setProperty("displayInline", bInline, false);
-		if (bInline) {
-			sDisplay = "inline-flex";
-		} else {
-			sDisplay = "flex";
-		}
-		FlexBoxStylingHelper.setStyle(null, this, "display", sDisplay);
 		return this;
 	};
 
 	FlexBox.prototype.setDirection = function(sValue) {
-		this.setProperty("direction", sValue, false);
-		FlexBoxStylingHelper.setStyle(null, this, "flex-direction", sValue);
+		this.setProperty("direction", sValue, true);
+		if (this.getDirection() === sap.m.FlexDirection.Column || this.getDirection() === sap.m.FlexDirection.ColumnReverse) {
+			this.$().removeClass("sapMHBox").addClass("sapMVBox");
+		} else {
+			this.$().removeClass("sapMVBox").addClass("sapMHBox");
+		}
+
+		if (this.getDirection() === sap.m.FlexDirection.RowReverse || this.getDirection() === sap.m.FlexDirection.ColumnReverse) {
+			this.$().addClass("sapMFlexBoxReverse");
+		} else {
+			this.$().removeClass("sapMFlexBoxReverse");
+		}
+
 		return this;
 	};
 
 	FlexBox.prototype.setFitContainer = function(sValue) {
-		if (sValue && !(this.getParent() instanceof FlexBox)) {
-			jQuery.sap.log.info("FlexBox fitContainer set to true. Remember, if the FlexBox is inserted into a Page, the property 'enableScrolling' of the Page needs to be set to 'false' for the FlexBox to fit the entire viewport.");
-			var $flexContainer = this.$();
-			$flexContainer.css("width", "auto");
-			$flexContainer.css("height", "100%");
-		}
-
-		this.setProperty("fitContainer", sValue, false);
+		this.setProperty("fitContainer", sValue, true);
+		this.$().toggleClass("sapMFlexBoxFit", this.getFitContainer());
 
 		return this;
 	};
 
-	//TODO Enable wrapping when any browser supports it
-	/*sap.m.FlexBox.prototype.setJustifyContent = function(sValue) {
+	FlexBox.prototype.setWrap = function(sValue) {
+		var sOldValue = this.getWrap();
 		this.setProperty("wrap", sValue, true);
-		sap.m.FlexBoxStylingHelper.setStyle(null, this, "flex-wrap", sValue);
+		this.$().removeClass("sapMFlexBoxWrap" + sOldValue).addClass("sapMFlexBoxWrap" + this.getWrap());
+
 		return this;
-	}*/
+	};
 
 	FlexBox.prototype.setJustifyContent = function(sValue) {
-		this.setProperty("justifyContent", sValue, false);
-		FlexBoxStylingHelper.setStyle(null, this, "justify-content", sValue);
+		var sOldValue = this.getJustifyContent();
+		this.setProperty("justifyContent", sValue, true);
+		this.$().removeClass("sapMFlexBoxJustify" + sOldValue).addClass("sapMFlexBoxJustify" + this.getJustifyContent());
+
 		return this;
 	};
 
 	FlexBox.prototype.setAlignItems = function(sValue) {
-		this.setProperty("alignItems", sValue, false);
-		FlexBoxStylingHelper.setStyle(null, this, "align-items", sValue);
+		var sOldValue = this.getAlignItems();
+		this.setProperty("alignItems", sValue, true);
+		this.$().removeClass("sapMFlexBoxAlignItems" + sOldValue).addClass("sapMFlexBoxAlignItems" + this.getAlignItems());
+
 		return this;
 	};
 
 	FlexBox.prototype.setAlignContent = function(sValue) {
-		this.setProperty("alignContent", sValue, false);
-		FlexBoxStylingHelper.setStyle(null, this, "align-content", sValue);
+		var sOldValue = this.getAlignContent();
+		this.setProperty("alignContent", sValue, true);
+		this.$().removeClass("sapMFlexBoxAlignContent" + sOldValue).addClass("sapMFlexBoxAlignContent" + this.getAlignContent());
+
 		return this;
 	};
 
-	FlexBox.prototype.onAfterRendering = function() {
-		if (jQuery.support.useFlexBoxPolyfill) {
-			// Check for parent FlexBoxes. Size calculations need to be made from top to bottom
-			// while the renderer goes from bottom to top.
-			var that = this;
-			var currentElement = that;
-			var parent = null;
-			jQuery.sap.log.info("Check #" + currentElement.getId() + " for nested FlexBoxes");
+	FlexBox.prototype.setHeight = function(sValue) {
+		this.setProperty("height", sValue, true);
+		this.$().css("height", this.getHeight());
 
-			for (parent = currentElement.getParent();
-				parent !== null && parent !== undefined &&
-				(parent instanceof FlexBox
-				|| (parent.getLayoutData && parent.getLayoutData() instanceof sap.m.FlexItemData));
-				) {
-				currentElement = parent;
-				parent = currentElement.getParent();
-			}
-
-			this._sanitizeChildren(this);
-			this._renderFlexBoxPolyFill();
-		}
+		return this;
 	};
 
-	/*
-	 * @private
-	 */
-	FlexBox.prototype._sanitizeChildren = function(oControl) {
-		// Check the flex items
-		var aChildren = oControl.getItems();
-		for (var i = 0; i < aChildren.length; i++) {
-			if (aChildren[i].getVisible === undefined || aChildren[i].getVisible()) {
-				var $child = "";
-				if (aChildren[i] instanceof FlexBox) {
-					$child = aChildren[i].$();
-				} else {
-					$child = aChildren[i].$().parent();	// Get wrapper <div>
-				}
-				$child.width("auto");
-				//$child.height("100%");
-				if (aChildren[i] instanceof FlexBox) {
-					this._sanitizeChildren(aChildren[i]);
-				}
-			}
-		}
+	FlexBox.prototype.setWidth = function(sValue) {
+		this.setProperty("width", sValue, true);
+		this.$().css("width", this.getWidth());
+
+		return this;
 	};
 
-	/*
-	 * @private
+	FlexBox.prototype.setBackgroundDesign = function(sValue) {
+		var sOldValue = this.getBackgroundDesign();
+		this.setProperty("backgroundDesign", sValue, true);
+		this.$().removeClass("sapMFlexBoxBG" + sOldValue).addClass("sapMFlexBoxBG" + this.getBackgroundDesign());
+
+		return this;
+	};
+
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
 	 */
-	FlexBox.prototype._renderFlexBoxPolyFill = function() {
-		var flexMatrix = [];
-		var ordinalMatrix = [];
-
-		// Prepare flex and ordinal matrix
-		var aChildren = this.getItems();
-		for (var i = 0; i < aChildren.length; i++) {
-			// If no visible property or if visible
-			if (aChildren[i].getVisible === undefined || aChildren[i].getVisible()) {
-				// Get layout properties
-				var oLayoutData = aChildren[i].getLayoutData();
-
-				if (oLayoutData !== "undefined" && oLayoutData !== null && oLayoutData instanceof sap.m.FlexItemData) {
-					if (oLayoutData.getGrowFactor() !== 1) {
-						flexMatrix.push(oLayoutData.getGrowFactor());
-					} else {
-						flexMatrix.push(1);		// default value
-					}
-					if (oLayoutData.getOrder() != 0) {
-						ordinalMatrix.push(oLayoutData.getOrder());
-					} else {
-						ordinalMatrix.push(0);	// default value
-					}
+	FlexBox.prototype.getAccessibilityInfo = function() {
+		var aContent = this.getItems();
+		var aChildren = [];
+		for (var i = 0; i < aContent.length; i++) {
+			if (aContent[i].getAccessibilityInfo) {
+				var oInfo = aContent[i].getAccessibilityInfo();
+				if (oInfo) {
+					aChildren.push(oInfo);
 				}
 			}
 		}
-
-		if (flexMatrix.length === 0) {
-			flexMatrix = null;
-		}
-		if (ordinalMatrix.length === 0) {
-			ordinalMatrix = null;
-		}
-
-		if (this.getFitContainer()) {
-			// Call setter for fitContainer to apply the appropriate styles which are normally applied by the FlexBoxStylingHelper
-			this.setFitContainer(true);
-		}
-
-		var oSettings = {
-		    direction : this.getDirection(),
-		    alignItems : this.getAlignItems(),
-		    justifyContent : this.getJustifyContent(),
-		    flexMatrix : flexMatrix,
-		    ordinalMatrix : ordinalMatrix
-		};
-
-		FlexBoxStylingHelper.applyFlexBoxPolyfill(this.getId(), oSettings);
+		return {children: aChildren};
 	};
 
 	return FlexBox;

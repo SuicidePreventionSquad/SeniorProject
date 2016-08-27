@@ -15,7 +15,7 @@ sap.ui.define([
 	 *
 	 * @class Utility functionality to work with overlays
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @private
 	 * @static
 	 * @since 1.30
@@ -37,29 +37,39 @@ sap.ui.define([
 	 * Returns an object with parent, aggregation and index
 	 */
 	OverlayUtil.getParentInformation = function(oElementOverlay) {
-		var oPublicParent = oElementOverlay.getParentElementOverlay().getElementInstance();
-		var sPublicParentAggregationName = oElementOverlay.getParentAggregationOverlay().getAggregationName();
+		var oParent = oElementOverlay.getParentElementOverlay();
+		if (oParent) {
+			var oPublicParent = oParent.getElementInstance();
+			var sPublicParentAggregationName = oElementOverlay.getParentAggregationOverlay().getAggregationName();
 
-		var aChildren = ElementUtil.getAggregation(oPublicParent, sPublicParentAggregationName);
-		var oElement = oElementOverlay.getElementInstance();
-		var iIndex = aChildren.indexOf(oElement);
+			var aChildren = ElementUtil.getAggregation(oPublicParent, sPublicParentAggregationName);
+			var oElement = oElementOverlay.getElementInstance();
+			var iIndex = aChildren.indexOf(oElement);
 
-		return {
-			parent: oPublicParent,
-			aggregation: sPublicParentAggregationName,
-			index: iIndex
-		};
+			return {
+				parent: oPublicParent,
+				aggregation: sPublicParentAggregationName,
+				index: iIndex
+			};
+		} else {
+			return {
+				parent: null,
+				aggregation: "",
+				index: -1
+			};
+		}
+
 	};
 
 	/**
 	 *
 	 */
 	OverlayUtil.getClosestOverlayFor = function(oElement) {
-		if (!oElement || !oElement.getParent) {
+		if (!oElement) {
 			return null;
 		}
 
-		var oParent = oElement.getParent();
+		var oParent = oElement;
 		var oParentOverlay = OverlayRegistry.getOverlay(oParent);
 		while (oParent && !oParentOverlay) {
 			oParent = oParent.getParent();
@@ -330,6 +340,24 @@ sap.ui.define([
 		oOverlay.getChildren().forEach(function(oChildOverlay) {
 			that.iterateOverlayTree(oChildOverlay, fnCallback);
 		});
+	};
+
+
+	/**
+	 *
+	 */
+	OverlayUtil.isInOverlayContainer = function(oNode) {
+		if (oNode && jQuery(oNode).closest(".sapUiDtOverlay, #overlay-container").length) {
+			return true;
+		}
+	};
+
+	/**
+	 *
+	 */
+	OverlayUtil.getClosestOverlayForNode = function(oNode) {
+		var oElement = ElementUtil.getClosestElementForNode(oNode);
+		return OverlayUtil.getClosestOverlayFor(oElement);
 	};
 
 	return OverlayUtil;

@@ -20,7 +20,7 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 	 * @abstract
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -30,6 +30,8 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 	 */
 	var SemanticControl = Element.extend("sap.m.semantic.SemanticControl", /** @lends sap.m.semantic.SemanticControl.prototype */ {
 		metadata: {
+
+			library: "sap.m",
 
 			"abstract": true,
 
@@ -129,6 +131,14 @@ sap.ui.define(["sap/m/semantic/SemanticConfiguration", "sap/ui/base/ManagedObjec
 
 		oClone.setAggregation('_control', oPrivateControlClone);
 		return oClone;
+	};
+
+	SemanticControl.prototype.destroy = function () {
+		var vResult = Element.prototype.destroy.apply(this, arguments);
+		if (this.getAggregation("_control")) {
+			this.getAggregation("_control").destroy();
+		}
+		return vResult;
 	};
 
 	/**

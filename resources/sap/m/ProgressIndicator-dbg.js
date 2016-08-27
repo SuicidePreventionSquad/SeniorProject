@@ -23,7 +23,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -92,9 +92,9 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		var that = this;
 
 		// validation of fPercentValue
-		if (typeof (fPercentValue) !== "number" || fPercentValue < 0 || fPercentValue > 100) {
-			jQuery.sap.log.error(this + ": percentValue (" + fPercentValue + ") is not correct! It has to be a number between 0-100.");
-			return this;
+		if (!isValidPercentValue(fPercentValue)) {
+			fPercentValue = 0;
+			jQuery.sap.log.warning(this + ": percentValue (" + fPercentValue + ") is not correct! Setting the default percentValue:0.");
 		}
 
 		if (this.getPercentValue() !== fPercentValue) {
@@ -153,6 +153,25 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	ProgressIndicator.prototype._getStateText = function () {
 		return ValueStateSupport.getAdditionalText(this.getState());
 	};
+
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	ProgressIndicator.prototype.getAccessibilityInfo = function() {
+		var oBundle = sap.ui.getCore().getLibraryResourceBundle("sap.m");
+		return {
+			role: "progressbar",
+			type: oBundle.getText("ACC_CTR_TYPE_PROGRESS"),
+			description: oBundle.getText("ACC_CTR_STATE_PROGRESS", [this.getPercentValue()]),
+			focusable: this.getEnabled(),
+			enabled: this.getEnabled()
+		};
+	};
+
+	function isValidPercentValue(value) {
+		return (typeof (value) === 'number') && !isNaN(value) && value >= 0 && value <= 100;
+	}
 
 	return ProgressIndicator;
 

@@ -5,8 +5,8 @@
  */
 
 // Provides control sap.m.SearchField.
-sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/EnabledPropagator', 'sap/ui/core/IconPool', 'sap/ui/core/InvisibleText', 'sap/ui/core/theming/Parameters', './Suggest'],
-	function(jQuery, library, Control, EnabledPropagator, IconPool, InvisibleText, Parameters, Suggest) {
+sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/core/EnabledPropagator', 'sap/ui/core/IconPool', 'sap/ui/core/InvisibleText', './Suggest'],
+	function(jQuery, library, Control, EnabledPropagator, IconPool, InvisibleText, Suggest) {
 	"use strict";
 
 
@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -100,8 +100,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			/**
 			 * Normally, search text is selected for copy when the SearchField is focused by keyboard navigation. If an application re-renders the SearchField during the liveChange event, set this property to false to disable text selection by focus.
 			 * @since 1.20
+			 * @deprecated Since version 1.38.
+			 * This parameter is deprecated and has no effect in run time. The cursor position of a focused search field is restored after re-rendering automatically.
 			 */
-			selectOnFocus : {type : "boolean", group : "Behavior", defaultValue : true}
+			selectOnFocus : {type : "boolean", group : "Behavior", defaultValue : true, deprecated: true}
 		},
 		associations : {
 
@@ -219,6 +221,26 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		return this._inputElement;
 	};
 
+	SearchField.prototype.getFocusInfo = function() {
+		var oFocusInfo = Control.prototype.getFocusInfo.call(this),
+			oInput = this.getDomRef("I");
+		if (oInput) {
+			// remember the current cursor position
+			jQuery.extend(oFocusInfo, {
+				cursorPos: jQuery(oInput).cursorPos()
+			});
+		}
+		return oFocusInfo;
+	};
+
+	SearchField.prototype.applyFocusInfo = function(oFocusInfo) {
+		Control.prototype.applyFocusInfo.call(this, oFocusInfo);
+		if ("cursorPos" in oFocusInfo) {
+			this.$("I").cursorPos(oFocusInfo.cursorPos);
+		}
+		return this;
+	};
+
 	// returns correct the width that applied by design
 	SearchField.prototype.getWidth = function() {
 		return this.getProperty("width") || "100%";
@@ -273,15 +295,19 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	};
 
 	SearchField.prototype.clear = function(oOptions) {
-		if (!this._inputElement || this.getValue() === "") {
+
+		// in case of escape, revert to the original value, otherwise clear with ""
+		var value = oOptions && oOptions.value || "";
+
+		if (!this._inputElement || this.getValue() === value) {
 			return;
 		}
 
-		this.setValue("");
+		this.setValue(value);
 		updateSuggestions(this);
-		this.fireLiveChange({newValue: ""});
+		this.fireLiveChange({newValue: value});
 		this.fireSearch({
-			query: "",
+			query: value,
 			refreshButtonPressed: false,
 			clearButtonPressed: !!(oOptions && oOptions.clearButton)
 		});
@@ -438,6 +464,8 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 	 * @private
 	 */
 	SearchField.prototype.onkeydown = function(event) {
+		var value;
+
 		if (event.which === jQuery.sap.KeyCodes.F5 || event.which === jQuery.sap.KeyCodes.ENTER) {
 
 			// show search button active state
@@ -447,12 +475,27 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 			event.stopPropagation();
 			event.preventDefault();
 		}
-		if (event.which === jQuery.sap.KeyCodes.ESCAPE && suggestionsOn(this)) {
-			// close picker
-			closeSuggestions(this);
-
-			// do not reset the search field value
-			event.stopPropagation();
+		if (event.which === jQuery.sap.KeyCodes.ESCAPE) {
+			// Escape button:
+			//   - close suggestions ||
+			//   - restore the original value ||
+			//   - clear the value ||
+			//   - close the parent dialog
+			if (suggestionsOn(this)) {
+				closeSuggestions(this);
+				event.setMarked(); // do not close the parent dialog
+			} else {
+				value = this.getValue();
+				if (value === this._sOriginalValue) {
+					this._sOriginalValue = ""; // clear the field if the value was original
+				}
+				this.clear({ value: this._sOriginalValue });
+				if (value !== this.getValue()) {
+					event.setMarked(); // if changed, do not close the parent dialog because the user has not finished yet
+				}
+			}
+			// Chrome fires input event on escape,
+			// prevent it to avoid doubled change/liveChange:
 			event.preventDefault();
 		}
 	};
@@ -511,14 +554,9 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		if (this.getShowRefreshButton()) {
 			this.$("search").removeAttr("title");
 		}
-		// Some applications do re-render during the liveSearch event.
-		// The input is focused and most browsers select the input text for copy.
-		// Any following key press deletes the whole selection.
-		// Disable selection by focus:
-		var input = this._inputElement;
-		if (input && input.value && !this.getSelectOnFocus()) {
-			input.setSelectionRange(input.value.length,input.value.length);
-		}
+
+		// Remember the original value for the case when the user presses ESC
+		this._sOriginalValue = this.getValue();
 
 		if (this.getEnableSuggestions()) {
 			// suggest event must be fired by first focus too
@@ -539,6 +577,10 @@ sap.ui.define(['jquery.sap.global', './library', 'sap/ui/core/Control', 'sap/ui/
 		var tooltip;
 
 		this.$().toggleClass("sapMFocus", false);
+
+		if (this._bSuggestionSuppressed) {
+			this._bSuggestionSuppressed = false; // void the reset button handling
+		}
 
 		// restore toltip of the refresh button
 		if (this.getShowRefreshButton()) {

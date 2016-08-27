@@ -4,8 +4,8 @@
  * Licensed under the Apache License, Version 2.0 - see LICENSE.txt.
  */
 
-sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'],
-	function(jQuery, Renderer, ListBaseRenderer) {
+sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer', './ColumnListItemRenderer'],
+	function(jQuery, Renderer, ListBaseRenderer, ColumnListItemRenderer) {
 	"use strict";
 
 
@@ -43,13 +43,11 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 						!oColumn.getHeader().getVisible() ||
 						!oColumn.getVisible() ||
 						oColumn.isPopin() ||
-						oColumn.isNeverVisible() ||
 						oColumn.isHidden();
 			}),
 			hasOneHeader = (type == "Head") && aColumns.filter(function(oColumn) {
 				return	oColumn.getVisible() &&
 						!oColumn.isPopin() &&
-						!oColumn.isNeverVisible() &&
 						!oColumn.isHidden();
 			}).length == 1,
 			createBlankCell = function(cls, id, bAriaHidden) {
@@ -106,9 +104,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 				hasPopin = true;
 				return;
 			}
-			if (oColumn.isNeverVisible()) {
-				return;
-			}
 			if (oColumn.isHidden()) {
 				hiddens++;
 			}
@@ -161,7 +156,6 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 		}
 	};
 
-
 	/**
 	 * add table container class name
 	 */
@@ -173,6 +167,15 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	 * render table tag and add required classes
 	 */
 	TableRenderer.renderListStartAttributes = function(rm, oControl) {
+		rm.write("<div");
+		rm.writeAttribute("id", oControl.getId() + "-labelledby");
+		rm.writeAttribute("aria-hidden", "true");
+		rm.addClass("sapUiInvisibleText");
+		rm.writeClasses();
+		rm.write(">");
+		rm.writeEscaped(sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("LIST_VIEW"));
+		rm.write("</div>");
+
 		rm.write("<table");
 		rm.addClass("sapMListTbl");
 		if (oControl.getFixedLayout() === false) {
@@ -190,6 +193,16 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	 */
 	TableRenderer.getAriaRole = function(oControl) {
 		return "grid";
+	};
+
+	/**
+	 * returns the additional aria-labelledby assosiation
+	 */
+	TableRenderer.getAriaLabelledBy = function(oControl) {
+		var sAriaLabelledBy = oControl.getId() + "-labelledby",
+			sBaseLabelledBy = ListBaseRenderer.getAriaLabelledBy.call(this, oControl);
+
+		return sBaseLabelledBy ? (sAriaLabelledBy + " " + sBaseLabelledBy) : sAriaLabelledBy;
 	};
 
 	/**
@@ -217,9 +230,10 @@ sap.ui.define(['jquery.sap.global', 'sap/ui/core/Renderer', './ListBaseRenderer'
 	TableRenderer.renderNoData = function(rm, oControl) {
 		rm.write("<tr");
 		rm.writeAttribute("role", "row");
-		rm.writeAttribute("tabindex", "-1");
+		rm.writeAttribute("tabindex", oControl.getKeyboardMode() == sap.m.ListKeyboardMode.Navigation ? -1 : 0);
 		rm.writeAttribute("id", oControl.getId("nodata"));
 		rm.addClass("sapMLIB sapMListTblRow sapMLIBTypeInactive");
+		ColumnListItemRenderer.addFocusableClasses.call(ColumnListItemRenderer, rm);
 		if (!oControl._headerHidden || (!oControl.getHeaderText() && !oControl.getHeaderToolbar())) {
 			rm.addClass("sapMLIBShowSeparator");
 		}

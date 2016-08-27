@@ -17,7 +17,10 @@ sap.ui.define(["sap/ui/core/Renderer", "./ObjectPageHeaderRenderer"],
 		ObjectPageLayoutRenderer.render = function (oRm, oControl) {
 			var aSections,
 				oHeader = oControl.getHeaderTitle(),
-				oAnchorBar = null;
+				oAnchorBar = null,
+				bIsHeaderContentVisible = oControl.getHeaderContent() && oControl.getHeaderContent().length > 0 && oControl.getShowHeaderContent(),
+				bIsTitleInHeaderContent = oControl.getShowTitleInHeaderContent() && oControl.getShowHeaderContent(),
+				bRenderHeaderContent = 	bIsHeaderContentVisible || bIsTitleInHeaderContent;
 
 			if (oControl.getShowAnchorBar() && oControl._getInternalAnchorBarVisible()) {
 				oAnchorBar = oControl.getAggregation("_anchorBar");
@@ -45,7 +48,10 @@ sap.ui.define(["sap/ui/core/Renderer", "./ObjectPageHeaderRenderer"],
 				oRm.renderControl(oHeader);
 			}
 
-			this._renderHeaderContentDOM(oRm, oControl, oControl._bHContentAlwaysExpanded, "-stickyHeaderContent");
+			// Sticky Header Content
+			if (bRenderHeaderContent) {
+				this._renderHeaderContentDOM(oRm, oControl, oControl._bHContentAlwaysExpanded, "-stickyHeaderContent");
+			}
 
 			// Sticky anchorBar placeholder
 			oRm.write("<div ");
@@ -78,13 +84,15 @@ sap.ui.define(["sap/ui/core/Renderer", "./ObjectPageHeaderRenderer"],
 			oRm.write(">");
 
 			// Header Content
-			this._renderHeaderContentDOM(oRm, oControl, !oControl._bHContentAlwaysExpanded, "-headerContent");
+			if (bRenderHeaderContent) {
+				this._renderHeaderContentDOM(oRm, oControl, !oControl._bHContentAlwaysExpanded, "-headerContent");
+			}
 
 			// Anchor Bar
 			oRm.write("<section ");
 			oRm.writeAttributeEscaped("id", oControl.getId() + "-anchorBar");
 			// write ARIA role
-			oRm.writeAttribute("role", "navigaiton");
+			oRm.writeAttribute("role", "navigation");
 			oRm.addClass("sapUxAPObjectPageNavigation");
 			oRm.writeClasses();
 			oRm.write(">");

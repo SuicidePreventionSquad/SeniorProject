@@ -22,7 +22,7 @@ sap.ui.define(['jquery.sap.global', './Button', './library', 'sap/ui/core/Enable
 	 * @extends sap.m.Button
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -59,6 +59,7 @@ sap.ui.define(['jquery.sap.global', './Button', './library', 'sap/ui/core/Enable
 	};
 
 	ToggleButton.prototype.setPressed = function(bPressed) {
+		bPressed = !!bPressed;
 		if (bPressed != this.getPressed()) {
 			this.setProperty("pressed", bPressed, true);
 			this.$().attr("aria-pressed", bPressed);
@@ -77,6 +78,28 @@ sap.ui.define(['jquery.sap.global', './Button', './library', 'sap/ui/core/Enable
 		if (oEvent.which === jQuery.sap.KeyCodes.SPACE || oEvent.which === jQuery.sap.KeyCodes.ENTER) {
 			this.ontap(oEvent);
 		}
+	};
+
+	/**
+	 * Override the keyup event handler of Button.js.
+	 */
+	ToggleButton.prototype.onkeyup = function(oEvent) {
+		if (oEvent.which === jQuery.sap.KeyCodes.SPACE || oEvent.which === jQuery.sap.KeyCodes.ENTER) {
+			oEvent.setMarked();
+		}
+	};
+
+	/**
+	 * @see {sap.ui.core.Control#getAccessibilityInfo}
+	 * @protected
+	 */
+	ToggleButton.prototype.getAccessibilityInfo = function() {
+		var oInfo = Button.prototype.getAccessibilityInfo.apply(this, arguments);
+		if (this.getPressed()) {
+			oInfo.description = ((oInfo.description || "") + " " +
+				sap.ui.getCore().getLibraryResourceBundle("sap.m").getText("ACC_CTR_STATE_PRESSED")).trim();
+		}
+		return oInfo;
 	};
 
 

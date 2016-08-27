@@ -95,6 +95,16 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/Control", "./library"], functio
 		}
 	};
 
+	ObjectPageSectionBase.prototype.setCustomAnchorBarButton = function (oButton) {
+		var vResult = this.setAggregation("customAnchorBarButton", oButton, true);
+
+		if (this._getObjectPageLayout()){
+			this._getObjectPageLayout()._updateNavigation();
+		}
+
+		return vResult;
+	};
+
 	/**
 	 * set the internal visibility of the sectionBase. This is set by the ux rules (for example don't display a section that has no subSections)
 	 * @param bValue
@@ -179,9 +189,12 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/Control", "./library"], functio
 
 	// Generate proxies for aggregation mutators
 	["addAggregation", "insertAggregation", "removeAllAggregation", "removeAggregation", "destroyAggregation"].forEach(function (sMethod) {
-		ObjectPageSectionBase.prototype[sMethod] = function () {
+		ObjectPageSectionBase.prototype[sMethod] = function (sAggregationName, oObject, bSuppressInvalidate) {
 			var vResult = Control.prototype[sMethod].apply(this, arguments);
-			this._notifyObjectPageLayout();
+
+			if (bSuppressInvalidate !== true){
+				this._notifyObjectPageLayout();
+			}
 			return vResult;
 		};
 	});
@@ -247,7 +260,12 @@ sap.ui.define(["jquery.sap.global", "sap/ui/core/Control", "./library"], functio
 	 */
 	ObjectPageSectionBase.prototype._applyImportanceRules = function (sCurrentLowestImportanceLevelToShow) {
 		this._sCurrentLowestImportanceLevelToShow = sCurrentLowestImportanceLevelToShow;
-		this._updateShowHideState(this._shouldBeHidden());
+
+		if (this.getDomRef()) {
+			this._updateShowHideState(this._shouldBeHidden());
+		} else {
+			this._isHidden = this._shouldBeHidden();
+		}
 	};
 
 	/*******************************************************************************

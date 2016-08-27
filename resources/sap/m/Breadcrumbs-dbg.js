@@ -9,14 +9,13 @@ sap.ui.define([
 	"sap/ui/core/Control",
 	"sap/m/Text",
 	"sap/m/Link",
-	"sap/m/ActionSelect",
-	"sap/m/Button",
+	"sap/m/Select",
 	"sap/ui/core/Item",
 	"sap/ui/core/delegate/ItemNavigation",
 	"sap/ui/core/ResizeHandler",
 	"sap/ui/core/IconPool",
 	"sap/ui/Device"
-], function (Control, Text, Link, Select, Button, Item, ItemNavigation, ResizeHandler, IconPool, Device) {
+], function (Control, Text, Link, Select, Item, ItemNavigation, ResizeHandler, IconPool, Device) {
 	"use strict";
 
 	/**
@@ -32,7 +31,7 @@ sap.ui.define([
 	 * @extends sap.ui.core.Control
 	 *
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 *
 	 * @constructor
 	 * @public
@@ -90,6 +89,10 @@ sap.ui.define([
 		this._configureKeyboardHandling();
 	};
 
+	Breadcrumbs.prototype.onThemeChanged = function () {
+		this._resetControl();
+	};
+
 	Breadcrumbs.prototype.exit = function () {
 		this._resetControl();
 		this._destroyItemNavigation();
@@ -109,19 +112,6 @@ sap.ui.define([
 		return this.getId() + "-" + sSuffix;
 	};
 
-	Breadcrumbs.prototype._getSelectButton = function () {
-		if (!this._closeButton) {
-			this._closeButton = new Button({
-				id: this._getAugmentedId("closeButton"),
-				text: Breadcrumbs._getResourceBundle().getText("BREADCRUMB_CLOSE"),
-				press: this._selectCancelButtonHandler.bind(this),
-				visible: Device.system.phone
-			});
-		}
-
-		return this._closeButton;
-	};
-
 	Breadcrumbs.prototype._getSelect = function () {
 		if (!this.getAggregation("_select")) {
 			this.setAggregation("_select", this._decorateSelect(new Select({
@@ -130,8 +120,7 @@ sap.ui.define([
 				forceSelection: false,
 				autoAdjustWidth: true,
 				icon: IconPool.getIconURI("slim-arrow-down"),
-				type: sap.m.SelectType.IconOnly,
-				buttons: [this._getSelectButton()]
+				type: sap.m.SelectType.IconOnly
 			})));
 		}
 		return this.getAggregation("_select");
@@ -154,33 +143,41 @@ sap.ui.define([
 		return aConvertedArguments;
 	}
 
-	Breadcrumbs.prototype.insertLink = function (oLink) {
+	Breadcrumbs.prototype.insertLink = function (oLink, iIndex) {
 		var vResult = this.insertAggregation.apply(this, fnConvertArguments("links", arguments));
 		this._registerControlListener(oLink);
 		this._resetControl();
 		return vResult;
 	};
+
 	Breadcrumbs.prototype.addLink = function (oLink) {
 		var vResult = this.addAggregation.apply(this, fnConvertArguments("links", arguments));
 		this._registerControlListener(oLink);
 		this._resetControl();
 		return vResult;
 	};
-	Breadcrumbs.prototype.removeLink = function (oLink) {
-		this._deregisterControlListener(oLink);
+
+	Breadcrumbs.prototype.removeLink = function (vObject) {
+		var vResult = this.removeAggregation.apply(this, fnConvertArguments("links", arguments));
+		this._deregisterControlListener(vResult);
 		this._resetControl();
-		return this.removeAggregation.apply(this, fnConvertArguments("links", arguments));
+		return vResult;
 	};
+
 	Breadcrumbs.prototype.removeAllLinks = function () {
-		this.getAggregation("links").forEach(this._deregisterControlListener, this);
+		var aLinks = this.getAggregation("links");
+		var vResult = this.removeAllAggregation.apply(this, fnConvertArguments("links", arguments));
+		aLinks.forEach(this._deregisterControlListener, this);
 		this._resetControl();
-		return this.removeAllAggregation.apply(this, fnConvertArguments("links", arguments));
+		return vResult;
 	};
 
 	Breadcrumbs.prototype.destroyLinks = function () {
-		this.getAggregation("links").forEach(this._deregisterControlListener, this);
+		var aLinks = this.getAggregation("links");
+		var vResult = this.destroyAggregation.apply(this, fnConvertArguments("links", arguments));
+		aLinks.forEach(this._deregisterControlListener, this);
 		this._resetControl();
-		return this.destroyAggregation.apply(this, fnConvertArguments("links", arguments));
+		return vResult;
 	};
 
 	/*************************************** Select Handling ******************************************/
@@ -285,10 +282,6 @@ sap.ui.define([
 				window.location.href = sLinkHref;
 			}
 		}
-	};
-
-	Breadcrumbs.prototype._selectCancelButtonHandler = function () {
-		this._getSelect().close();
 	};
 
 	Breadcrumbs.prototype._getItemsForMobile = function () {

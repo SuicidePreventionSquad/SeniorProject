@@ -12,7 +12,7 @@ sap.ui.define(['jquery.sap.global'],
 
 	/**
 	 * @author SAP SE
-	 * @version 1.34.8
+	 * @version 1.38.7
 	 * @namespace
 	 */
 	var ButtonRenderer = {
@@ -210,12 +210,12 @@ sap.ui.define(['jquery.sap.global'],
 					var sIcon = oButton.getIconSelected() || oButton.getIconHovered();
 					return sIcon ? sIcon : oButton.getIcon();
 				} else if (oButton.$().hasClass("sapUiBtnFoc")) {
-					return oButton.getIconHovered() || oButton.getIcon();
+					return oButton.getIcon();
 				}
 				return oButton.getIcon();
 			case "mouseout":
 				if (oButton.$().hasClass("sapUiBtnFoc")) {
-					return oButton.getIconHovered() || oButton.getIcon();
+					return oButton.getIcon();
 				}
 				return oButton.getIcon();
 			case "active":
